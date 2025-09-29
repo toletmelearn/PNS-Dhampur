@@ -18,19 +18,24 @@ class TeacherController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $data = $request->validate([
-            'user_id'=>'nullable|exists:users,id',
-            'qualification'=>'nullable|string',
-            'experience_years'=>'nullable|integer',
-            'salary'=>'nullable|numeric',
-            'joining_date'=>'nullable|date',
-            'documents'=>'nullable|array'
-        ]);
+{
+    $request->validate([
+        'name' => 'required|string',
+        'email' => 'required|email|unique:teachers',
+        'document' => 'required|file|mimes:pdf,jpg,jpeg,png',
+    ]);
 
-        $teacher = Teacher::create($data);
-        return response()->json($teacher);
-    }
+    $docPath = $request->file('document')->store('uploads/teachers', 'public');
+
+    $teacher = Teacher::create([
+        'name' => $request->name,
+        'email' => $request->email,
+        'document' => $docPath,
+    ]);
+
+    return response()->json(['teacher' => $teacher]);
+}
+
 
     public function update(Request $request, $id)
     {
