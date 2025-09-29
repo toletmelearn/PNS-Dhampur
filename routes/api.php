@@ -20,6 +20,7 @@ use App\Http\Controllers\BudgetController;
 // PUBLIC ROUTES
 // -----------------------------
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']); // optional if you want registration
 
 // -----------------------------
 // PROTECTED ROUTES (Sanctum)
@@ -65,3 +66,5 @@ Route::middleware('auth:sanctum')->group(function () {
     // Budget
     Route::apiResource('budgets', BudgetController::class);
 });
+
+Route::post('students/{student}/verify', [\App\Http\Controllers\StudentController::class, 'verify']);

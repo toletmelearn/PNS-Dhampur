@@ -16,3 +16,17 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+*.log
+# --------- Flutter ----------
+/.build/
+/build/
+/.dart_tool/
+/.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+/.pub-cache/
+*.iml
+android/.gradle/
+ios/Pods/
+/.DS_Store
+
