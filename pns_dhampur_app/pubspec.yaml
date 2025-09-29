@@ -1,0 +1,16 @@
+name: pns_dhampur_app
+description: A Flutter app for PNS Dhampur school management
+
+environment:
+  sdk: ">=2.20.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.1.0
+  flutter_lints: ^6.0.0
+  provider: ^6.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
