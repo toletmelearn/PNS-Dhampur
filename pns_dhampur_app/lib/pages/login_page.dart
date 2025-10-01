@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../api/api_service.dart';
+import 'dashboard_page.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -16,11 +17,27 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final res = await ApiService.login(emailController.text, passwordController.text);
       print("Login Success: $res");
-      // Navigate to dashboard or home page
+      
+      // Navigate to dashboard on successful login
+      if (res['success'] == true) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DashboardPage(
+              token: res['token'] ?? '',
+              userRole: res['user']['role'] ?? 'admin',
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message'] ?? 'Login failed!')),
+        );
+      }
     } catch (e) {
       print("Login Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Login failed!')),
+        SnackBar(content: Text('Login failed: $e')),
       );
     } finally {
       setState(() => loading = false);

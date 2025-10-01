@@ -100,7 +100,6 @@ class StudentController extends Controller
         $documents = $student->documents ?? [];
 
         if ($request->hasFile('birth_cert')) {
-            // delete old if exists
             if(isset($documents['birth_cert'])) Storage::delete($documents['birth_cert']);
             $documents['birth_cert'] = $this->storeFile($request->file('birth_cert'), 'students/documents');
         }
@@ -124,7 +123,6 @@ class StudentController extends Controller
     // DELETE /api/students/{id}
     public function destroy(Student $student)
     {
-        // delete stored files
         if ($student->documents) {
             foreach ($student->documents as $k => $v) {
                 if (is_array($v)) {
@@ -139,7 +137,6 @@ class StudentController extends Controller
     }
 
     // POST /api/students/{id}/verify
-    // Body: { "verified_data": { "name":"...", "father_name":"...", "mother_name":"...", "dob":"YYYY-MM-DD", "aadhaar":"..." }, "force": false }
     public function verify(Request $request, Student $student)
     {
         $payload = $request->validate([
@@ -154,7 +151,6 @@ class StudentController extends Controller
 
         $verifiedData = $payload['verified_data'];
 
-        // Basic matching algorithm: compare entered fields vs provided verified_data (exact match / case-insensitive)
         $mismatches = [];
         $fieldsToCheck = ['name','father_name','mother_name','dob','aadhaar'];
 
@@ -169,7 +165,6 @@ class StudentController extends Controller
         }
 
         if (count($mismatches) === 0 || ($payload['force'] ?? false)) {
-            // mark as verified, store the verified data
             $student->update([
                 'documents_verified_data' => $verifiedData,
                 'verification_status' => 'verified'
@@ -177,7 +172,6 @@ class StudentController extends Controller
             return response()->json(['status' => 'verified', 'mismatches' => $mismatches]);
         }
 
-        // otherwise mark mismatch and return details for admin action
         $student->update([
             'documents_verified_data' => $verifiedData,
             'verification_status' => 'mismatch'
@@ -190,14 +184,13 @@ class StudentController extends Controller
     protected function storeFile($file, $dir)
     {
         $filename = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) . '-' . time() . '.' . $file->getClientOriginalExtension();
-        $path = $file->storeAs($dir, $filename, 'public'); // storage/app/public/...
+        $path = $file->storeAs($dir, $filename, 'public');
         return $path;
     }
 
     protected function normalize($value)
     {
         if ($value === null) return null;
-        // simple normalize: trim, lowercase, remove multiple spaces
         return mb_strtolower(preg_replace('/\s+/', ' ', trim((string)$value)));
     }
 }

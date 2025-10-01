@@ -19,4 +19,9 @@ class Teacher extends Model
     public function classes() { return $this->hasMany(ClassModel::class, 'class_teacher_id'); }
     public function salaries() { return $this->hasMany(Salary::class); }
     public function syllabus() { return $this->hasMany(Syllabus::class); }
+    
+    // Substitution relationships
+    public function substitutionRequests() { return $this->hasMany(TeacherSubstitution::class, 'absent_teacher_id'); }
+    public function substitutionAssignments() { return $this->hasMany(TeacherSubstitution::class, 'substitute_teacher_id'); }
+    public function availability() { return $this->hasMany(TeacherAvailability::class); }
 }

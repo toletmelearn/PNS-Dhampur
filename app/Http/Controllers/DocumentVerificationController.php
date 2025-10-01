@@ -1,0 +1,353 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\DocumentVerification;
+use App\Models\Student;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
+
+class DocumentVerificationController extends Controller
+{
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request)
+    {
+        $query = DocumentVerification::with(['student', 'verifiedBy']);
+
+        // Filter by status
+        if ($request->has('status') && $request->status !== 'all') {
+            $query->where('verification_status', $request->status);
+        }
+
+        // Filter by document type
+        if ($request->has('document_type') && $request->document_type !== 'all') {
+            $query->where('document_type', $request->document_type);
+        }
+
+        // Filter by student
+        if ($request->has('student_id')) {
+            $query->where('student_id', $request->student_id);
+        }
+
+        // Search by student name or document name
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('document_name', 'like', "%{$search}%")
+                  ->orWhereHas('student', function($sq) use ($search) {
+                      $sq->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $documents = $query->orderBy('created_at', 'desc')->paginate(15);
+
+        return view('document-verification.index', compact('documents'));
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create(Request $request)
+    {
+        $students = Student::all();
+        $documentTypes = [
+            'birth_certificate' => 'Birth Certificate',
+            'transfer_certificate' => 'Transfer Certificate',
+            'caste_certificate' => 'Caste Certificate',
+            'income_certificate' => 'Income Certificate',
+            'domicile_certificate' => 'Domicile Certificate',
+            'passport_photo' => 'Passport Photo',
+            'aadhar_card' => 'Aadhar Card',
+            'previous_marksheet' => 'Previous Marksheet'
+        ];
+
+        $selectedStudent = $request->has('student_id') ? 
+            Student::find($request->student_id) : null;
+
+        return view('document-verification.create', compact('students', 'documentTypes', 'selectedStudent'));
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'student_id' => 'required|exists:students,id',
+            'document_type' => 'required|string',
+            'document_name' => 'required|string|max:255',
+            'document_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120', // 5MB max
+            'expiry_date' => 'nullable|date|after:today',
+            'is_mandatory' => 'boolean',
+            'metadata' => 'nullable|array'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        try {
+            // Store the file
+            $file = $request->file('document_file');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $filePath = $file->storeAs('documents/verification', $fileName);
+
+            // Generate file hash
+            $fileHash = hash_file('sha256', $file->getPathname());
+
+            // Create document verification record
+            $document = DocumentVerification::create([
+                'student_id' => $request->student_id,
+                'document_type' => $request->document_type,
+                'document_name' => $request->document_name,
+                'file_path' => $filePath,
+                'file_hash' => $fileHash,
+                'expiry_date' => $request->expiry_date,
+                'is_mandatory' => $request->has('is_mandatory'),
+                'metadata' => $request->metadata ?? []
+            ]);
+
+            return redirect()->route('document-verification.index')
+                ->with('success', 'Document uploaded successfully and is pending verification.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to upload document: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(DocumentVerification $documentVerification)
+    {
+        $documentVerification->load(['student', 'verifiedBy']);
+        
+        return view('document-verification.show', compact('documentVerification'));
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(DocumentVerification $documentVerification)
+    {
+        $students = Student::all();
+        $documentTypes = [
+            'birth_certificate' => 'Birth Certificate',
+            'transfer_certificate' => 'Transfer Certificate',
+            'caste_certificate' => 'Caste Certificate',
+            'income_certificate' => 'Income Certificate',
+            'domicile_certificate' => 'Domicile Certificate',
+            'passport_photo' => 'Passport Photo',
+            'aadhar_card' => 'Aadhar Card',
+            'previous_marksheet' => 'Previous Marksheet'
+        ];
+
+        return view('document-verification.edit', compact('documentVerification', 'students', 'documentTypes'));
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, DocumentVerification $documentVerification)
+    {
+        $validator = Validator::make($request->all(), [
+            'document_name' => 'required|string|max:255',
+            'expiry_date' => 'nullable|date|after:today',
+            'is_mandatory' => 'boolean',
+            'metadata' => 'nullable|array',
+            'document_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        try {
+            $updateData = [
+                'document_name' => $request->document_name,
+                'expiry_date' => $request->expiry_date,
+                'is_mandatory' => $request->has('is_mandatory'),
+                'metadata' => $request->metadata ?? []
+            ];
+
+            // Handle file replacement
+            if ($request->hasFile('document_file')) {
+                // Delete old file
+                if (Storage::exists($documentVerification->file_path)) {
+                    Storage::delete($documentVerification->file_path);
+                }
+
+                // Store new file
+                $file = $request->file('document_file');
+                $fileName = time() . '_' . $file->getClientOriginalName();
+                $filePath = $file->storeAs('documents/verification', $fileName);
+                $fileHash = hash_file('sha256', $file->getPathname());
+
+                $updateData['file_path'] = $filePath;
+                $updateData['file_hash'] = $fileHash;
+                $updateData['verification_status'] = 'pending'; // Reset status on file change
+            }
+
+            $documentVerification->update($updateData);
+
+            return redirect()->route('document-verification.index')
+                ->with('success', 'Document updated successfully.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to update document: ' . $e->getMessage())
+                ->withInput();
+        }
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(DocumentVerification $documentVerification)
+    {
+        try {
+            // Delete the file
+            if (Storage::exists($documentVerification->file_path)) {
+                Storage::delete($documentVerification->file_path);
+            }
+
+            $documentVerification->delete();
+
+            return redirect()->route('document-verification.index')
+                ->with('success', 'Document deleted successfully.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to delete document: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Verify a document
+     */
+    public function verify(Request $request, DocumentVerification $documentVerification)
+    {
+        $validator = Validator::make($request->all(), [
+            'verification_notes' => 'nullable|string|max:1000'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator);
+        }
+
+        try {
+            $documentVerification->verify(Auth::user(), $request->verification_notes);
+
+            return redirect()->back()
+                ->with('success', 'Document verified successfully.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to verify document: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Reject a document
+     */
+    public function reject(Request $request, DocumentVerification $documentVerification)
+    {
+        $validator = Validator::make($request->all(), [
+            'verification_notes' => 'required|string|max:1000'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator);
+        }
+
+        try {
+            $documentVerification->reject(Auth::user(), $request->verification_notes);
+
+            return redirect()->back()
+                ->with('success', 'Document rejected with notes.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to reject document: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Download document file
+     */
+    public function download(DocumentVerification $documentVerification)
+    {
+        if (!Storage::exists($documentVerification->file_path)) {
+            return redirect()->back()
+                ->with('error', 'Document file not found.');
+        }
+
+        // Verify file integrity
+        if (!$documentVerification->verifyFileIntegrity()) {
+            return redirect()->back()
+                ->with('error', 'Document file integrity check failed.');
+        }
+
+        return Storage::download($documentVerification->file_path, $documentVerification->document_name);
+    }
+
+    /**
+     * Get student documents for AJAX
+     */
+    public function getStudentDocuments(Student $student)
+    {
+        $documents = $student->documentVerifications()
+            ->select('id', 'document_type', 'document_name', 'verification_status', 'created_at')
+            ->get();
+
+        return response()->json($documents);
+    }
+
+    /**
+     * Bulk verification actions
+     */
+    public function bulkAction(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'action' => 'required|in:verify,reject',
+            'document_ids' => 'required|array',
+            'document_ids.*' => 'exists:document_verifications,id',
+            'verification_notes' => 'nullable|string|max:1000'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator);
+        }
+
+        try {
+            $documents = DocumentVerification::whereIn('id', $request->document_ids)->get();
+            $user = Auth::user();
+
+            foreach ($documents as $document) {
+                if ($request->action === 'verify') {
+                    $document->verify($user, $request->verification_notes);
+                } else {
+                    $document->reject($user, $request->verification_notes ?: 'Bulk rejection');
+                }
+            }
+
+            $message = $request->action === 'verify' ? 'Documents verified successfully.' : 'Documents rejected successfully.';
+            return redirect()->back()->with('success', $message);
+
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to process bulk action: ' . $e->getMessage());
+        }
+    }
+}

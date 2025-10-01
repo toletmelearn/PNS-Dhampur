@@ -9,36 +9,38 @@ class ExamController extends Controller
 {
     public function index()
     {
-        return response()->json(Exam::with('class','results')->get());
+        return response()->json(Exam::with('class')->get());
     }
 
     public function show($id)
     {
-        return response()->json(Exam::with('class','results')->findOrFail($id));
+        return response()->json(Exam::with('class')->findOrFail($id));
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'name'=>'required|string',
-            'class_id'=>'nullable|exists:classes,id',
-            'start_date'=>'nullable|date',
-            'end_date'=>'nullable|date'
+            'name' => 'required|string|max:255',
+            'class_id' => 'required|exists:class_models,id',
+            'date' => 'required|date',
+            'description' => 'nullable|string',
         ]);
 
         $exam = Exam::create($data);
-        return response()->json($exam);
+        return response()->json($exam, 201);
     }
 
     public function update(Request $request, $id)
     {
         $exam = Exam::findOrFail($id);
+
         $data = $request->validate([
-            'name'=>'sometimes|string',
-            'class_id'=>'sometimes|exists:classes,id',
-            'start_date'=>'sometimes|date',
-            'end_date'=>'sometimes|date'
+            'name' => 'sometimes|required|string|max:255',
+            'class_id' => 'sometimes|required|exists:class_models,id',
+            'date' => 'sometimes|required|date',
+            'description' => 'nullable|string',
         ]);
+
         $exam->update($data);
         return response()->json($exam);
     }
@@ -47,6 +49,6 @@ class ExamController extends Controller
     {
         $exam = Exam::findOrFail($id);
         $exam->delete();
-        return response()->json(['message'=>'Exam deleted']);
+        return response()->json(['message' => 'Exam deleted']);
     }
 }

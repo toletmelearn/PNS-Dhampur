@@ -23,6 +23,7 @@ class Student extends Model
         'documents_verified_data',
         'verification_status',
         'status',
+        'verified',
         'meta',
     ];
 
@@ -42,6 +43,11 @@ class Student extends Model
     public function fees()
     {
         return $this->hasMany(Fee::class);
+    }
+
+    public function documentVerifications()
+    {
+        return $this->hasMany(DocumentVerification::class);
     }
 
     // helper to get public URL for stored file

@@ -15,7 +15,22 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')->hourly();
+        // Check for bell notifications every minute during school hours
+        $schedule->command('bell:check')
+                 ->everyMinute()
+                 ->between('07:00', '15:00')
+                 ->weekdays();
+
+        // Auto-assign substitute teachers every hour during school hours
+        $schedule->command('substitutes:auto-assign')
+                 ->hourly()
+                 ->between('07:00', '15:00')
+                 ->weekdays();
+
+        // Daily auto-assignment for next day (run at 6 PM)
+        $schedule->command('substitutes:auto-assign --date=' . now()->addDay()->format('Y-m-d'))
+                 ->dailyAt('18:00')
+                 ->weekdays();
     }
 
     /**

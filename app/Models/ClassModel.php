@@ -9,7 +9,7 @@ class ClassModel extends Model
 {
     use HasFactory;
 
-    protected $table = 'classes';
+    protected $table = 'class_models';
     protected $fillable = ['name','section','class_teacher_id'];
 
     public function students() { return $this->hasMany(Student::class, 'class_id'); }
