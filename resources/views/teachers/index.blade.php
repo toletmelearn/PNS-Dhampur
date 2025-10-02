@@ -1,140 +1,133 @@
 @extends('layouts.app')
 
-@section('title', 'Teacher Management - PNS Dhampur')
+@section('title', 'Teacher Management')
 
 @push('styles')
-<link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-<link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
 <style>
-    .teacher-card {
+    .stats-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border: none;
         border-radius: 15px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        color: white;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        overflow: hidden;
+    }
+
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+    }
+
+    .teacher-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         transition: all 0.3s ease;
         overflow: hidden;
-        background: white;
     }
 
     .teacher-card:hover {
         transform: translateY(-5px);
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .teacher-profile-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+        position: relative;
     }
 
     .teacher-avatar {
         width: 80px;
         height: 80px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: rgba(255, 255, 255, 0.2);
         display: flex;
         align-items: center;
         justify-content: center;
-        color: white;
-        font-size: 2rem;
+        font-size: 1.5rem;
         font-weight: bold;
         margin: 0 auto 1rem;
-    }
-
-    .teacher-profile-card {
-        text-align: center;
-        padding: 2rem;
-        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-        border-radius: 15px;
-        margin-bottom: 1rem;
-    }
-
-    .stats-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 15px;
-        color: white;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .stats-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 100px;
-        height: 100px;
-        background: rgba(255,255,255,0.1);
-        border-radius: 50%;
-        transform: translate(30px, -30px);
-    }
-
-    .stats-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 15px 35px rgba(102, 126, 234, 0.3);
+        border: 3px solid rgba(255, 255, 255, 0.3);
     }
 
     .department-badge {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 25px;
-        font-size: 0.875rem;
-        font-weight: 600;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        display: inline-block;
+        backdrop-filter: blur(10px);
     }
 
     .experience-badge {
-        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-        color: white;
+        background: rgba(255, 255, 255, 0.15);
         padding: 0.25rem 0.75rem;
         border-radius: 15px;
         font-size: 0.75rem;
-        font-weight: 600;
+        display: inline-block;
+        margin-top: 0.5rem;
     }
 
     .qualification-tag {
-        background: #f1f5f9;
-        color: #475569;
-        padding: 0.25rem 0.75rem;
+        background: #f8f9fa;
+        color: #495057;
+        padding: 0.25rem 0.5rem;
         border-radius: 12px;
         font-size: 0.75rem;
-        margin: 0.25rem;
         display: inline-block;
-    }
-
-    .table-responsive {
-        border-radius: 15px;
-        overflow: hidden;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    }
-
-    .table thead th {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        font-weight: 600;
-        padding: 1rem;
-    }
-
-    .table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-        border-color: #f1f5f9;
+        margin: 0.125rem;
+        border: 1px solid #e9ecef;
     }
 
     .btn-primary-custom {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border: none;
-        border-radius: 25px;
-        padding: 0.75rem 2rem;
+        border-radius: 10px;
+        padding: 0.75rem 1.5rem;
         font-weight: 600;
         transition: all 0.3s ease;
     }
 
     .btn-primary-custom:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .filter-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .table-responsive {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .table thead th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 1rem;
+        font-weight: 600;
+    }
+
+    .table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f3f4;
     }
 
     .modal-content {
         border-radius: 15px;
         border: none;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     }
 
     .modal-header {
@@ -156,18 +149,26 @@
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
 
-    .class-assignment-card {
-        background: white;
-        border: 2px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        transition: all 0.3s ease;
+    .status-badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
     }
 
-    .class-assignment-card:hover {
-        border-color: #667eea;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    .status-active {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-inactive {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status-suspended {
+        background: #fff3cd;
+        color: #856404;
     }
 
     @media (max-width: 768px) {
@@ -193,12 +194,12 @@
                     <p class="text-muted mb-0">Manage teaching staff, assignments, and professional development</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#assignClassModal">
-                        <i class="fas fa-chalkboard me-2"></i>Assign Classes
-                    </button>
-                    <button class="btn btn-primary-custom" data-bs-toggle="modal" data-bs-target="#addTeacherModal">
+                    <a href="{{ route('teachers.export') }}" class="btn btn-outline-success">
+                        <i class="fas fa-download me-2"></i>Export
+                    </a>
+                    <a href="{{ route('teachers.create') }}" class="btn btn-primary-custom">
                         <i class="fas fa-plus me-2"></i>Add New Teacher
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
@@ -210,7 +211,7 @@
             <div class="card stats-card">
                 <div class="card-body text-center position-relative">
                     <i class="fas fa-chalkboard-teacher fa-2x mb-3"></i>
-                    <h3 class="mb-1">89</h3>
+                    <h3 class="mb-1">{{ $stats['total_teachers'] }}</h3>
                     <p class="mb-0">Total Teachers</p>
                 </div>
             </div>
@@ -219,7 +220,7 @@
             <div class="card stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                 <div class="card-body text-center position-relative">
                     <i class="fas fa-user-check fa-2x mb-3"></i>
-                    <h3 class="mb-1">82</h3>
+                    <h3 class="mb-1">{{ $stats['active_teachers'] }}</h3>
                     <p class="mb-0">Active Teachers</p>
                 </div>
             </div>
@@ -228,256 +229,212 @@
             <div class="card stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
                 <div class="card-body text-center position-relative">
                     <i class="fas fa-graduation-cap fa-2x mb-3"></i>
-                    <h3 class="mb-1">67</h3>
-                    <p class="mb-0">Class Teachers</p>
+                    <h3 class="mb-1">{{ number_format($stats['average_experience'], 1) }}</h3>
+                    <p class="mb-0">Avg Experience (Years)</p>
                 </div>
             </div>
         </div>
         <div class="col-lg-3 col-md-6 mb-3">
             <div class="card stats-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
                 <div class="card-body text-center position-relative">
-                    <i class="fas fa-award fa-2x mb-3"></i>
-                    <h3 class="mb-1">15</h3>
-                    <p class="mb-0">Senior Faculty</p>
+                    <i class="fas fa-rupee-sign fa-2x mb-3"></i>
+                    <h3 class="mb-1">{{ number_format($stats['average_salary']/1000, 0) }}K</h3>
+                    <p class="mb-0">Avg Salary</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Teacher Cards Grid -->
-    <div class="row mb-4">
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="teacher-card">
-                <div class="teacher-profile-card">
-                    <div class="teacher-avatar">DR</div>
-                    <h5 class="mb-1">Dr. Rajesh Kumar</h5>
-                    <p class="text-muted mb-2">Principal & Mathematics</p>
-                    <div class="department-badge mb-2">Mathematics Department</div>
-                    <div class="experience-badge">25+ Years Experience</div>
+    <!-- Filters -->
+    <div class="filter-card">
+        <form method="GET" action="{{ route('teachers.index') }}" id="filterForm">
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" name="search" value="{{ request('search') }}" 
+                           placeholder="Search by name, email, qualification...">
                 </div>
-                <div class="p-3">
-                    <div class="row text-center mb-3">
-                        <div class="col-4">
-                            <h6 class="mb-0">5</h6>
-                            <small class="text-muted">Classes</small>
-                        </div>
-                        <div class="col-4">
-                            <h6 class="mb-0">156</h6>
-                            <small class="text-muted">Students</small>
-                        </div>
-                        <div class="col-4">
-                            <h6 class="mb-0">98%</h6>
-                            <small class="text-muted">Attendance</small>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="qualification-tag">M.Sc Mathematics</div>
-                        <div class="qualification-tag">B.Ed</div>
-                        <div class="qualification-tag">Ph.D</div>
-                    </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">Qualification</label>
+                    <select class="form-select" name="qualification">
+                        <option value="">All Qualifications</option>
+                        @foreach($qualifications as $qualification)
+                            <option value="{{ $qualification }}" {{ request('qualification') == $qualification ? 'selected' : '' }}>
+                                {{ $qualification }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">Min Experience</label>
+                    <input type="number" class="form-control" name="experience_min" value="{{ request('experience_min') }}" 
+                           placeholder="Years" min="0">
+                </div>
+                <div class="col-md-2 mb-3">
+                    <label class="form-label">Max Experience</label>
+                    <input type="number" class="form-control" name="experience_max" value="{{ request('experience_max') }}" 
+                           placeholder="Years" min="0">
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">&nbsp;</label>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-primary flex-fill" onclick="viewTeacher(1)">
-                            <i class="fas fa-eye"></i> View
+                        <button type="submit" class="btn btn-primary-custom flex-fill">
+                            <i class="fas fa-search me-2"></i>Filter
                         </button>
-                        <button class="btn btn-sm btn-outline-warning flex-fill" onclick="editTeacher(1)">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
+                        <a href="{{ route('teachers.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i>
+                        </a>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="teacher-card">
-                <div class="teacher-profile-card">
-                    <div class="teacher-avatar" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">PS</div>
-                    <h5 class="mb-1">Priya Sharma</h5>
-                    <p class="text-muted mb-2">English Literature</p>
-                    <div class="department-badge mb-2" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">English Department</div>
-                    <div class="experience-badge">12 Years Experience</div>
-                </div>
-                <div class="p-3">
-                    <div class="row text-center mb-3">
-                        <div class="col-4">
-                            <h6 class="mb-0">4</h6>
-                            <small class="text-muted">Classes</small>
-                        </div>
-                        <div class="col-4">
-                            <h6 class="mb-0">128</h6>
-                            <small class="text-muted">Students</small>
-                        </div>
-                        <div class="col-4">
-                            <h6 class="mb-0">95%</h6>
-                            <small class="text-muted">Attendance</small>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="qualification-tag">M.A English</div>
-                        <div class="qualification-tag">B.Ed</div>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-primary flex-fill" onclick="viewTeacher(2)">
-                            <i class="fas fa-eye"></i> View
-                        </button>
-                        <button class="btn btn-sm btn-outline-warning flex-fill" onclick="editTeacher(2)">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4 col-md-6 mb-4">
-            <div class="teacher-card">
-                <div class="teacher-profile-card">
-                    <div class="teacher-avatar" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">AG</div>
-                    <h5 class="mb-1">Amit Gupta</h5>
-                    <p class="text-muted mb-2">Physics & Chemistry</p>
-                    <div class="department-badge mb-2" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">Science Department</div>
-                    <div class="experience-badge">8 Years Experience</div>
-                </div>
-                <div class="p-3">
-                    <div class="row text-center mb-3">
-                        <div class="col-4">
-                            <h6 class="mb-0">6</h6>
-                            <small class="text-muted">Classes</small>
-                        </div>
-                        <div class="col-4">
-                            <h6 class="mb-0">189</h6>
-                            <small class="text-muted">Students</small>
-                        </div>
-                        <div class="col-4">
-                            <h6 class="mb-0">97%</h6>
-                            <small class="text-muted">Attendance</small>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="qualification-tag">M.Sc Physics</div>
-                        <div class="qualification-tag">B.Ed</div>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-primary flex-fill" onclick="viewTeacher(3)">
-                            <i class="fas fa-eye"></i> View
-                        </button>
-                        <button class="btn btn-sm btn-outline-warning flex-fill" onclick="editTeacher(3)">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </form>
     </div>
 
     <!-- Teachers Table -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0">All Teachers</h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0" id="teachersTable">
-                            <thead>
-                                <tr>
-                                    <th>Teacher</th>
-                                    <th>Department</th>
-                                    <th>Classes Assigned</th>
-                                    <th>Experience</th>
-                                    <th>Contact</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="teacher-avatar me-3" style="width: 50px; height: 50px; font-size: 1.2rem;">DR</div>
-                                            <div>
-                                                <h6 class="mb-0">Dr. Rajesh Kumar</h6>
-                                                <small class="text-muted">EMP001 • Principal</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="department-badge">Mathematics</span></td>
-                                    <td>
-                                        <div>
-                                            <span class="badge bg-primary me-1">10-A</span>
-                                            <span class="badge bg-primary me-1">10-B</span>
-                                            <span class="badge bg-primary">11-A</span>
-                                        </div>
-                                    </td>
-                                    <td><span class="experience-badge">25+ Years</span></td>
-                                    <td>
-                                        <div>
-                                            <div class="fw-semibold">+91 98765 43210</div>
-                                            <small class="text-muted">rajesh@pnsdhampur.edu</small>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge bg-success">Active</span></td>
-                                    <td>
-                                        <div class="d-flex gap-1">
-                                            <button class="btn btn-sm btn-outline-primary" onclick="viewTeacher(1)">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-warning" onclick="editTeacher(1)">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-info" onclick="assignClasses(1)">
-                                                <i class="fas fa-chalkboard"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="teacher-avatar me-3" style="width: 50px; height: 50px; font-size: 1.2rem; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">PS</div>
-                                            <div>
-                                                <h6 class="mb-0">Priya Sharma</h6>
-                                                <small class="text-muted">EMP002 • Senior Teacher</small>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="department-badge" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">English</span></td>
-                                    <td>
-                                        <div>
-                                            <span class="badge bg-primary me-1">9-A</span>
-                                            <span class="badge bg-primary me-1">9-B</span>
-                                            <span class="badge bg-primary">10-A</span>
-                                        </div>
-                                    </td>
-                                    <td><span class="experience-badge">12 Years</span></td>
-                                    <td>
-                                        <div>
-                                            <div class="fw-semibold">+91 87654 32109</div>
-                                            <small class="text-muted">priya@pnsdhampur.edu</small>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge bg-success">Active</span></td>
-                                    <td>
-                                        <div class="d-flex gap-1">
-                                            <button class="btn btn-sm btn-outline-primary" onclick="viewTeacher(2)">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-warning" onclick="editTeacher(2)">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-info" onclick="assignClasses(2)">
-                                                <i class="fas fa-chalkboard"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Teacher</th>
+                            <th>Contact</th>
+                            <th>Qualification</th>
+                            <th>Experience</th>
+                            <th>Salary</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($teachers as $teacher)
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="teacher-avatar me-3" style="width: 50px; height: 50px; font-size: 1rem;">
+                                        {{ strtoupper(substr($teacher->user->name, 0, 2)) }}
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0">{{ $teacher->user->name }}</h6>
+                                        <small class="text-muted">ID: {{ $teacher->id }}</small>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <div>{{ $teacher->user->email }}</div>
+                                    @if($teacher->user->phone)
+                                        <small class="text-muted">{{ $teacher->user->phone }}</small>
+                                    @endif
+                                </div>
+                            </td>
+                            <td>
+                                <div class="qualification-tag">{{ $teacher->qualification }}</div>
+                            </td>
+                            <td>
+                                <span class="experience-badge">{{ $teacher->experience_years }} Years</span>
+                            </td>
+                            <td>
+                                <strong>₹{{ number_format($teacher->salary) }}</strong>
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ $teacher->user->status }}">
+                                    {{ ucfirst($teacher->user->status) }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex gap-1">
+                                    <a href="{{ route('teachers.show', $teacher->id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{{ route('teachers.edit', $teacher->id) }}" class="btn btn-sm btn-outline-warning">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTeacher({{ $teacher->id }})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <div class="text-muted">
+                                    <i class="fas fa-users fa-3x mb-3"></i>
+                                    <h5>No Teachers Found</h5>
+                                    <p>No teachers match your current filters.</p>
+                                    <a href="{{ route('teachers.create') }}" class="btn btn-primary-custom">
+                                        <i class="fas fa-plus me-2"></i>Add First Teacher
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    @if($teachers->hasPages())
+    <div class="d-flex justify-content-center mt-4">
+        {{ $teachers->appends(request()->query())->links() }}
+    </div>
+    @endif
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to deactivate this teacher? This action will set their status to inactive.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-danger">Deactivate Teacher</button>
+                </form>
             </div>
         </div>
     </div>
 </div>
+@endsection
+
+@push('scripts')
+<script>
+function deleteTeacher(teacherId) {
+    const deleteForm = document.getElementById('deleteForm');
+    deleteForm.action = `/teachers/${teacherId}`;
+    
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+
+// Auto-submit form on filter change
+document.addEventListener('DOMContentLoaded', function() {
+    const filterInputs = document.querySelectorAll('#filterForm input, #filterForm select');
+    
+    filterInputs.forEach(input => {
+        if (input.type !== 'submit') {
+            input.addEventListener('change', function() {
+                // Add small delay for better UX
+                setTimeout(() => {
+                    document.getElementById('filterForm').submit();
+                }, 300);
+            });
+        }
+    });
+});
+</script>
+@endpush
 
 <!-- Add Teacher Modal -->
 <div class="modal fade" id="addTeacherModal" tabindex="-1">

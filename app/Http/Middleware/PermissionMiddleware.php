@@ -7,17 +7,17 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Role;
 
-class RoleMiddleware
+class PermissionMiddleware
 {
     /**
      * Handle an incoming request.
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
-     * @param  string  ...$roles
+     * @param  string  ...$permissions
      * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
      */
-    public function handle(Request $request, Closure $next, ...$roles)
+    public function handle(Request $request, Closure $next, ...$permissions)
     {
         // Check if user is authenticated
         if (!Auth::check()) {
@@ -45,26 +45,35 @@ class RoleMiddleware
             return redirect()->route('dashboard')->with('error', 'You do not have access to the attendance module.');
         }
 
-        // If no specific roles are required, allow access
-        if (empty($roles)) {
+        // If no specific permissions are required, allow access
+        if (empty($permissions)) {
             return $next($request);
         }
 
-        // Check if user has any of the required roles
-        if (!$user->hasAnyRole($roles)) {
+        // Check if user has any of the required permissions
+        if (!$user->hasAnyPermission($permissions)) {
+            // Log unauthorized access attempt
+            \Log::warning('Unauthorized access attempt', [
+                'user_id' => $user->id,
+                'user_role' => $user->role,
+                'required_permissions' => $permissions,
+                'user_permissions' => $user->getAttendancePermissions(),
+                'route' => $request->route()->getName(),
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent()
+            ]);
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'error' => 'Forbidden',
-                    'message' => 'Insufficient privileges. Required roles: ' . implode(', ', $roles),
+                    'message' => 'Insufficient permissions. Required: ' . implode(' OR ', $permissions),
                     'user_role' => $user->role,
-                    'required_roles' => $roles
+                    'required_permissions' => $permissions
                 ], 403);
             }
             
             return redirect()->route('dashboard')->with('error', 
-                'Access denied. You need one of the following roles: ' . implode(', ', array_map(function($role) {
-                    return Role::getRoleName($role);
-                }, $roles))
+                'Access denied. You do not have the required permissions for this action.'
             );
         }
 

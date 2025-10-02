@@ -23,11 +23,18 @@
     <!-- DataTables CSS -->
     <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     
+    <!-- SweetAlert2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+    
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <!-- Custom App CSS -->
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+    
+    <!-- Attendance System CSS -->
+    <link href="{{ asset('css/attendance-mobile.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/attendance-loading.css') }}" rel="stylesheet">
     
     <!-- Custom Styles -->
     <style>
@@ -369,10 +376,21 @@
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     
+    <!-- SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
     <!-- Custom App JS -->
     <script src="{{ asset('js/app.js') }}"></script>
     
-    <!-- Custom Scripts -->
+    <!-- Attendance System JavaScript -->
+    <script src="{{ asset('js/attendance-notifications.js') }}"></script>
+    <script src="{{ asset('js/attendance-validation.js') }}"></script>
+    <script src="{{ asset('js/attendance-accessibility.js') }}"></script>
+    <script src="{{ asset('js/attendance-performance.js') }}"></script>
+    <script src="{{ asset('js/attendance-loading.js') }}"></script>
+    @if(config('app.debug'))
+    <script src="{{ asset('js/attendance-integration-test.js') }}"></script>
+    @endif
     <script>
         // Auto-hide alerts after 5 seconds
         setTimeout(function() {

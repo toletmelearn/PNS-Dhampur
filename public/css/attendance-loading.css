@@ -1,0 +1,671 @@
+/**
+ * Attendance System Loading States CSS
+ * Comprehensive styles for loading indicators, progress bars, and animations
+ */
+
+/* Global Loading Overlay */
+.global-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.global-loader.active {
+    display: flex;
+    opacity: 1;
+}
+
+.global-loader .loader-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+}
+
+.global-loader .loader-content {
+    position: relative;
+    margin: auto;
+    text-align: center;
+    color: white;
+    z-index: 1;
+}
+
+.global-loader .loader-text {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-top: 1rem;
+}
+
+.global-loader .progress {
+    width: 300px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.global-loader .progress-bar {
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    transition: width 0.3s ease;
+}
+
+/* Element Loading Overlays */
+.element-loader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
+}
+
+.element-loader .loader-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(1px);
+    border-radius: inherit;
+}
+
+.element-loader .loader-content {
+    position: relative;
+    text-align: center;
+    z-index: 1;
+}
+
+.element-loader .loader-text {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin-top: 0.5rem;
+}
+
+/* Spinner Animations */
+.spinner-border {
+    animation: spinner-border 0.75s linear infinite;
+}
+
+@keyframes spinner-border {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.2em;
+}
+
+/* Dots Loader */
+.dots-loader {
+    display: flex;
+    gap: 0.25rem;
+    justify-content: center;
+}
+
+.dots-loader .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #007bff;
+    animation: dots-bounce 1.4s ease-in-out infinite both;
+}
+
+.dots-loader .dot:nth-child(1) { animation-delay: -0.32s; }
+.dots-loader .dot:nth-child(2) { animation-delay: -0.16s; }
+.dots-loader .dot:nth-child(3) { animation-delay: 0s; }
+
+@keyframes dots-bounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+    }
+    40% {
+        transform: scale(1);
+    }
+}
+
+/* Progress Bars */
+.progress {
+    height: 1rem;
+    background-color: #e9ecef;
+    border-radius: 0.375rem;
+    overflow: hidden;
+}
+
+.progress-bar {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    background-color: #007bff;
+    transition: width 0.6s ease;
+}
+
+.progress-bar-striped {
+    background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+    background-size: 1rem 1rem;
+}
+
+.progress-bar-animated {
+    animation: progress-bar-stripes 1s linear infinite;
+}
+
+@keyframes progress-bar-stripes {
+    0% {
+        background-position-x: 1rem;
+    }
+}
+
+.progress.complete .progress-bar {
+    background-color: #28a745;
+    animation: progress-complete 0.5s ease;
+}
+
+@keyframes progress-complete {
+    0% {
+        background-color: #007bff;
+    }
+    100% {
+        background-color: #28a745;
+    }
+}
+
+/* Skeleton Loaders */
+.skeleton {
+    animation: skeleton-loading 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.4;
+    }
+}
+
+.skeleton-line {
+    height: 1rem;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 2s infinite;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.skeleton-line.short {
+    width: 60%;
+}
+
+.skeleton-line.medium {
+    width: 80%;
+}
+
+@keyframes skeleton-shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* Skeleton Card */
+.skeleton-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.skeleton-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 2s infinite;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.skeleton-title {
+    flex: 1;
+}
+
+.skeleton-content .skeleton-line {
+    margin-bottom: 0.75rem;
+}
+
+/* Skeleton Table */
+.skeleton-table {
+    width: 100%;
+}
+
+.skeleton-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.skeleton-cell {
+    flex: 1;
+    height: 1rem;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 2s infinite;
+    border-radius: 4px;
+}
+
+.skeleton-cell:first-child {
+    flex: 0 0 100px;
+}
+
+.skeleton-cell:last-child {
+    flex: 0 0 80px;
+}
+
+/* Skeleton Chart */
+.skeleton-chart {
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+}
+
+.skeleton-chart-bars {
+    flex: 1;
+    display: flex;
+    align-items: end;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.skeleton-bar {
+    flex: 1;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 2s infinite;
+    border-radius: 4px 4px 0 0;
+    min-height: 20px;
+}
+
+.skeleton-chart-legend {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.skeleton-chart-legend .skeleton-line {
+    width: 60px;
+    margin-bottom: 0;
+}
+
+/* Button Loading States */
+.btn.loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.btn.loading .spinner-border {
+    margin-right: 0.5rem;
+}
+
+/* Table Loading States */
+table.loading {
+    position: relative;
+}
+
+table.loading tbody tr.skeleton-row td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+table.loading tbody tr.skeleton-row td .skeleton-line {
+    margin-bottom: 0;
+}
+
+/* Chart Loading States */
+.chart-loading {
+    position: relative;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-loading .skeleton {
+    width: 100%;
+    height: 100%;
+}
+
+/* Form Loading States */
+.form-loading input,
+.form-loading select,
+.form-loading textarea {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading-disabled {
+    opacity: 0.6 !important;
+    pointer-events: none !important;
+}
+
+/* Loading Overlay Variants */
+.spinner-loader .loader-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.progress-loader .progress {
+    width: 200px;
+    margin: 1rem auto;
+}
+
+/* Pulse Animation */
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Loading States for Specific Components */
+.card.loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.card.loading::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: card-loading 2s infinite;
+    z-index: 1;
+}
+
+@keyframes card-loading {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+/* Loading Spinner Sizes */
+.spinner-xs {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-width: 0.1em;
+}
+
+.spinner-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+}
+
+.spinner-lg {
+    width: 2rem;
+    height: 2rem;
+    border-width: 0.25em;
+}
+
+.spinner-xl {
+    width: 3rem;
+    height: 3rem;
+    border-width: 0.3em;
+}
+
+/* Loading Text Animation */
+.loading-text {
+    animation: loading-text-fade 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes loading-text-fade {
+    0% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Responsive Loading States */
+@media (max-width: 768px) {
+    .global-loader .loader-content {
+        padding: 1rem;
+    }
+    
+    .global-loader .progress {
+        width: 250px;
+    }
+    
+    .element-loader .loader-text {
+        font-size: 0.8rem;
+    }
+    
+    .skeleton-row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .skeleton-cell {
+        flex: none;
+    }
+    
+    .skeleton-chart-bars {
+        gap: 0.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .global-loader .progress {
+        width: 200px;
+    }
+    
+    .dots-loader .dot {
+        width: 6px;
+        height: 6px;
+    }
+    
+    .skeleton-avatar {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .skeleton-chart {
+        height: 150px;
+    }
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    .skeleton-line,
+    .skeleton-avatar,
+    .skeleton-cell,
+    .skeleton-bar {
+        background: #000;
+        animation: none;
+    }
+    
+    .element-loader .loader-backdrop {
+        background: rgba(255, 255, 255, 0.95);
+    }
+    
+    .global-loader .loader-backdrop {
+        background: rgba(0, 0, 0, 0.8);
+    }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .spinner-border,
+    .dots-loader .dot,
+    .progress-bar-animated,
+    .skeleton,
+    .skeleton-line,
+    .skeleton-avatar,
+    .skeleton-cell,
+    .skeleton-bar,
+    .pulse,
+    .loading-text,
+    .card.loading::before {
+        animation: none;
+    }
+    
+    .progress-bar {
+        transition: none;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .element-loader .loader-backdrop {
+        background: rgba(33, 37, 41, 0.9);
+    }
+    
+    .element-loader .loader-text {
+        color: #adb5bd;
+    }
+    
+    .skeleton-line,
+    .skeleton-avatar,
+    .skeleton-cell,
+    .skeleton-bar {
+        background: linear-gradient(90deg, #495057 25%, #6c757d 50%, #495057 75%);
+    }
+    
+    .progress {
+        background-color: #495057;
+    }
+}
+
+/* Loading State Utilities */
+.loading-overlay {
+    position: relative;
+}
+
+.loading-overlay.active::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.loading-blur {
+    filter: blur(2px);
+    pointer-events: none;
+}
+
+.loading-fade {
+    opacity: 0.5;
+    transition: opacity 0.3s ease;
+}
+
+/* Accessibility Improvements */
+.loading-announcement {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+/* Focus Management During Loading */
+.loading *:focus {
+    outline: none;
+}
+
+.loading [tabindex] {
+    tabindex: -1;
+}
+
+/* Loading State Indicators */
+.loading-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.loading-indicator .spinner-border {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+}
+
+/* Success/Error States After Loading */
+.loading-success {
+    color: #28a745;
+    animation: loading-success-fade 0.5s ease;
+}
+
+.loading-error {
+    color: #dc3545;
+    animation: loading-error-shake 0.5s ease;
+}
+
+@keyframes loading-success-fade {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes loading-error-shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-2px);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translateX(2px);
+    }
+}

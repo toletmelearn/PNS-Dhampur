@@ -19,7 +19,7 @@ class Authenticate extends Middleware
             return null;
         }
 
-        // For web requests, redirect to home page (make sure this route exists)
-        return route('home'); // You may also just use '/' if no named route
+        // For web requests, redirect to login page
+        return route('login');
     }
 }

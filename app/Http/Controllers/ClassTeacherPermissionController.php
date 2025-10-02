@@ -18,7 +18,7 @@ class ClassTeacherPermissionController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('permission:manage-permissions')->except(['index', 'show']);
+        // Note: Permission checks are handled at the route level or within methods
     }
 
     public function index(Request $request)

@@ -29,11 +29,13 @@ return [
     | to be allowed to remain idle before it expires. If you want them
     | to immediately expire on the browser closing, set that option.
     |
+    | For security, we set a shorter session lifetime for attendance system.
+    |
     */
 
-    'lifetime' => env('SESSION_LIFETIME', 120),
+    'lifetime' => env('SESSION_LIFETIME', 60), // Reduced from 120 to 60 minutes for security
 
-    'expire_on_close' => false,
+    'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', true), // Force session expiry on browser close
 
     /*
     |--------------------------------------------------------------------------
@@ -44,9 +46,11 @@ return [
     | should be encrypted before it is stored. All encryption will be run
     | automatically by Laravel and you can use the Session like normal.
     |
+    | For security, we enable session encryption for the attendance system.
+    |
     */
 
-    'encrypt' => false,
+    'encrypt' => env('SESSION_ENCRYPT', true), // Enable session encryption for security
 
     /*
     |--------------------------------------------------------------------------
@@ -166,9 +170,11 @@ return [
     | to the server if the browser has a HTTPS connection. This will keep
     | the cookie from being sent to you when it can't be done securely.
     |
+    | For production security, this should be true when using HTTPS.
+    |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------
@@ -179,9 +185,11 @@ return [
     | value of the cookie and the cookie will only be accessible through
     | the HTTP protocol. You are free to modify this option if needed.
     |
+    | For security, we enforce HTTP-only cookies to prevent XSS attacks.
+    |
     */
 
-    'http_only' => true,
+    'http_only' => env('SESSION_HTTP_ONLY', true), // Enforce HTTP-only cookies
 
     /*
     |--------------------------------------------------------------------------
@@ -190,12 +198,12 @@ return [
     |
     | This option determines how your cookies behave when cross-site requests
     | take place, and can be used to mitigate CSRF attacks. By default, we
-    | will set this value to "lax" since this is a secure default value.
+    | will set this value to "strict" for enhanced security.
     |
     | Supported: "lax", "strict", "none", null
     |
     */
 
-    'same_site' => 'lax',
+    'same_site' => env('SESSION_SAME_SITE', 'strict'), // Enhanced CSRF protection
 
 ];

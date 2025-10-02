@@ -178,7 +178,7 @@
             <div class="card stats-card">
                 <div class="card-body text-center">
                     <i class="fas fa-users fa-2x mb-3"></i>
-                    <h3 class="mb-1">1,247</h3>
+                    <h3 class="mb-1">{{ $students->total() }}</h3>
                     <p class="mb-0">Total Students</p>
                 </div>
             </div>
@@ -187,7 +187,7 @@
             <div class="card stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                 <div class="card-body text-center">
                     <i class="fas fa-user-plus fa-2x mb-3"></i>
-                    <h3 class="mb-1">45</h3>
+                    <h3 class="mb-1">{{ \App\Models\Student::whereMonth('created_at', now()->month)->count() }}</h3>
                     <p class="mb-0">New This Month</p>
                 </div>
             </div>
@@ -196,8 +196,8 @@
             <div class="card stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
                 <div class="card-body text-center">
                     <i class="fas fa-graduation-cap fa-2x mb-3"></i>
-                    <h3 class="mb-1">156</h3>
-                    <p class="mb-0">Graduating</p>
+                    <h3 class="mb-1">{{ \App\Models\Student::where('status', 'active')->count() }}</h3>
+                    <p class="mb-0">Active Students</p>
                 </div>
             </div>
         </div>
@@ -205,8 +205,8 @@
             <div class="card stats-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
                 <div class="card-body text-center">
                     <i class="fas fa-chart-line fa-2x mb-3"></i>
-                    <h3 class="mb-1">92%</h3>
-                    <p class="mb-0">Attendance Rate</p>
+                    <h3 class="mb-1">{{ $classes->count() }}</h3>
+                    <p class="mb-0">Total Classes</p>
                 </div>
             </div>
         </div>
@@ -224,40 +224,34 @@
                                     <i class="fas fa-search text-muted"></i>
                                 </span>
                                 <input type="text" class="form-control search-box border-start-0" 
-                                       placeholder="Search students..." id="studentSearch">
+                                       placeholder="Search students..." id="studentSearch"
+                                       value="{{ request('search') }}">
                             </div>
                         </div>
                         <div class="col-lg-2 col-md-6 mb-3 mb-lg-0">
                             <select class="form-select" id="classFilter">
                                 <option value="">All Classes</option>
-                                <option value="1">Class 1</option>
-                                <option value="2">Class 2</option>
-                                <option value="3">Class 3</option>
-                                <option value="4">Class 4</option>
-                                <option value="5">Class 5</option>
-                                <option value="6">Class 6</option>
-                                <option value="7">Class 7</option>
-                                <option value="8">Class 8</option>
-                                <option value="9">Class 9</option>
-                                <option value="10">Class 10</option>
-                                <option value="11">Class 11</option>
-                                <option value="12">Class 12</option>
+                                @foreach($classes as $class)
+                                    <option value="{{ $class->id }}" {{ request('class_id') == $class->id ? 'selected' : '' }}>
+                                        {{ $class->name }}{{ $class->section ? '-' . $class->section : '' }}
+                                    </option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="col-lg-2 col-md-6 mb-3 mb-lg-0">
                             <select class="form-select" id="statusFilter">
                                 <option value="">All Status</option>
-                                <option value="active">Active</option>
-                                <option value="inactive">Inactive</option>
-                                <option value="graduated">Graduated</option>
-                                <option value="transferred">Transferred</option>
+                                <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
+                                <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                                <option value="graduated" {{ request('status') == 'graduated' ? 'selected' : '' }}>Graduated</option>
+                                <option value="transferred" {{ request('status') == 'transferred' ? 'selected' : '' }}>Transferred</option>
                             </select>
                         </div>
                         <div class="col-lg-2 col-md-6 mb-3 mb-lg-0">
                             <select class="form-select" id="genderFilter">
                                 <option value="">All Gender</option>
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
+                                <option value="male" {{ request('gender') == 'male' ? 'selected' : '' }}>Male</option>
+                                <option value="female" {{ request('gender') == 'female' ? 'selected' : '' }}>Female</option>
                             </select>
                         </div>
                         <div class="col-lg-2 col-md-12">
@@ -290,112 +284,90 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <!-- Sample data - replace with dynamic data -->
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="student-avatar me-3">AK</div>
-                                            <div>
-                                                <h6 class="mb-0">Arjun Kumar</h6>
-                                                <small class="text-muted">ID: STU001</small>
+                                @forelse($students as $student)
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="student-avatar me-3">{{ strtoupper(substr($student->name, 0, 2)) }}</div>
+                                                <div>
+                                                    <h6 class="mb-0">{{ $student->name }}</h6>
+                                                    <small class="text-muted">ID: {{ $student->admission_no }}</small>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="fw-semibold">001</span></td>
-                                    <td><span class="badge bg-primary">Class 10-A</span></td>
-                                    <td>
-                                        <div>
-                                            <div class="fw-semibold">Rajesh Kumar</div>
-                                            <small class="text-muted">+91 98765 43210</small>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge badge-status bg-success">Active</span></td>
-                                    <td><span class="badge badge-status bg-success">Paid</span></td>
-                                    <td>
-                                        <div class="action-buttons">
-                                            <button class="btn btn-sm btn-outline-primary" onclick="viewStudent(1)">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-warning" onclick="editStudent(1)">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent(1)">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="student-avatar me-3" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">PS</div>
+                                        </td>
+                                        <td><span class="fw-semibold">{{ $student->roll_number ?? 'N/A' }}</span></td>
+                                        <td>
+                                            @if($student->classModel)
+                                                <span class="badge bg-primary">{{ $student->classModel->name }}{{ $student->classModel->section ? '-' . $student->classModel->section : '' }}</span>
+                                            @else
+                                                <span class="badge bg-secondary">Not Assigned</span>
+                                            @endif
+                                        </td>
+                                        <td>
                                             <div>
-                                                <h6 class="mb-0">Priya Sharma</h6>
-                                                <small class="text-muted">ID: STU002</small>
+                                                <div class="fw-semibold">{{ $student->father_name ?? 'N/A' }}</div>
+                                                <small class="text-muted">{{ $student->contact_number ?? 'No contact' }}</small>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="fw-semibold">002</span></td>
-                                    <td><span class="badge bg-primary">Class 9-B</span></td>
-                                    <td>
-                                        <div>
-                                            <div class="fw-semibold">Suresh Sharma</div>
-                                            <small class="text-muted">+91 87654 32109</small>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge badge-status bg-success">Active</span></td>
-                                    <td><span class="badge badge-status bg-warning">Pending</span></td>
-                                    <td>
-                                        <div class="action-buttons">
-                                            <button class="btn btn-sm btn-outline-primary" onclick="viewStudent(2)">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-warning" onclick="editStudent(2)">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent(2)">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="student-avatar me-3" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">RG</div>
-                                            <div>
-                                                <h6 class="mb-0">Rahul Gupta</h6>
-                                                <small class="text-muted">ID: STU003</small>
+                                        </td>
+                                        <td>
+                                            @switch($student->status)
+                                                @case('active')
+                                                    <span class="badge badge-status bg-success">Active</span>
+                                                    @break
+                                                @case('inactive')
+                                                    <span class="badge badge-status bg-warning">Inactive</span>
+                                                    @break
+                                                @case('left')
+                                                    <span class="badge badge-status bg-danger">Left</span>
+                                                    @break
+                                                @case('alumni')
+                                                    <span class="badge badge-status bg-info">Alumni</span>
+                                                    @break
+                                                @default
+                                                    <span class="badge badge-status bg-secondary">Unknown</span>
+                                            @endswitch
+                                        </td>
+                                        <td><span class="badge badge-status bg-secondary">N/A</span></td>
+                                        <td>
+                                            <div class="action-buttons">
+                                                <button class="btn btn-sm btn-outline-primary" onclick="viewStudent({{ $student->id }})">
+                                                    <i class="fas fa-eye"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-warning" onclick="editStudent({{ $student->id }})">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent({{ $student->id }})">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="fw-semibold">003</span></td>
-                                    <td><span class="badge bg-primary">Class 8-A</span></td>
-                                    <td>
-                                        <div>
-                                            <div class="fw-semibold">Mohan Gupta</div>
-                                            <small class="text-muted">+91 76543 21098</small>
-                                        </div>
-                                    </td>
-                                    <td><span class="badge badge-status bg-success">Active</span></td>
-                                    <td><span class="badge badge-status bg-success">Paid</span></td>
-                                    <td>
-                                        <div class="action-buttons">
-                                            <button class="btn btn-sm btn-outline-primary" onclick="viewStudent(3)">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-warning" onclick="editStudent(3)">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent(3)">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">
+                                            <div class="text-muted">
+                                                <i class="fas fa-users fa-3x mb-3"></i>
+                                                <h5>No students found</h5>
+                                                <p>Try adjusting your search criteria or add new students.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @endforelse
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Pagination -->
+                    @if($students->hasPages())
+                        <div class="d-flex justify-content-between align-items-center mt-4">
+                            <div class="text-muted">
+                                Showing {{ $students->firstItem() }} to {{ $students->lastItem() }} of {{ $students->total() }} results
+                            </div>
+                            <div>
+                                {{ $students->appends(request()->query())->links() }}
+                            </div>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -503,32 +475,11 @@
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
 <script>
+// Enhanced search and filter functionality
 $(document).ready(function() {
-    // Initialize DataTable
-    $('#studentsTable').DataTable({
-        responsive: true,
-        pageLength: 25,
-        order: [[0, 'asc']],
-        columnDefs: [
-            { orderable: false, targets: [6] }
-        ],
-        language: {
-            search: "",
-            searchPlaceholder: "Search students...",
-            lengthMenu: "Show _MENU_ students per page",
-            info: "Showing _START_ to _END_ of _TOTAL_ students",
-            paginate: {
-                first: "First",
-                last: "Last",
-                next: "Next",
-                previous: "Previous"
-            }
-        }
-    });
-
-    // Custom search functionality
+    // Search functionality
     $('#studentSearch').on('keyup', function() {
-        $('#studentsTable').DataTable().search(this.value).draw();
+        performSearch();
     });
 
     // Filter functionality
@@ -537,23 +488,66 @@ $(document).ready(function() {
     });
 });
 
+function performSearch() {
+    const searchTerm = $('#studentSearch').val();
+    const currentUrl = new URL(window.location);
+    
+    if (searchTerm) {
+        currentUrl.searchParams.set('search', searchTerm);
+    } else {
+        currentUrl.searchParams.delete('search');
+    }
+    
+    // Reset to first page when searching
+    currentUrl.searchParams.delete('page');
+    
+    window.location.href = currentUrl.toString();
+}
+
 function applyFilters() {
-    var table = $('#studentsTable').DataTable();
+    const currentUrl = new URL(window.location);
     
     // Get filter values
-    var classFilter = $('#classFilter').val();
-    var statusFilter = $('#statusFilter').val();
-    var genderFilter = $('#genderFilter').val();
+    const classFilter = $('#classFilter').val();
+    const statusFilter = $('#statusFilter').val();
+    const genderFilter = $('#genderFilter').val();
     
-    // Apply filters (this is a simplified version - in real implementation, 
-    // you would filter the data source or make AJAX calls)
-    table.draw();
+    // Update URL parameters
+    if (classFilter) {
+        currentUrl.searchParams.set('class_id', classFilter);
+    } else {
+        currentUrl.searchParams.delete('class_id');
+    }
+    
+    if (statusFilter) {
+        currentUrl.searchParams.set('status', statusFilter);
+    } else {
+        currentUrl.searchParams.delete('status');
+    }
+    
+    if (genderFilter) {
+        currentUrl.searchParams.set('gender', genderFilter);
+    } else {
+        currentUrl.searchParams.delete('gender');
+    }
+    
+    // Reset to first page when filtering
+    currentUrl.searchParams.delete('page');
+    
+    window.location.href = currentUrl.toString();
 }
 
 function clearFilters() {
-    $('#classFilter, #statusFilter, #genderFilter').val('');
-    $('#studentSearch').val('');
-    $('#studentsTable').DataTable().search('').draw();
+    const currentUrl = new URL(window.location);
+    
+    // Clear all filter parameters
+    currentUrl.searchParams.delete('search');
+    currentUrl.searchParams.delete('class_id');
+    currentUrl.searchParams.delete('status');
+    currentUrl.searchParams.delete('gender');
+    currentUrl.searchParams.delete('page');
+    
+    window.location.href = currentUrl.toString();
 }
 
 function viewStudent(id) {

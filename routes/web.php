@@ -1,11 +1,18 @@
-<?php
+﻿<?php
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ClassTeacherPermissionController;
 use App\Http\Controllers\SRRegisterController;
 use App\Http\Controllers\BiometricAttendanceController;
+use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\ExamPaperController;
 use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\StudentController;
+use App\Http\Controllers\ClassController;
+use App\Http\Controllers\TeacherController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\SubjectController;
+use App\Http\Controllers\ExamController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,7 +26,7 @@ use App\Http\Controllers\ReportsController;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('dashboard');
 });
 
 // Authentication Routes (manual implementation)
@@ -54,10 +61,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/', [ClassTeacherPermissionController::class, 'index'])->name('index');
         Route::get('/create', [ClassTeacherPermissionController::class, 'create'])->name('create');
         Route::post('/', [ClassTeacherPermissionController::class, 'store'])->name('store');
-        Route::get('/{permission}', [ClassTeacherPermissionController::class, 'show'])->name('show');
-        Route::get('/{permission}/edit', [ClassTeacherPermissionController::class, 'edit'])->name('edit');
-        Route::put('/{permission}', [ClassTeacherPermissionController::class, 'update'])->name('update');
-        Route::patch('/{permission}/revoke', [ClassTeacherPermissionController::class, 'revoke'])->name('revoke');
+        Route::get('/{classTeacherPermission}', [ClassTeacherPermissionController::class, 'show'])->name('show');
+        Route::get('/{classTeacherPermission}/edit', [ClassTeacherPermissionController::class, 'edit'])->name('edit');
+        Route::put('/{classTeacherPermission}', [ClassTeacherPermissionController::class, 'update'])->name('update');
+        Route::patch('/{classTeacherPermission}/revoke', [ClassTeacherPermissionController::class, 'revoke'])->name('revoke');
         
         // Audit Trail routes
         Route::get('/audit-trail', [ClassTeacherPermissionController::class, 'auditTrail'])->name('audit-trail');
@@ -90,15 +97,81 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/ajax/students-by-class', [SRRegisterController::class, 'getStudentsByClass'])->name('ajax.students-by-class');
     });
     
-    // Biometric Attendance routes with permission middleware
-    Route::prefix('biometric-attendance')->name('biometric-attendance.')->middleware('class.teacher.permission')->group(function () {
-        Route::get('/', [BiometricAttendanceController::class, 'index'])->name('index');
-        Route::post('/check-in', [BiometricAttendanceController::class, 'checkIn'])->name('check-in')->middleware('class.teacher.permission:can_mark_attendance');
-        Route::post('/check-out', [BiometricAttendanceController::class, 'checkOut'])->name('check-out')->middleware('class.teacher.permission:can_mark_attendance');
-        Route::post('/bulk-check-in', [BiometricAttendanceController::class, 'bulkCheckIn'])->name('bulk-check-in')->middleware('class.teacher.permission:can_bulk_operations');
-        Route::post('/mark-absent', [BiometricAttendanceController::class, 'markAbsent'])->name('mark-absent')->middleware('class.teacher.permission:can_mark_attendance');
-        Route::get('/export', [BiometricAttendanceController::class, 'exportReport'])->name('export')->middleware('class.teacher.permission:can_export_reports');
-    });
+    // Biometric Attendance routes with comprehensive security middleware
+    Route::prefix('biometric-attendance')->name('biometric-attendance.')
+        ->middleware(['auth', 'attendance.security', 'role:admin,teacher,principal,class_teacher'])
+        ->group(function () {
+            // View routes - accessible by all authorized roles
+            Route::get('/', [BiometricAttendanceController::class, 'index'])->name('index')
+                ->middleware('permission:view_attendance');
+            
+            // Marking attendance - requires specific permissions
+            Route::post('/check-in', [BiometricAttendanceController::class, 'checkIn'])->name('check-in')
+                ->middleware('permission:mark_attendance');
+            Route::post('/check-out', [BiometricAttendanceController::class, 'checkOut'])->name('check-out')
+                ->middleware('permission:mark_attendance');
+            Route::post('/mark-absent', [BiometricAttendanceController::class, 'markAbsent'])->name('mark-absent')
+                ->middleware('permission:mark_attendance');
+            
+            // Bulk operations - admin and principal only
+            Route::post('/bulk-check-in', [BiometricAttendanceController::class, 'bulkCheckIn'])->name('bulk-check-in')
+                ->middleware(['role:admin,principal', 'permission:bulk_operations']);
+            
+            // Export reports - requires export permission
+            Route::get('/export', [BiometricAttendanceController::class, 'exportReport'])->name('export')
+                ->middleware('permission:export_reports');
+        });
+    
+    // Student Attendance routes with comprehensive security middleware
+    Route::prefix('attendance')->name('attendance.')
+        ->middleware(['auth', 'attendance.security', 'role:admin,teacher,principal,class_teacher,student'])
+        ->group(function () {
+            // View routes - accessible by all authorized roles
+            Route::get('/', [AttendanceController::class, 'index'])->name('index')
+                ->middleware('permission:view_attendance');
+            
+            // Marking attendance - teachers and above only
+            Route::get('/mark', [AttendanceController::class, 'markAttendance'])->name('mark')
+                ->middleware(['role:admin,teacher,principal,class_teacher', 'permission:mark_attendance']);
+            Route::post('/mark', [AttendanceController::class, 'storeAttendance'])->name('store')
+                ->middleware(['role:admin,teacher,principal,class_teacher', 'permission:mark_attendance']);
+            
+            // Bulk attendance marking - admin and principal only
+            Route::get('/bulk-mark', [AttendanceController::class, 'bulkMarkView'])->name('bulk-mark')
+                ->middleware(['role:admin,principal', 'permission:bulk_operations']);
+            Route::post('/bulk-mark', [AttendanceController::class, 'bulkMarkAttendance'])->name('bulk-mark.store')
+                ->middleware(['role:admin,principal', 'permission:bulk_operations']);
+            Route::get('/bulk-mark/students', [AttendanceController::class, 'getBulkStudents'])->name('bulk-mark.students')
+                ->middleware(['role:admin,principal', 'permission:bulk_operations']);
+            
+            // Individual attendance operations - edit/delete permissions
+            Route::get('/{attendance}/edit', [AttendanceController::class, 'edit'])->name('edit')
+                ->middleware(['role:admin,teacher,principal,class_teacher', 'permission:edit_attendance']);
+            Route::put('/{attendance}', [AttendanceController::class, 'update'])->name('update')
+                ->middleware(['role:admin,teacher,principal,class_teacher', 'permission:edit_attendance']);
+            Route::delete('/{attendance}', [AttendanceController::class, 'destroy'])->name('destroy')
+                ->middleware(['role:admin,principal', 'permission:delete_attendance']);
+            
+            // Analytics and Reports - view permissions required
+            Route::get('/analytics', [AttendanceController::class, 'analytics'])->name('analytics')
+                ->middleware('permission:view_reports');
+            Route::get('/reports', [AttendanceController::class, 'reports'])->name('reports')
+                ->middleware('permission:view_reports');
+            Route::get('/reports/export', [AttendanceController::class, 'exportReport'])->name('reports.export')
+                ->middleware('permission:export_reports');
+            Route::get('/reports/class/{class}', [AttendanceController::class, 'classReport'])->name('reports.class')
+                ->middleware('permission:view_reports');
+            Route::get('/reports/student/{student}', [AttendanceController::class, 'studentReport'])->name('reports.student')
+                ->middleware('permission:view_reports');
+            
+            // AJAX routes - require appropriate permissions
+            Route::get('/ajax/students-by-class-date', [AttendanceController::class, 'getStudentsByClassAndDate'])->name('ajax.students-by-class-date')
+                ->middleware('permission:view_attendance');
+            Route::get('/ajax/attendance-stats', [AttendanceController::class, 'getAttendanceStats'])->name('ajax.stats')
+                ->middleware('permission:view_reports');
+            Route::get('/ajax/attendance-trends', [AttendanceController::class, 'getAttendanceTrends'])->name('ajax.trends')
+                ->middleware('permission:view_reports');
+        });
     
     // Reports routes
 Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
@@ -143,9 +216,40 @@ Route::post('/api/reports/export', [ReportsController::class, 'exportPdf'])->nam
         Route::resource('classes', ClassController::class);
         Route::resource('subjects', SubjectController::class);
         Route::resource('students', StudentController::class);
+        Route::resource('teachers', TeacherController::class);
+        Route::resource('exams', ExamController::class);
         
         // System audit and reports
         Route::get('/system/audit-report', [ClassTeacherPermissionController::class, 'systemAuditReport'])->name('system.audit-report');
         Route::get('/system/permissions-report', [ClassTeacherPermissionController::class, 'permissionsReport'])->name('system.permissions-report');
     });
+    
+    // Basic authenticated routes for students (accessible to all authenticated users)
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/students', [StudentController::class, 'index'])->name('students.index');
+        Route::get('/students/create', [StudentController::class, 'create'])->name('students.create');
+        Route::get('/students/{student}', [StudentController::class, 'show'])->name('students.show');
+        Route::get('/api/students/classes', [StudentController::class, 'getClasses'])->name('api.students.classes');
+        Route::get('/classes', [ClassController::class, 'index'])->name('classes.index');
+        Route::get('/classes/{class}', [ClassController::class, 'show'])->name('classes.show');
+        Route::get('/teachers', [TeacherController::class, 'index'])->name('teachers.index');
+        Route::get('/teachers/{teacher}', [TeacherController::class, 'show'])->name('teachers.show');
+    });
+
+    // Fee Management Routes
+    Route::prefix('fees')->name('fees.')->group(function () {
+        Route::get('/', [App\Http\Controllers\FeeController::class, 'index'])->name('index');
+        Route::get('/create', [App\Http\Controllers\FeeController::class, 'create'])->name('create');
+        Route::post('/', [App\Http\Controllers\FeeController::class, 'store'])->name('store');
+        Route::get('/{fee}', [App\Http\Controllers\FeeController::class, 'show'])->name('show');
+        Route::get('/{fee}/edit', [App\Http\Controllers\FeeController::class, 'edit'])->name('edit');
+        Route::put('/{fee}', [App\Http\Controllers\FeeController::class, 'update'])->name('update');
+        Route::delete('/{fee}', [App\Http\Controllers\FeeController::class, 'destroy'])->name('destroy');
+        Route::post('/{fee}/pay', [App\Http\Controllers\FeeController::class, 'recordPayment'])->name('pay');
+        Route::get('/{fee}/receipt', [App\Http\Controllers\FeePaymentController::class, 'receipt'])->name('receipt');
+        Route::post('/bulk-create', [App\Http\Controllers\FeeController::class, 'bulkCreateFees'])->name('bulk-create');
+        Route::get('/student/{student}', [App\Http\Controllers\FeeController::class, 'getStudentFees'])->name('student');
+    });
 });
+
+

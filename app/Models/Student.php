@@ -35,14 +35,34 @@ class Student extends Model
     ];
 
     // relationships
+    public function class()
+    {
+        return $this->belongsTo(ClassModel::class, 'class_id');
+    }
+
     public function classModel()
     {
         return $this->belongsTo(ClassModel::class, 'class_id');
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function fees()
     {
         return $this->hasMany(Fee::class);
+    }
+
+    public function results()
+    {
+        return $this->hasMany(Result::class);
+    }
+
+    public function srRegisters()
+    {
+        return $this->hasMany(SRRegister::class);
     }
 
     public function documentVerifications()

@@ -47,8 +47,30 @@ Route::middleware('auth:sanctum')->group(function () {
     // Classes
     Route::apiResource('classes', ClassModelController::class);
 
-    // Attendance
-    Route::apiResource('attendances', AttendanceController::class);
+    // Attendance API with comprehensive security middleware
+    Route::prefix('attendances')->name('attendances.')
+        ->middleware(['auth:sanctum', 'attendance.security', 'role:admin,teacher,principal,class_teacher'])
+        ->group(function () {
+            // List attendances - requires view permission
+            Route::get('/', [AttendanceController::class, 'index'])
+                ->middleware('permission:view_attendance');
+            
+            // Create attendance - requires mark permission
+            Route::post('/', [AttendanceController::class, 'store'])
+                ->middleware('permission:mark_attendance');
+            
+            // Show specific attendance - requires view permission
+            Route::get('/{attendance}', [AttendanceController::class, 'show'])
+                ->middleware('permission:view_attendance');
+            
+            // Update attendance - requires edit permission
+            Route::put('/{attendance}', [AttendanceController::class, 'update'])
+                ->middleware(['role:admin,teacher,principal,class_teacher', 'permission:edit_attendance']);
+            
+            // Delete attendance - admin and principal only
+            Route::delete('/{attendance}', [AttendanceController::class, 'destroy'])
+                ->middleware(['role:admin,principal', 'permission:delete_attendance']);
+        });
 
     // Fees
     Route::apiResource('fees', FeeController::class);
