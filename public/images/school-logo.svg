@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="schoolGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e40af;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="bookGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Outer Circle -->
+  <circle cx="60" cy="60" r="58" fill="url(#schoolGradient)" stroke="#1e40af" stroke-width="2"/>
+  
+  <!-- Inner Circle -->
+  <circle cx="60" cy="60" r="50" fill="white" stroke="#3b82f6" stroke-width="1"/>
+  
+  <!-- School Building -->
+  <g transform="translate(30, 25)">
+    <!-- Main Building -->
+    <rect x="15" y="25" width="30" height="25" fill="url(#schoolGradient)" rx="2"/>
+    
+    <!-- Roof -->
+    <polygon points="10,25 30,15 50,25" fill="#dc2626"/>
+    
+    <!-- Door -->
+    <rect x="25" y="35" width="10" height="15" fill="#7c2d12" rx="1"/>
+    <circle cx="32" cy="42" r="1" fill="#fbbf24"/>
+    
+    <!-- Windows -->
+    <rect x="18" y="30" width="5" height="5" fill="#60a5fa" rx="0.5"/>
+    <rect x="37" y="30" width="5" height="5" fill="#60a5fa" rx="0.5"/>
+    
+    <!-- Flag Pole -->
+    <line x1="50" y1="15" x2="50" y2="5" stroke="#6b7280" stroke-width="1"/>
+    <rect x="50" y="5" width="8" height="5" fill="#dc2626"/>
+  </g>
+  
+  <!-- Open Book -->
+  <g transform="translate(35, 65)">
+    <path d="M0,10 Q15,5 25,10 Q35,5 50,10 L50,25 Q35,20 25,25 Q15,20 0,25 Z" fill="url(#bookGradient)"/>
+    <line x1="25" y1="10" x2="25" y2="25" stroke="#047857" stroke-width="1"/>
+    <!-- Book Lines -->
+    <line x1="5" y1="15" x2="20" y2="15" stroke="#065f46" stroke-width="0.5"/>
+    <line x1="5" y1="18" x2="20" y2="18" stroke="#065f46" stroke-width="0.5"/>
+    <line x1="30" y1="15" x2="45" y2="15" stroke="#065f46" stroke-width="0.5"/>
+    <line x1="30" y1="18" x2="45" y2="18" stroke="#065f46" stroke-width="0.5"/>
+  </g>
+  
+  <!-- Stars for Excellence -->
+  <g fill="#fbbf24">
+    <polygon points="20,20 22,16 24,20 28,20 25,23 26,27 22,25 18,27 19,23 16,20" transform="scale(0.6)"/>
+    <polygon points="90,20 92,16 94,20 98,20 95,23 96,27 92,25 88,27 89,23 86,20" transform="scale(0.6)"/>
+    <polygon points="20,90 22,86 24,90 28,90 25,93 26,97 22,95 18,97 19,93 16,90" transform="scale(0.6)"/>
+    <polygon points="90,90 92,86 94,90 98,90 95,93 96,97 92,95 88,97 89,93 86,90" transform="scale(0.6)"/>
+  </g>
+  
+  <!-- School Name Arc -->
+  <path id="topArc" d="M 20 60 A 40 40 0 0 1 100 60" fill="none"/>
+  <text font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#1e40af">
+    <textPath href="#topArc" startOffset="50%" text-anchor="middle">
+      PUSHP NIKETAN SCHOOL
+    </textPath>
+  </text>
+  
+  <!-- Bottom Text -->
+  <path id="bottomArc" d="M 100 60 A 40 40 0 0 1 20 60" fill="none"/>
+  <text font-family="Arial, sans-serif" font-size="8" fill="#059669">
+    <textPath href="#bottomArc" startOffset="50%" text-anchor="middle">
+      DHAMPUR • CBSE • EST. 2005
+    </textPath>
+  </text>
+</svg>

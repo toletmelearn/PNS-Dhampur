@@ -5,6 +5,7 @@ use App\Http\Controllers\ClassTeacherPermissionController;
 use App\Http\Controllers\SRRegisterController;
 use App\Http\Controllers\BiometricAttendanceController;
 use App\Http\Controllers\ExamPaperController;
+use App\Http\Controllers\ReportsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -97,6 +98,21 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/bulk-check-in', [BiometricAttendanceController::class, 'bulkCheckIn'])->name('bulk-check-in')->middleware('class.teacher.permission:can_bulk_operations');
         Route::post('/mark-absent', [BiometricAttendanceController::class, 'markAbsent'])->name('mark-absent')->middleware('class.teacher.permission:can_mark_attendance');
         Route::get('/export', [BiometricAttendanceController::class, 'exportReport'])->name('export')->middleware('class.teacher.permission:can_export_reports');
+    });
+    
+    // Reports routes
+Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
+Route::get('/api/reports/academic', [ReportsController::class, 'academicReports'])->name('api.reports.academic');
+Route::get('/api/reports/financial', [ReportsController::class, 'financialReports'])->name('api.reports.financial');
+Route::get('/api/reports/attendance', [ReportsController::class, 'attendanceReports'])->name('api.reports.attendance');
+Route::get('/api/reports/performance', [ReportsController::class, 'performanceReports'])->name('api.reports.performance');
+Route::get('/api/reports/administrative', [ReportsController::class, 'administrativeReports'])->name('api.reports.administrative');
+Route::post('/api/reports/export', [ReportsController::class, 'exportPdf'])->name('api.reports.export');
+
+// Exam Management routes
+    Route::prefix('exams')->name('exams.')->group(function () {
+        Route::get('/', [ExamController::class, 'index'])->name('index');
+        Route::get('/api/classes', [ExamController::class, 'getClasses']);
     });
     
     // Exam Papers routes with permission middleware

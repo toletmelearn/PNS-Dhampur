@@ -9,8 +9,30 @@ class Exam extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name','class_id','start_date','end_date'];
+    protected $fillable = [
+        'name',
+        'class_id',
+        'date',
+        'time',
+        'description',
+        'status',
+        'start_date', // Keep for backward compatibility
+        'end_date'    // Keep for backward compatibility
+    ];
 
-    public function class() { return $this->belongsTo(ClassModel::class,'class_id'); }
-    public function results() { return $this->hasMany(Result::class); }
+    protected $casts = [
+        'date' => 'date',
+        'start_date' => 'date',
+        'end_date' => 'date',
+    ];
+
+    public function class() 
+    { 
+        return $this->belongsTo(ClassModel::class, 'class_id'); 
+    }
+    
+    public function results() 
+    { 
+        return $this->hasMany(Result::class); 
+    }
 }
