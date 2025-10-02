@@ -3,6 +3,11 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\ReportExport;
+use Carbon\Carbon;
 use App\Models\Student;
 use App\Models\Teacher;
 use App\Models\Fee;
@@ -11,7 +16,6 @@ use App\Models\Result;
 use App\Models\ClassModel;
 use App\Models\Subject;
 use App\Models\Salary;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class ReportsController extends Controller
@@ -131,6 +135,51 @@ class ReportsController extends Controller
             // Excel export logic here
             return response()->json(['message' => 'Excel export initiated', 'download_url' => '/downloads/report.xlsx']);
         }
+    }
+
+    // Export reports in different formats
+    public function exportReport(Request $request)
+    {
+        $type = $request->get('type', 'academic');
+        $format = $request->get('format', 'pdf');
+        
+        // Get report data based on type
+        $data = $this->getReportData($type);
+        
+        if ($format === 'pdf') {
+            return $this->exportToPDF($type, $data);
+        } elseif ($format === 'excel') {
+            return $this->exportToExcel($type, $data);
+        } elseif ($format === 'csv') {
+            return $this->exportToCSV($type, $data);
+        }
+        
+        return response()->json(['error' => 'Invalid format'], 400);
+    }
+    
+    private function exportToPDF($type, $data)
+    {
+        $pdf = Pdf::loadView('reports.pdf.' . $type, compact('data'));
+        $pdf->setPaper('A4', 'portrait');
+        
+        return $pdf->download($type . '_report_' . date('Y-m-d') . '.pdf');
+    }
+    
+    private function exportToExcel($type, $data)
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new ReportExport($type, $data),
+            $type . '_report_' . date('Y-m-d') . '.xlsx'
+        );
+    }
+    
+    private function exportToCSV($type, $data)
+    {
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new ReportExport($type, $data),
+            $type . '_report_' . date('Y-m-d') . '.csv',
+            \Maatwebsite\Excel\Excel::CSV
+        );
     }
 
     // Private helper methods for data aggregation

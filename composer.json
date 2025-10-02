@@ -7,12 +7,12 @@
     "require": {
         "php": "^8.0.2",
         "barryvdh/laravel-dompdf": "^2.2",
-        "dompdf/dompdf": "*",
+        "dompdf/dompdf": "^2.0",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^9.19",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.7",
-        "maatwebsite/excel": "*"
+        "maatwebsite/excel": "^1.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
