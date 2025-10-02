@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Student;
+use App\Models\ClassModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -10,7 +11,7 @@ use Illuminate\Validation\Rule;
 
 class StudentController extends Controller
 {
-    // GET /api/students
+    // GET /api/students or /students
     public function index(Request $request)
     {
         $q = Student::query();
@@ -33,7 +34,13 @@ class StudentController extends Controller
 
         $students = $q->orderBy('name')->paginate(25);
 
-        return response()->json($students);
+        // Return JSON for API requests, view for web requests
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json($students);
+        }
+
+        $classes = ClassModel::all();
+        return view('students.index', compact('students', 'classes'));
     }
 
     // POST /api/students
@@ -41,16 +48,32 @@ class StudentController extends Controller
     {
         $data = $request->validate([
             'admission_no' => 'nullable|string|unique:students,admission_no',
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'father_name' => 'nullable|string|max:255',
             'mother_name' => 'nullable|string|max:255',
-            'dob' => 'nullable|date',
+            'date_of_birth' => 'nullable|date',
             'aadhaar' => 'nullable|string|max:20|unique:students,aadhaar',
-            'class_id' => 'nullable|integer|exists:class_models,id',
+            'class' => 'nullable|integer|exists:class_models,id',
             'status' => ['nullable', Rule::in(['active','left','alumni'])],
-            'meta' => 'nullable|array',
+            'gender' => 'nullable|in:male,female,other',
+            'roll_number' => 'nullable|string|max:50',
+            'contact_number' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string',
         ]);
-
+        
+        $data['name'] = $request->first_name . ' ' . $request->last_name;
+        $data['dob'] = $request->date_of_birth;
+        $data['class_id'] = $request->class;
+        $data['meta'] = [
+            'gender' => $request->gender,
+            'roll_number' => $request->roll_number,
+            'contact_number' => $request->contact_number,
+            'email' => $request->email,
+            'address' => $request->address,
+        ];
+        
         // handle document uploads if any (birth_cert, aadhaar, other_docs[] )
         $documents = [];
         if ($request->hasFile('birth_cert')) {
@@ -72,13 +95,22 @@ class StudentController extends Controller
             'verification_status' => 'pending'
         ]));
 
-        return response()->json($student, 201);
+        // Return JSON for API, redirect for web
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json($student, 201);
+        }
+        
+        return redirect()->route('students.index')->with('success', 'Student created successfully');
     }
 
-    // GET /api/students/{id}
-    public function show(Student $student)
+    // GET /api/students/{id} or /students/{id}
+    public function show(Request $request, Student $student)
     {
-        return response()->json($student);
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json($student);
+        }
+        
+        return view('students.show', compact('student'));
     }
 
     // PUT /api/students/{id}
@@ -117,11 +149,15 @@ class StudentController extends Controller
 
         $student->update(array_merge($data, ['documents' => $documents]));
 
-        return response()->json($student);
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json($student);
+        }
+        
+        return redirect()->route('students.index')->with('success', 'Student updated successfully');
     }
 
     // DELETE /api/students/{id}
-    public function destroy(Student $student)
+    public function destroy(Request $request, Student $student)
     {
         if ($student->documents) {
             foreach ($student->documents as $k => $v) {
@@ -133,9 +169,15 @@ class StudentController extends Controller
             }
         }
         $student->delete();
-        return response()->json(['message' => 'Deleted']);
+        
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json(['message' => 'Deleted']);
+        }
+        
+        return redirect()->route('students.index')->with('success', 'Student deleted successfully');
     }
 
+    // ... rest of your methods (verify, storeFile, normalize) remain the same ...
     // POST /api/students/{id}/verify
     public function verify(Request $request, Student $student)
     {
