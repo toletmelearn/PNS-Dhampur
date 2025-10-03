@@ -70,6 +70,11 @@ class Student extends Model
         return $this->hasMany(DocumentVerification::class);
     }
 
+    public function studentVerifications()
+    {
+        return $this->hasMany(StudentVerification::class);
+    }
+
     // helper to get public URL for stored file
     public function documentUrl($key)
     {

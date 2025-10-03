@@ -1,0 +1,6 @@
+# Bell Sound File Placeholder
+
+This directory should contain the bell.mp3 file for audible notifications.
+You can replace this with an actual MP3 file for bell sounds.
+
+For now, this serves as a placeholder to prevent 404 errors when the system tries to play bell sounds.

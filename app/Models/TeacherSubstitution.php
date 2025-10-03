@@ -11,56 +11,99 @@ class TeacherSubstitution extends Model
     use HasFactory;
 
     protected $fillable = [
-        'absent_teacher_id',
+        'absence_id',
         'substitute_teacher_id',
+        'original_teacher_id',
         'class_id',
-        'date',
+        'subject_id',
+        'period_number',
+        'substitution_date',
         'start_time',
         'end_time',
-        'subject',
         'status',
-        'reason',
-        'notes',
-        'priority',
-        'is_emergency',
-        'requested_at',
-        'assigned_at',
-        'completed_at',
-        'requested_by',
         'assigned_by',
+        'assigned_at',
+        'confirmed_at',
+        'completed_at',
+        'notes',
+        'preparation_materials',
+        'feedback',
+        'rating',
+        'notification_sent',
+        'auto_assigned',
+        'reason',
+        'priority',
+        'is_emergency'
     ];
 
     protected $casts = [
-        'date' => 'date',
-        'start_time' => 'datetime:H:i',
-        'end_time' => 'datetime:H:i',
-        'is_emergency' => 'boolean',
-        'requested_at' => 'datetime',
+        'substitution_date' => 'date',
         'assigned_at' => 'datetime',
+        'confirmed_at' => 'datetime',
         'completed_at' => 'datetime',
+        'notification_sent' => 'boolean',
+        'auto_assigned' => 'boolean',
+        'is_emergency' => 'boolean',
+        'rating' => 'integer'
     ];
 
-    // Relationships
-    public function absentTeacher()
+    // Substitution status
+    const STATUS_PENDING = 'pending';
+    const STATUS_CONFIRMED = 'confirmed';
+    const STATUS_DECLINED = 'declined';
+    const STATUS_COMPLETED = 'completed';
+    const STATUS_CANCELLED = 'cancelled';
+    const STATUS_NO_SHOW = 'no_show';
+
+    /**
+     * Relationship with TeacherAbsence
+     */
+    public function absence()
     {
-        return $this->belongsTo(Teacher::class, 'absent_teacher_id');
+        return $this->belongsTo(TeacherAbsence::class);
     }
 
+    /**
+     * Relationship with substitute teacher
+     */
     public function substituteTeacher()
     {
         return $this->belongsTo(Teacher::class, 'substitute_teacher_id');
     }
 
+    /**
+     * Relationship with original teacher
+     */
+    public function originalTeacher()
+    {
+        return $this->belongsTo(Teacher::class, 'original_teacher_id');
+    }
+
+    // Legacy relationship for backward compatibility
+    public function absentTeacher()
+    {
+        return $this->originalTeacher();
+    }
+
+    /**
+     * Relationship with class
+     */
     public function class()
     {
         return $this->belongsTo(ClassModel::class, 'class_id');
     }
 
-    public function requestedBy()
+    /**
+     * Relationship with subject
+     */
+    public function subject()
     {
-        return $this->belongsTo(User::class, 'requested_by');
+        return $this->belongsTo(Subject::class, 'subject_id');
     }
 
+    /**
+     * Relationship with assigned by user
+     */
     public function assignedBy()
     {
         return $this->belongsTo(User::class, 'assigned_by');
@@ -69,22 +112,27 @@ class TeacherSubstitution extends Model
     // Scopes
     public function scopePending($query)
     {
-        return $query->where('status', 'pending');
+        return $query->where('status', self::STATUS_PENDING);
     }
 
-    public function scopeAssigned($query)
+    public function scopeConfirmed($query)
     {
-        return $query->where('status', 'assigned');
+        return $query->where('status', self::STATUS_CONFIRMED);
+    }
+
+    public function scopeCompleted($query)
+    {
+        return $query->where('status', self::STATUS_COMPLETED);
     }
 
     public function scopeToday($query)
     {
-        return $query->whereDate('date', Carbon::today());
+        return $query->whereDate('substitution_date', Carbon::today());
     }
 
     public function scopeUpcoming($query)
     {
-        return $query->where('date', '>=', Carbon::today());
+        return $query->where('substitution_date', '>=', Carbon::today());
     }
 
     public function scopeEmergency($query)
@@ -113,71 +161,88 @@ class TeacherSubstitution extends Model
 
     public function isOverdue()
     {
-        return $this->status === 'pending' && 
-               Carbon::parse($this->date . ' ' . $this->start_time)->isPast();
+        return $this->status === self::STATUS_PENDING && 
+               Carbon::parse($this->substitution_date . ' ' . $this->start_time)->isPast();
     }
 
     public function canBeAssigned()
     {
-        return in_array($this->status, ['pending']) && 
+        return in_array($this->status, [self::STATUS_PENDING]) && 
                !$this->isOverdue();
     }
 
-    public function markAsAssigned($substituteTeacherId, $assignedBy = null)
+    public function markAsConfirmed($assignedBy = null)
     {
         $this->update([
-            'substitute_teacher_id' => $substituteTeacherId,
-            'status' => 'assigned',
-            'assigned_at' => now(),
+            'status' => self::STATUS_CONFIRMED,
+            'confirmed_at' => now(),
             'assigned_by' => $assignedBy,
         ]);
     }
 
-    public function markAsCompleted()
+    public function markAsCompleted($feedback = null, $rating = null)
     {
         $this->update([
-            'status' => 'completed',
+            'status' => self::STATUS_COMPLETED,
             'completed_at' => now(),
+            'feedback' => $feedback,
+            'rating' => $rating,
         ]);
     }
 
     public function markAsCancelled()
     {
         $this->update([
-            'status' => 'cancelled',
+            'status' => self::STATUS_CANCELLED,
+        ]);
+    }
+
+    public function markAsDeclined()
+    {
+        $this->update([
+            'status' => self::STATUS_DECLINED,
         ]);
     }
 
     // Static methods for finding substitutes
-    public static function findAvailableSubstitutes($date, $startTime, $endTime, $subject = null)
+    public static function findAvailableSubstitutes($date, $startTime, $endTime, $subjectId = null, $classId = null)
     {
-        $availableTeachers = Teacher::whereHas('availability', function ($query) use ($date, $startTime, $endTime) {
-            $query->where('date', $date)
-                  ->where('status', 'available')
-                  ->where('can_substitute', true)
-                  ->where('start_time', '<=', $startTime)
-                  ->where('end_time', '>=', $endTime);
-        })->get();
+        // Get teachers who are not absent on this date
+        $absentTeacherIds = TeacherAbsence::where('absence_date', '<=', $date)
+            ->where(function($query) use ($date) {
+                $query->whereNull('end_date')
+                      ->orWhere('end_date', '>=', $date);
+            })
+            ->where('status', 'approved')
+            ->pluck('teacher_id');
+
+        // Get teachers who don't have conflicting substitutions
+        $busyTeacherIds = self::where('substitution_date', $date)
+            ->where('start_time', '<', $endTime)
+            ->where('end_time', '>', $startTime)
+            ->whereIn('status', [self::STATUS_CONFIRMED, self::STATUS_PENDING])
+            ->pluck('substitute_teacher_id');
+
+        $availableTeachers = Teacher::where('is_active', true)
+            ->whereNotIn('id', $absentTeacherIds)
+            ->whereNotIn('id', $busyTeacherIds)
+            ->get();
 
         // Filter by subject expertise if specified
-        if ($subject) {
-            $availableTeachers = $availableTeachers->filter(function ($teacher) use ($subject) {
-                $availability = $teacher->availability()->where('date', request('date'))->first();
-                return $availability && str_contains(strtolower($availability->subject_expertise), strtolower($subject));
+        if ($subjectId) {
+            $availableTeachers = $availableTeachers->filter(function ($teacher) use ($subjectId) {
+                return $teacher->subjects()->where('subject_id', $subjectId)->exists();
             });
         }
 
-        // Check if teachers haven't exceeded their daily substitution limit
+        // Check daily substitution limits
         $availableTeachers = $availableTeachers->filter(function ($teacher) use ($date) {
             $todaySubstitutions = self::where('substitute_teacher_id', $teacher->id)
-                                     ->where('date', $date)
-                                     ->whereIn('status', ['assigned', 'completed'])
+                                     ->where('substitution_date', $date)
+                                     ->whereIn('status', [self::STATUS_CONFIRMED, self::STATUS_COMPLETED])
                                      ->count();
             
-            $availability = $teacher->availability()->where('date', $date)->first();
-            $maxSubstitutions = $availability ? $availability->max_substitutions_per_day : 3;
-            
-            return $todaySubstitutions < $maxSubstitutions;
+            return $todaySubstitutions < 3; // Max 3 substitutions per day
         });
 
         return $availableTeachers;
@@ -192,33 +257,113 @@ class TeacherSubstitution extends Model
         }
 
         $availableTeachers = self::findAvailableSubstitutes(
-            $substitution->date,
+            $substitution->substitution_date,
             $substitution->start_time,
             $substitution->end_time,
-            $substitution->subject
+            $substitution->subject_id,
+            $substitution->class_id
         );
 
         if ($availableTeachers->isEmpty()) {
             return false;
         }
 
-        // Prioritize by experience and subject match
-        $bestSubstitute = $availableTeachers->sortByDesc(function ($teacher) use ($substitution) {
-            $score = $teacher->experience_years * 10;
+        // Prioritize teachers with subject expertise
+        $bestMatch = $availableTeachers->sortByDesc(function ($teacher) use ($substitution) {
+            $score = 0;
             
-            // Bonus for subject match
-            if ($substitution->subject) {
-                $availability = $teacher->availability()->where('date', $substitution->date)->first();
-                if ($availability && str_contains(strtolower($availability->subject_expertise), strtolower($substitution->subject))) {
-                    $score += 50;
-                }
+            // Subject expertise
+            if ($substitution->subject_id && $teacher->subjects()->where('subject_id', $substitution->subject_id)->exists()) {
+                $score += 10;
             }
+            
+            // Class familiarity
+            if ($substitution->class_id && $teacher->classes()->where('class_id', $substitution->class_id)->exists()) {
+                $score += 5;
+            }
+            
+            // Fewer substitutions today (prefer less busy teachers)
+            $todaySubstitutions = self::where('substitute_teacher_id', $teacher->id)
+                                     ->where('substitution_date', $substitution->substitution_date)
+                                     ->whereIn('status', [self::STATUS_CONFIRMED, self::STATUS_COMPLETED])
+                                     ->count();
+            $score += (3 - $todaySubstitutions);
             
             return $score;
         })->first();
 
-        $substitution->markAsAssigned($bestSubstitute->id);
+        if ($bestMatch) {
+            $substitution->update([
+                'substitute_teacher_id' => $bestMatch->id,
+                'status' => self::STATUS_PENDING,
+                'assigned_at' => now(),
+                'auto_assigned' => true,
+            ]);
+
+            return $bestMatch;
+        }
+
+        return false;
+    }
+
+    public static function getSubstitutionStats($teacherId = null, $startDate = null, $endDate = null)
+    {
+        $query = self::query();
+
+        if ($teacherId) {
+            $query->where('substitute_teacher_id', $teacherId);
+        }
+
+        if ($startDate) {
+            $query->where('substitution_date', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('substitution_date', '<=', $endDate);
+        }
+
+        return [
+            'total' => $query->count(),
+            'completed' => $query->where('status', self::STATUS_COMPLETED)->count(),
+            'pending' => $query->where('status', self::STATUS_PENDING)->count(),
+            'confirmed' => $query->where('status', self::STATUS_CONFIRMED)->count(),
+            'declined' => $query->where('status', self::STATUS_DECLINED)->count(),
+            'no_show' => $query->where('status', self::STATUS_NO_SHOW)->count(),
+            'average_rating' => $query->whereNotNull('rating')->avg('rating'),
+            'emergency_count' => $query->where('is_emergency', true)->count(),
+        ];
+    }
+
+    public static function getTeacherPerformance($teacherId, $months = 6)
+    {
+        $startDate = Carbon::now()->subMonths($months);
         
-        return true;
+        $substitutions = self::where('substitute_teacher_id', $teacherId)
+            ->where('substitution_date', '>=', $startDate)
+            ->get();
+
+        return [
+            'total_substitutions' => $substitutions->count(),
+            'completed_substitutions' => $substitutions->where('status', self::STATUS_COMPLETED)->count(),
+            'declined_substitutions' => $substitutions->where('status', self::STATUS_DECLINED)->count(),
+            'no_show_count' => $substitutions->where('status', self::STATUS_NO_SHOW)->count(),
+            'average_rating' => $substitutions->whereNotNull('rating')->avg('rating'),
+            'reliability_score' => $substitutions->count() > 0 ? 
+                ($substitutions->where('status', self::STATUS_COMPLETED)->count() / $substitutions->count()) * 100 : 0,
+            'response_time' => $substitutions->whereNotNull('confirmed_at')->avg(function($sub) {
+                return Carbon::parse($sub->assigned_at)->diffInMinutes(Carbon::parse($sub->confirmed_at));
+            }),
+        ];
+    }
+
+    public function hasConflict($date, $startTime, $endTime)
+    {
+        return self::where('substitute_teacher_id', $this->substitute_teacher_id)
+            ->where('substitution_date', $date)
+            ->where('start_time', '<', $endTime)
+            ->where('end_time', '>', $startTime)
+            ->whereIn('status', [self::STATUS_CONFIRMED, self::STATUS_PENDING])
+            ->where('id', '!=', $this->id)
+            ->exists();
     }
 }

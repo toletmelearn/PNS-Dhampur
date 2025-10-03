@@ -29,6 +29,9 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
+    <!-- Moment.js for time formatting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    
     <!-- Custom App CSS -->
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
     
@@ -202,6 +205,34 @@
                                 </a>
                             </li>
                         @else
+                            <!-- Notifications Dropdown -->
+                            <li class="nav-item dropdown me-3">
+                                <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown" id="notificationDropdown">
+                                    <i class="fas fa-bell fs-5"></i>
+                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge" style="display: none;">
+                                        0
+                                    </span>
+                                </a>
+                                <div class="dropdown-menu dropdown-menu-end notification-dropdown" style="width: 350px; max-height: 400px; overflow-y: auto;">
+                                    <div class="dropdown-header d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold">Notifications</span>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="markAllAsRead()">Mark All Read</button>
+                                    </div>
+                                    <div class="dropdown-divider"></div>
+                                    <div id="notificationList">
+                                        <div class="text-center py-3 text-muted">
+                                            <i class="fas fa-bell-slash"></i>
+                                            <p class="mb-0">No notifications</p>
+                                        </div>
+                                    </div>
+                                    <div class="dropdown-divider"></div>
+                                    <div class="dropdown-footer text-center">
+                                        <a href="#" class="btn btn-sm btn-primary">View All Notifications</a>
+                                    </div>
+                                </div>
+                            </li>
+
+                            <!-- User Dropdown -->
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
                                     <div class="avatar bg-primary text-white rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
@@ -263,10 +294,17 @@
                                 </a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('admit-cards.*') ? 'active' : '' }}" href="{{ route('admit-cards.index') }}">
-                                    <i class="fas fa-id-card me-2"></i>Admit Cards
+                                <a class="nav-link {{ request()->routeIs('admit-cards.*') ? 'active' : '' }}" href="#">
+                                    <i class="fas fa-id-card"></i> Admit Cards
                                 </a>
                             </li>
+                            @can('teacher-access')
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('teacher-documents.*') ? 'active' : '' }}" href="{{ route('teacher-documents.index') }}">
+                                    <i class="fas fa-folder-open me-2"></i>My Documents
+                                </a>
+                            </li>
+                            @endcan
                             
                             @can('admin-access')
                             <li class="nav-item mt-3">
@@ -287,6 +325,11 @@
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('subjects.*') ? 'active' : '' }}" href="{{ route('subjects.index') }}">
                                     <i class="fas fa-book-open me-2"></i>Subjects
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('teacher-documents.admin.*') ? 'active' : '' }}" href="{{ route('teacher-documents.admin.index') }}">
+                                    <i class="fas fa-file-check me-2"></i>Teacher Documents
                                 </a>
                             </li>
                             @endcan
@@ -407,6 +450,132 @@
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
+
+        // Notification System
+        @auth
+        let notificationPollingInterval;
+        
+        $(document).ready(function() {
+            loadNotifications();
+            startNotificationPolling();
+        });
+
+        function loadNotifications() {
+            $.ajax({
+                url: '#',
+                method: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        updateNotificationDropdown(response.notifications);
+                        updateNotificationBadge(response.unread_count);
+                    }
+                },
+                error: function() {
+                    console.error('Failed to load notifications');
+                }
+            });
+        }
+
+        function updateNotificationDropdown(notifications) {
+            const notificationList = $('#notificationList');
+            
+            if (notifications.length === 0) {
+                notificationList.html(`
+                    <div class="text-center py-3 text-muted">
+                        <i class="fas fa-bell-slash"></i>
+                        <p class="mb-0">No notifications</p>
+                    </div>
+                `);
+                return;
+            }
+
+            let html = '';
+            notifications.forEach(function(notification) {
+                const isRead = notification.is_read;
+                const timeAgo = moment(notification.created_at).fromNow();
+                
+                html += `
+                    <div class="dropdown-item notification-item ${isRead ? '' : 'unread'}" data-id="${notification.id}">
+                        <div class="d-flex">
+                            <div class="flex-shrink-0">
+                                <i class="fas ${getNotificationIcon(notification.type)} text-primary"></i>
+                            </div>
+                            <div class="flex-grow-1 ms-2">
+                                <h6 class="mb-1 fw-bold">${notification.title}</h6>
+                                <p class="mb-1 small text-muted">${notification.message}</p>
+                                <small class="text-muted">${timeAgo}</small>
+                            </div>
+                            <div class="flex-shrink-0">
+                                ${!isRead ? '<span class="badge bg-primary rounded-pill">New</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            notificationList.html(html);
+        }
+
+        function updateNotificationBadge(count) {
+            const badge = $('#notificationBadge');
+            if (count > 0) {
+                badge.text(count > 99 ? '99+' : count).show();
+            } else {
+                badge.hide();
+            }
+        }
+
+        function getNotificationIcon(type) {
+            const icons = {
+                'assignment_deadline': 'fa-clock',
+                'assignment_created': 'fa-plus-circle',
+                'assignment_graded': 'fa-check-circle',
+                'syllabus_uploaded': 'fa-file-upload',
+                'system_announcement': 'fa-bullhorn'
+            };
+            return icons[type] || 'fa-bell';
+        }
+
+        function markAllAsRead() {
+            $.ajax({
+                url: '#',
+                method: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        loadNotifications();
+                    }
+                }
+            });
+        }
+
+        function startNotificationPolling() {
+            notificationPollingInterval = setInterval(function() {
+                loadNotifications();
+            }, 30000); // Poll every 30 seconds
+        }
+
+        // Handle notification item clicks
+        $(document).on('click', '.notification-item', function() {
+            const notificationId = $(this).data('id');
+            
+            // Mark as read if unread
+            if ($(this).hasClass('unread')) {
+                $.ajax({
+                    url: '#',
+                    method: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function() {
+                        loadNotifications();
+                    }
+                });
+            }
+        });
+        @endauth
     </script>
 
     @stack('scripts')

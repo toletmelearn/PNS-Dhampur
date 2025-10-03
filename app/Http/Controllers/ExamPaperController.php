@@ -3,22 +3,47 @@
 namespace App\Http\Controllers;
 
 use App\Models\ExamPaper;
+use App\Models\ExamPaperVersion;
+use App\Models\ExamPaperApproval;
+use App\Models\ExamPaperSecurityLog;
 use App\Models\Question;
 use App\Models\Subject;
 use App\Models\ClassModel;
 use App\Models\Exam;
 use App\Models\Teacher;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class ExamPaperController extends Controller
 {
-    public function index(Request $request)
+    public function __construct()
     {
-        $query = ExamPaper::with(['subject', 'class', 'exam', 'teacher', 'questions']);
+        $this->middleware('auth');
+        $this->middleware('role:admin,teacher,principal')->except(['index', 'show']);
+        $this->middleware('permission:manage-exam-papers')->except(['index', 'show']);
+    }
+
+    /**
+     * Display exam papers dashboard with version control and approval workflow
+     */
+    public function index(Request $request): View
+    {
+        // Log access
+        ExamPaperSecurityLog::logActivity([
+            'action' => ExamPaperSecurityLog::ACTION_VIEWED,
+            'resource_type' => 'exam_papers_dashboard',
+            'description' => 'Accessed exam papers dashboard'
+        ]);
+
+        $query = ExamPaper::with(['subject', 'class', 'exam', 'teacher', 'questions', 'currentVersion']);
         
         // Apply filters
         if ($request->filled('subject_id')) {
@@ -55,12 +80,15 @@ class ExamPaperController extends Controller
         
         $examPapers = $query->orderBy('created_at', 'desc')->paginate(15);
         
+        // Get statistics
+        $statistics = $this->getDashboardStatistics();
+        
         // Get filter options
         $subjects = Subject::orderBy('name')->get();
         $classes = ClassModel::orderBy('name')->get();
         $exams = Exam::orderBy('name')->get();
         
-        return view('exam-papers.index', compact('examPapers', 'subjects', 'classes', 'exams'));
+        return view('exam-papers.index', compact('examPapers', 'subjects', 'classes', 'exams', 'statistics'));
     }
 
     public function create()
@@ -502,10 +530,375 @@ class ExamPaperController extends Controller
         $class = ClassModel::find($classId);
         
         $subjectCode = strtoupper(substr($subject->name, 0, 3));
-        $classCode = strtoupper(str_replace(' ', '', $class->name));
+        $classCode = strtoupper(substr($class->name, 0, 2));
         $timestamp = now()->format('ymd');
-        $random = str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+        $random = strtoupper(substr(md5(uniqid()), 0, 4));
         
         return "{$subjectCode}-{$classCode}-{$timestamp}-{$random}";
+    }
+
+    /**
+     * Submit exam paper for approval
+     */
+    public function submitForApproval(Request $request, ExamPaper $examPaper): JsonResponse
+    {
+        try {
+            // Check permissions
+            if (!$this->canManageExamPaper($examPaper)) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // Validate request
+            $request->validate([
+                'comments' => 'nullable|string|max:1000',
+                'priority' => 'nullable|in:low,medium,high,urgent'
+            ]);
+
+            DB::beginTransaction();
+
+            // Create new version if needed
+            $currentVersion = $examPaper->currentVersion;
+            if (!$currentVersion || $currentVersion->status !== ExamPaperVersion::STATUS_DRAFT) {
+                $currentVersion = $examPaper->createNewVersion([
+                    'change_summary' => 'Submitted for approval',
+                    'created_by' => auth()->id()
+                ]);
+            }
+
+            // Submit version for approval
+            $currentVersion->submitForApproval($request->comments, $request->priority ?? 'medium');
+
+            // Log activity
+            ExamPaperSecurityLog::logActivity([
+                'action' => ExamPaperSecurityLog::ACTION_SUBMITTED,
+                'exam_paper_id' => $examPaper->id,
+                'exam_paper_version_id' => $currentVersion->id,
+                'description' => 'Exam paper submitted for approval'
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Exam paper submitted for approval successfully',
+                'version_id' => $currentVersion->id
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to submit for approval: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Approve exam paper version
+     */
+    public function approveVersion(Request $request, ExamPaper $examPaper, ExamPaperVersion $version): JsonResponse
+    {
+        try {
+            // Check permissions
+            if (!auth()->user()->hasAnyRole(['admin', 'principal'])) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // Validate request
+            $request->validate([
+                'comments' => 'nullable|string|max:1000',
+                'approval_notes' => 'nullable|string|max:2000'
+            ]);
+
+            DB::beginTransaction();
+
+            // Approve the version
+            $version->approve($request->comments, $request->approval_notes);
+
+            // Log activity
+            ExamPaperSecurityLog::logActivity([
+                'action' => ExamPaperSecurityLog::ACTION_APPROVED,
+                'exam_paper_id' => $examPaper->id,
+                'exam_paper_version_id' => $version->id,
+                'description' => 'Exam paper version approved'
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Exam paper approved successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to approve: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Reject exam paper version
+     */
+    public function rejectVersion(Request $request, ExamPaper $examPaper, ExamPaperVersion $version): JsonResponse
+    {
+        try {
+            // Check permissions
+            if (!auth()->user()->hasAnyRole(['admin', 'principal'])) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            // Validate request
+            $request->validate([
+                'comments' => 'required|string|max:1000',
+                'feedback' => 'nullable|string|max:2000'
+            ]);
+
+            DB::beginTransaction();
+
+            // Reject the version
+            $version->reject($request->comments, $request->feedback);
+
+            // Log activity
+            ExamPaperSecurityLog::logActivity([
+                'action' => ExamPaperSecurityLog::ACTION_REJECTED,
+                'exam_paper_id' => $examPaper->id,
+                'exam_paper_version_id' => $version->id,
+                'description' => 'Exam paper version rejected'
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Exam paper rejected successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to reject: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get version history for exam paper
+     */
+    public function versionHistory(ExamPaper $examPaper): JsonResponse
+    {
+        try {
+            // Check permissions
+            if (!$this->canViewExamPaper($examPaper)) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $versions = $examPaper->versions()
+                ->with(['creator', 'approver', 'approvals.approver'])
+                ->orderBy('version_number', 'desc')
+                ->get();
+
+            // Log access
+            ExamPaperSecurityLog::logActivity([
+                'action' => ExamPaperSecurityLog::ACTION_VIEWED,
+                'exam_paper_id' => $examPaper->id,
+                'resource_type' => 'version_history',
+                'description' => 'Viewed exam paper version history'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $versions
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch version history: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Download exam paper version
+     */
+    public function downloadVersion(ExamPaper $examPaper, ExamPaperVersion $version): Response
+    {
+        try {
+            // Check permissions
+            if (!$this->canViewExamPaper($examPaper)) {
+                abort(403, 'Unauthorized');
+            }
+
+            // Verify version belongs to exam paper
+            if ($version->exam_paper_id !== $examPaper->id) {
+                abort(404, 'Version not found');
+            }
+
+            // Log download
+            ExamPaperSecurityLog::logActivity([
+                'action' => ExamPaperSecurityLog::ACTION_DOWNLOADED,
+                'exam_paper_id' => $examPaper->id,
+                'exam_paper_version_id' => $version->id,
+                'description' => 'Downloaded exam paper version'
+            ]);
+
+            // Generate and return PDF (implementation depends on PDF library)
+            return response()->json([
+                'success' => true,
+                'message' => 'PDF download functionality to be implemented',
+                'version' => $version
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to download: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get approval workflow status
+     */
+    public function approvalStatus(ExamPaper $examPaper): JsonResponse
+    {
+        try {
+            // Check permissions
+            if (!$this->canViewExamPaper($examPaper)) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $currentVersion = $examPaper->currentVersion;
+            if (!$currentVersion) {
+                return response()->json(['error' => 'No version found'], 404);
+            }
+
+            $approvals = $currentVersion->approvals()
+                ->with('approver')
+                ->orderBy('approval_level')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'version' => $currentVersion,
+                    'approvals' => $approvals,
+                    'is_approved' => $currentVersion->isApproved(),
+                    'can_approve' => auth()->user()->hasAnyRole(['admin', 'principal'])
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch approval status: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get security logs for exam paper
+     */
+    public function securityLogs(Request $request, ExamPaper $examPaper): JsonResponse
+    {
+        try {
+            // Check permissions (admin only)
+            if (!auth()->user()->hasRole('admin')) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+
+            $query = ExamPaperSecurityLog::where('exam_paper_id', $examPaper->id)
+                ->with('user');
+
+            // Apply filters
+            if ($request->filled('action')) {
+                $query->where('action', $request->action);
+            }
+
+            if ($request->filled('severity')) {
+                $query->where('severity', $request->severity);
+            }
+
+            if ($request->filled('date_from')) {
+                $query->whereDate('created_at', '>=', $request->date_from);
+            }
+
+            if ($request->filled('date_to')) {
+                $query->whereDate('created_at', '<=', $request->date_to);
+            }
+
+            $logs = $query->orderBy('created_at', 'desc')->paginate(20);
+
+            return response()->json([
+                'success' => true,
+                'data' => $logs
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch security logs: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get dashboard statistics
+     */
+    private function getDashboardStatistics(): array
+    {
+        $userId = auth()->id();
+        $isAdmin = auth()->user()->hasRole('admin');
+
+        $baseQuery = $isAdmin ? ExamPaper::query() : ExamPaper::where('teacher_id', $userId);
+
+        return [
+            'total_papers' => $baseQuery->count(),
+            'draft_papers' => (clone $baseQuery)->where('status', 'draft')->count(),
+            'pending_approval' => (clone $baseQuery)->where('status', 'pending_approval')->count(),
+            'approved_papers' => (clone $baseQuery)->where('status', 'approved')->count(),
+            'rejected_papers' => (clone $baseQuery)->where('status', 'rejected')->count(),
+            'recent_activity' => ExamPaperSecurityLog::when(!$isAdmin, function($query) use ($userId) {
+                return $query->where('user_id', $userId);
+            })->latest()->limit(5)->get()
+        ];
+    }
+
+    /**
+     * Check if user can manage exam paper
+     */
+    private function canManageExamPaper(ExamPaper $examPaper): bool
+    {
+        return auth()->user()->hasRole('admin') || $examPaper->teacher_id === auth()->id();
+    }
+
+    /**
+     * Check if user can view exam paper
+     */
+    private function canViewExamPaper(ExamPaper $examPaper): bool
+    {
+        return auth()->user()->hasAnyRole(['admin', 'principal']) || $examPaper->teacher_id === auth()->id();
+    }
+
+    /**
+     * Generate next version number
+     */
+    private function generateVersionNumber(ExamPaper $examPaper): string
+    {
+        $lastVersion = $examPaper->versions()->orderBy('version_number', 'desc')->first();
+        
+        if (!$lastVersion) {
+            return '1.0';
+        }
+
+        $parts = explode('.', $lastVersion->version_number);
+        $major = (int) $parts[0];
+        $minor = isset($parts[1]) ? (int) $parts[1] : 0;
+
+        return $major . '.' . ($minor + 1);
+    }
+
+    /**
+     * Create approval workflow for version
+     */
+    private function createApprovalWorkflow(ExamPaperVersion $version, string $priority = 'medium'): void
+    {
+        // Get approvers based on role hierarchy
+        $approvers = User::role(['principal', 'admin'])->get();
+
+        foreach ($approvers as $index => $approver) {
+            ExamPaperApproval::create([
+                'exam_paper_version_id' => $version->id,
+                'approver_id' => $approver->id,
+                'approval_level' => $index + 1,
+                'status' => ExamPaperApproval::STATUS_PENDING,
+                'priority' => $priority,
+                'deadline' => now()->addDays(3), // 3 days deadline
+                'is_required' => true
+            ]);
+        }
     }
 }

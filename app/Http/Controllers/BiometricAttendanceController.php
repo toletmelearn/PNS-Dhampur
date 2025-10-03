@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Teacher;
 use App\Models\BiometricAttendance;
+use App\Models\Teacher;
+use App\Models\AttendanceAnalytics;
+use App\Models\AttendanceRegularization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class BiometricAttendanceController extends Controller
@@ -459,6 +463,437 @@ class BiometricAttendanceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Bulk check-in failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Advanced Analytics Methods for Phase 4
+
+    /**
+     * Import biometric data from CSV file
+     */
+    public function importCsvData(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'csv_file' => 'required|file|mimes:csv,txt|max:10240',
+            'date_format' => 'nullable|string|in:Y-m-d,d/m/Y,m/d/Y',
+            'time_format' => 'nullable|string|in:H:i:s,H:i,g:i A'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $file = $request->file('csv_file');
+            $dateFormat = $request->get('date_format', 'Y-m-d');
+            $timeFormat = $request->get('time_format', 'H:i:s');
+            
+            $csvData = array_map('str_getcsv', file($file->path()));
+            $headers = array_shift($csvData); // Remove header row
+            
+            $imported = 0;
+            $errors = [];
+            
+            DB::beginTransaction();
+            
+            foreach ($csvData as $index => $row) {
+                try {
+                    if (count($row) < 4) continue; // Skip incomplete rows
+                    
+                    $employeeId = trim($row[0]);
+                    $date = Carbon::createFromFormat($dateFormat, trim($row[1]));
+                    $checkInTime = $row[2] ? Carbon::createFromFormat($timeFormat, trim($row[2])) : null;
+                    $checkOutTime = $row[3] ? Carbon::createFromFormat($timeFormat, trim($row[3])) : null;
+                    
+                    // Find teacher by employee ID
+                    $teacher = Teacher::where('employee_id', $employeeId)->first();
+                    if (!$teacher) {
+                        $errors[] = "Row " . ($index + 2) . ": Teacher not found for employee ID: $employeeId";
+                        continue;
+                    }
+                    
+                    // Create or update attendance record
+                    $attendance = BiometricAttendance::updateOrCreate(
+                        [
+                            'teacher_id' => $teacher->id,
+                            'date' => $date->format('Y-m-d')
+                        ],
+                        [
+                            'check_in_time' => $checkInTime,
+                            'check_out_time' => $checkOutTime,
+                            'status' => $checkInTime ? 'present' : 'absent',
+                            'is_late' => $checkInTime ? $checkInTime->format('H:i:s') > '08:00:00' : false,
+                            'is_early_departure' => $checkOutTime ? $checkOutTime->format('H:i:s') < '16:00:00' : false,
+                            'working_hours' => $checkInTime && $checkOutTime ? 
+                                $checkInTime->diffInHours($checkOutTime) : 0,
+                            'biometric_data' => json_encode([
+                                'import_source' => 'csv',
+                                'import_date' => now(),
+                                'original_data' => $row
+                            ])
+                        ]
+                    );
+                    
+                    $imported++;
+                    
+                } catch (\Exception $e) {
+                    $errors[] = "Row " . ($index + 2) . ": " . $e->getMessage();
+                }
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully imported $imported records",
+                'data' => [
+                    'imported_count' => $imported,
+                    'error_count' => count($errors),
+                    'errors' => $errors
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json([
+                'success' => false,
+                'message' => 'CSV import failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get advanced analytics dashboard data
+     */
+    public function getAnalyticsDashboard(Request $request)
+    {
+        $month = $request->get('month', now()->format('Y-m'));
+        $teacherId = $request->get('teacher_id');
+        
+        try {
+            // Get or calculate analytics for the month
+            $analytics = AttendanceAnalytics::getMonthlyAnalytics($month, $teacherId);
+            
+            // Get leave patterns
+            $leavePatterns = AttendanceAnalytics::getLeavePatterns($month, $teacherId);
+            
+            // Get performance metrics
+            $performanceMetrics = AttendanceAnalytics::getPerformanceMetrics($month, $teacherId);
+            
+            // Get top performers
+            $topPerformers = AttendanceAnalytics::getTopPerformers($month, 10);
+            
+            // Get dashboard summary
+            $dashboardSummary = AttendanceAnalytics::getDashboardSummary($month);
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'analytics' => $analytics,
+                    'leave_patterns' => $leavePatterns,
+                    'performance_metrics' => $performanceMetrics,
+                    'top_performers' => $topPerformers,
+                    'dashboard_summary' => $dashboardSummary,
+                    'month' => $month
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get analytics dashboard: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Calculate and update analytics for all teachers
+     */
+    public function calculateMonthlyAnalytics(Request $request)
+    {
+        $month = $request->get('month', now()->format('Y-m'));
+        
+        try {
+            $result = AttendanceAnalytics::calculateBulkAnalytics($month);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Analytics calculated successfully',
+                'data' => $result
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to calculate analytics: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get attendance regularization requests
+     */
+    public function getRegularizationRequests(Request $request)
+    {
+        $status = $request->get('status', 'all');
+        $teacherId = $request->get('teacher_id');
+        
+        $query = AttendanceRegularization::with(['teacher', 'biometricAttendance', 'reviewedBy'])
+            ->orderBy('created_at', 'desc');
+            
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+        
+        if ($teacherId) {
+            $query->where('teacher_id', $teacherId);
+        }
+        
+        $requests = $query->paginate(20);
+        
+        return response()->json([
+            'success' => true,
+            'data' => $requests
+        ]);
+    }
+
+    /**
+     * Create attendance regularization request
+     */
+    public function createRegularizationRequest(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'teacher_id' => 'required|exists:teachers,id',
+            'attendance_date' => 'required|date',
+            'request_type' => 'required|in:check_in,check_out,both,absent_to_present',
+            'requested_check_in' => 'nullable|date_format:H:i:s',
+            'requested_check_out' => 'nullable|date_format:H:i:s',
+            'reason' => 'required|string|max:500',
+            'supporting_documents' => 'nullable|array',
+            'supporting_documents.*' => 'file|max:5120'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $documents = [];
+            if ($request->hasFile('supporting_documents')) {
+                foreach ($request->file('supporting_documents') as $file) {
+                    $path = $file->store('regularization_documents', 'public');
+                    $documents[] = [
+                        'filename' => $file->getClientOriginalName(),
+                        'path' => $path,
+                        'size' => $file->getSize()
+                    ];
+                }
+            }
+            
+            $regularization = AttendanceRegularization::createRequest(
+                $request->teacher_id,
+                $request->attendance_date,
+                $request->request_type,
+                $request->reason,
+                $request->requested_check_in,
+                $request->requested_check_out,
+                $documents
+            );
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Regularization request created successfully',
+                'data' => $regularization->load(['teacher', 'biometricAttendance'])
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create regularization request: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Approve or reject regularization request
+     */
+    public function processRegularizationRequest(Request $request, $id)
+    {
+        $validator = Validator::make($request->all(), [
+            'action' => 'required|in:approve,reject',
+            'admin_remarks' => 'nullable|string|max:500'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $regularization = AttendanceRegularization::findOrFail($id);
+            
+            if ($request->action === 'approve') {
+                $result = $regularization->approve(auth()->id(), $request->admin_remarks);
+            } else {
+                $result = $regularization->reject(auth()->id(), $request->admin_remarks);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => "Regularization request {$request->action}d successfully",
+                'data' => $regularization->fresh()->load(['teacher', 'biometricAttendance', 'reviewedBy'])
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process regularization request: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get detailed attendance report with analytics
+     */
+    public function getDetailedReport(Request $request)
+    {
+        $startDate = $request->get('start_date', now()->startOfMonth()->format('Y-m-d'));
+        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+        $teacherId = $request->get('teacher_id');
+        $includeAnalytics = $request->get('include_analytics', true);
+        
+        try {
+            $query = BiometricAttendance::with(['teacher'])
+                ->whereBetween('date', [$startDate, $endDate]);
+                
+            if ($teacherId) {
+                $query->where('teacher_id', $teacherId);
+            }
+            
+            $attendances = $query->orderBy('date')->orderBy('teacher_id')->get();
+            
+            $report = [
+                'period' => [
+                    'start_date' => $startDate,
+                    'end_date' => $endDate
+                ],
+                'attendances' => $attendances,
+                'summary' => [
+                    'total_records' => $attendances->count(),
+                    'present_days' => $attendances->where('status', 'present')->count(),
+                    'absent_days' => $attendances->where('status', 'absent')->count(),
+                    'late_arrivals' => $attendances->where('is_late', true)->count(),
+                    'early_departures' => $attendances->where('is_early_departure', true)->count(),
+                    'total_working_hours' => $attendances->sum('working_hours'),
+                    'average_working_hours' => $attendances->where('working_hours', '>', 0)->avg('working_hours')
+                ]
+            ];
+            
+            if ($includeAnalytics && $teacherId) {
+                // Get analytics for the teacher
+                $monthStart = Carbon::parse($startDate)->startOfMonth();
+                $monthEnd = Carbon::parse($endDate)->endOfMonth();
+                
+                $analytics = AttendanceAnalytics::where('teacher_id', $teacherId)
+                    ->whereBetween('created_at', [$monthStart, $monthEnd])
+                    ->get();
+                    
+                $report['analytics'] = $analytics;
+            }
+            
+            return response()->json([
+                'success' => true,
+                'data' => $report
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate detailed report: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get leave pattern analysis
+     */
+    public function getLeavePatternAnalysis(Request $request)
+    {
+        $teacherId = $request->get('teacher_id');
+        $months = $request->get('months', 6); // Last 6 months by default
+        
+        try {
+            $endDate = now();
+            $startDate = now()->subMonths($months);
+            
+            $query = BiometricAttendance::where('status', 'absent')
+                ->whereBetween('date', [$startDate, $endDate]);
+                
+            if ($teacherId) {
+                $query->where('teacher_id', $teacherId);
+            }
+            
+            $absences = $query->with('teacher')->get();
+            
+            // Analyze patterns
+            $patterns = [
+                'by_day_of_week' => [],
+                'by_month' => [],
+                'consecutive_absences' => [],
+                'frequent_absentees' => []
+            ];
+            
+            // Day of week pattern
+            foreach ($absences as $absence) {
+                $dayOfWeek = Carbon::parse($absence->date)->format('l');
+                $patterns['by_day_of_week'][$dayOfWeek] = ($patterns['by_day_of_week'][$dayOfWeek] ?? 0) + 1;
+            }
+            
+            // Monthly pattern
+            foreach ($absences as $absence) {
+                $month = Carbon::parse($absence->date)->format('Y-m');
+                $patterns['by_month'][$month] = ($patterns['by_month'][$month] ?? 0) + 1;
+            }
+            
+            // Frequent absentees (if not filtering by teacher)
+            if (!$teacherId) {
+                $absenteeCount = $absences->groupBy('teacher_id')->map->count()->sortDesc();
+                foreach ($absenteeCount->take(10) as $tId => $count) {
+                    $teacher = Teacher::find($tId);
+                    $patterns['frequent_absentees'][] = [
+                        'teacher' => $teacher,
+                        'absence_count' => $count,
+                        'absence_rate' => round(($count / $months) * 100 / 30, 2) // Approximate monthly rate
+                    ];
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'patterns' => $patterns,
+                    'period' => [
+                        'start_date' => $startDate->format('Y-m-d'),
+                        'end_date' => $endDate->format('Y-m-d'),
+                        'months' => $months
+                    ],
+                    'total_absences' => $absences->count()
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to analyze leave patterns: ' . $e->getMessage()
             ], 500);
         }
     }

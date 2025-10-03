@@ -53,6 +53,17 @@ class Role extends Model
                 'attendance.manage_users',
                 'attendance.audit_logs',
                 
+                // Class Data Audit System permissions
+                'view-class-audit',
+                'view_audit_trails',
+                'manage_audit_rollbacks',
+                'view_audit_approvals',
+                'approve_audit_changes',
+                'delegate_audit_approvals',
+                'bulk_approve_audits',
+                'view_audit_statistics',
+                'export_audit_reports',
+                
                 // Student management
                 'students.view_all',
                 'students.create',
@@ -80,6 +91,11 @@ class Role extends Model
                 'attendance.analytics_assigned',
                 'attendance.bulk_mark_assigned',
                 'attendance.export_assigned',
+                
+                // Class Data Audit System permissions (limited for teachers)
+                'view-class-audit',
+                'view_audit_trails',
+                'view_audit_approvals',
                 
                 // Student management for assigned classes
                 'students.view_assigned',

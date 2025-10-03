@@ -31,6 +31,20 @@ class Kernel extends ConsoleKernel
         $schedule->command('substitutes:auto-assign --date=' . now()->addDay()->format('Y-m-d'))
                  ->dailyAt('18:00')
                  ->weekdays();
+
+        // Send notification reminders every hour during school hours
+        $schedule->command('notifications:send-reminders')
+                 ->hourly()
+                 ->between('07:00', '18:00')
+                 ->weekdays();
+
+        // Process scheduled notifications every 15 minutes
+        $schedule->command('notifications:send-reminders --type=scheduled')
+                 ->everyFifteenMinutes();
+
+        // Clean up expired notifications daily at midnight
+        $schedule->command('notifications:send-reminders --type=cleanup')
+                 ->dailyAt('00:00');
     }
 
     /**

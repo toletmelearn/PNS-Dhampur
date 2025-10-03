@@ -24,4 +24,7 @@ class Teacher extends Model
     public function substitutionRequests() { return $this->hasMany(TeacherSubstitution::class, 'absent_teacher_id'); }
     public function substitutionAssignments() { return $this->hasMany(TeacherSubstitution::class, 'substitute_teacher_id'); }
     public function availability() { return $this->hasMany(TeacherAvailability::class); }
+    
+    // Document relationships
+    public function teacherDocuments() { return $this->hasMany(TeacherDocument::class); }
 }

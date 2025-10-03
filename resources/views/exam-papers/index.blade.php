@@ -1,15 +1,88 @@
 @extends('layouts.app')
 
-@section('title', 'Exam Papers')
+@section('title', 'Exam Papers Management')
 
 @section('content')
 <div class="container-fluid">
+    <!-- Dashboard Statistics -->
+    @if(isset($statistics))
+    <div class="row mb-4">
+        <div class="col-lg-2 col-6">
+            <div class="small-box bg-info">
+                <div class="inner">
+                    <h3>{{ $statistics['total_papers'] }}</h3>
+                    <p>Total Papers</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-6">
+            <div class="small-box bg-warning">
+                <div class="inner">
+                    <h3>{{ $statistics['draft_papers'] }}</h3>
+                    <p>Draft Papers</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-edit"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-6">
+            <div class="small-box bg-primary">
+                <div class="inner">
+                    <h3>{{ $statistics['pending_approval'] }}</h3>
+                    <p>Pending Approval</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-6">
+            <div class="small-box bg-success">
+                <div class="inner">
+                    <h3>{{ $statistics['approved_papers'] }}</h3>
+                    <p>Approved Papers</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-6">
+            <div class="small-box bg-danger">
+                <div class="inner">
+                    <h3>{{ $statistics['rejected_papers'] }}</h3>
+                    <p>Rejected Papers</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-2 col-6">
+            <div class="small-box bg-secondary">
+                <div class="inner">
+                    <h3>{{ $statistics['recent_activity']->count() }}</h3>
+                    <p>Recent Activities</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-history"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <div class="row">
         <div class="col-12">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h3 class="card-title mb-0">
                         <i class="fas fa-file-alt mr-2"></i>Exam Papers Management
+                        <small class="text-muted ml-2">with Version Control & Approval Workflow</small>
                     </h3>
                     <div class="card-tools">
                         <a href="{{ route('exam-papers.create') }}" class="btn btn-primary">
@@ -138,12 +211,14 @@
                                     <th>Class</th>
                                     <th>Exam</th>
                                     <th>Teacher</th>
+                                    <th>Version</th>
                                     <th>Questions</th>
                                     <th>Marks</th>
                                     <th>Duration</th>
                                     <th>Type</th>
                                     <th>Difficulty</th>
                                     <th>Status</th>
+                                    <th>Approval Status</th>
                                     <th>Deadline</th>
                                     <th>Actions</th>
                                 </tr>
@@ -170,6 +245,14 @@
                                         <td>{{ $paper->exam->name ?? 'N/A' }}</td>
                                         <td>{{ $paper->teacher->name ?? 'N/A' }}</td>
                                         <td>
+                                            @if($paper->currentVersion)
+                                                <span class="badge badge-primary">v{{ $paper->currentVersion->version_number }}</span>
+                                                <br><small class="text-muted">{{ $paper->currentVersion->created_at->format('M d, Y') }}</small>
+                                            @else
+                                                <span class="badge badge-secondary">No Version</span>
+                                            @endif
+                                        </td>
+                                        <td>
                                             <span class="badge badge-info">{{ $paper->questions_count }}</span>
                                         </td>
                                         <td>
@@ -185,6 +268,28 @@
                                         <td>{!! $paper->paper_type_badge !!}</td>
                                         <td>{!! $paper->difficulty_badge !!}</td>
                                         <td>{!! $paper->status_badge !!}</td>
+                                        <td>
+                                            @if($paper->currentVersion && $paper->currentVersion->latestApproval)
+                                                @php
+                                                    $approval = $paper->currentVersion->latestApproval;
+                                                    $approvalClass = match($approval->status) {
+                                                        'pending' => 'badge-warning',
+                                                        'approved' => 'badge-success',
+                                                        'rejected' => 'badge-danger',
+                                                        'delegated' => 'badge-info',
+                                                        default => 'badge-secondary'
+                                                    };
+                                                @endphp
+                                                <span class="badge {{ $approvalClass }}">
+                                                    {{ ucfirst($approval->status) }}
+                                                </span>
+                                                @if($approval->approver)
+                                                    <br><small class="text-muted">by {{ $approval->approver->name }}</small>
+                                                @endif
+                                            @else
+                                                <span class="badge badge-light">No Approval</span>
+                                            @endif
+                                        </td>
                                         <td>
                                             @if($paper->submission_deadline)
                                                 {{ $paper->submission_deadline->format('M d, Y H:i') }}
@@ -257,6 +362,39 @@
                                                         <i class="fas fa-ellipsis-v"></i>
                                                     </button>
                                                     <div class="dropdown-menu">
+                                                        <!-- Version Control Actions -->
+                                                        <h6 class="dropdown-header">Version Control</h6>
+                                                        <a class="dropdown-item" href="{{ route('exam-papers.version-history', $paper) }}">
+                                                            <i class="fas fa-history mr-2"></i>Version History
+                                                        </a>
+                                                        @if($paper->currentVersion)
+                                                            <a class="dropdown-item" href="{{ route('exam-papers.download-version', $paper->currentVersion) }}">
+                                                                <i class="fas fa-download mr-2"></i>Download Current Version
+                                                            </a>
+                                                        @endif
+                                                        
+                                                        <!-- Approval Workflow Actions -->
+                                                        <div class="dropdown-divider"></div>
+                                                        <h6 class="dropdown-header">Approval Workflow</h6>
+                                                        @if($paper->currentVersion && $paper->currentVersion->status === 'draft')
+                                                            <a class="dropdown-item" href="{{ route('exam-papers.submit-for-approval', $paper) }}">
+                                                                <i class="fas fa-paper-plane mr-2"></i>Submit for Approval
+                                                            </a>
+                                                        @endif
+                                                        <a class="dropdown-item" href="{{ route('exam-papers.approval-status', $paper) }}">
+                                                            <i class="fas fa-check-circle mr-2"></i>Approval Status
+                                                        </a>
+                                                        
+                                                        <!-- Security & Audit -->
+                                                        <div class="dropdown-divider"></div>
+                                                        <h6 class="dropdown-header">Security & Audit</h6>
+                                                        <a class="dropdown-item" href="{{ route('exam-papers.security-logs', $paper) }}">
+                                                            <i class="fas fa-shield-alt mr-2"></i>Security Logs
+                                                        </a>
+                                                        
+                                                        <!-- Standard Actions -->
+                                                        <div class="dropdown-divider"></div>
+                                                        <h6 class="dropdown-header">Standard Actions</h6>
                                                         <a class="dropdown-item" href="{{ route('exam-papers.duplicate', $paper) }}">
                                                             <i class="fas fa-copy mr-2"></i>Duplicate
                                                         </a>
