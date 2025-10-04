@@ -1882,13 +1882,13 @@ function loadAPIKeys() {
 function loadWebhooks() {
     const webhooks = [
         {
-            id: 1,
-            name: 'Inventory Alerts',
-            url: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX',
-            events: ['inventory.created', 'stock.low'],
-            status: 'Active',
-            lastTriggered: '30 minutes ago'
-        },
+    id: 1,
+    name: 'Inventory Alerts',
+    url: '{{ env('SLACK_WEBHOOK_URL', '') }}',
+    events: ['inventory.created', 'stock.low'],
+    status: 'Active',
+    lastTriggered: '30 minutes ago'
+},
         {
             id: 2,
             name: 'User Management',
