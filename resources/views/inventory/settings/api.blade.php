@@ -1884,10 +1884,10 @@ function loadWebhooks() {
         {
     id: 1,
     name: 'Inventory Alerts',
-    url: '{{ env('SLACK_WEBHOOK_URL', '') }}',
+    url: '', // Slack integration disabled
     events: ['inventory.created', 'stock.low'],
-    status: 'Active',
-    lastTriggered: '30 minutes ago'
+    status: 'Inactive',
+    lastTriggered: 'Never'
 },
         {
             id: 2,
