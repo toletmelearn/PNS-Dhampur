@@ -2,6 +2,11 @@
 
 @section('title', 'Bell Schedule Dashboard')
 
+@push('styles')
+<link href="{{ asset('css/bell-timing.css') }}" rel="stylesheet">
+<link href="{{ asset('css/mobile-notifications.css') }}" rel="stylesheet">
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <!-- Header Section -->
@@ -24,26 +29,100 @@
         </div>
     </div>
 
-    <!-- Real-time Clock and Status Cards -->
+    <!-- Enhanced Real-time Clock Display -->
     <div class="row mb-4">
-        <!-- Real-time Clock -->
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Current Time</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="current-time">--:--:--</div>
-                            <div class="text-xs text-muted" id="current-date">Loading...</div>
+        <div class="col-12">
+            <div class="bell-clock-container fade-in">
+                <div class="season-indicator" id="season-indicator">
+                    <span id="current-season-display">Loading...</span>
+                </div>
+                
+                <div class="current-time" id="enhanced-current-time">--:--:--</div>
+                <div class="current-date" id="enhanced-current-date">Loading...</div>
+                
+                <div class="current-period" id="current-period-display">
+                    <div class="period-name" id="current-period-name">Loading...</div>
+                    <div class="period-time" id="current-period-time">--:-- - --:--</div>
+                    
+                    <div class="period-progress" id="period-progress-container">
+                        <div class="progress-label">Period Progress</div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" id="period-progress-bar" style="width: 0%"></div>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+                
+                <div class="next-period" id="next-period-display">
+                    <div class="next-period-label">Next Period</div>
+                    <div class="next-period-name" id="next-period-name">Loading...</div>
+                    <div class="time-remaining" id="time-remaining">--:--</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Emergency Alert (Hidden by default) -->
+    <div class="emergency-alert" id="emergency-alert">
+        <div class="emergency-title" id="emergency-title">Emergency Alert</div>
+        <div class="emergency-message" id="emergency-message">Emergency message will appear here</div>
+    </div>
+
+    <!-- Notification Controls -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="notification-controls fade-in">
+                <div class="controls-header">
+                    <div class="controls-icon">
+                        <i class="fas fa-volume-up"></i>
+                    </div>
+                    <div class="controls-title">Sound & Notification Settings</div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Sound Notifications</label>
+                    <div class="control-row">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="sound-enabled" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <span class="ms-2">Enable bell sounds</span>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Volume Control</label>
+                    <div class="control-row">
+                        <div class="volume-control">
+                            <i class="fas fa-volume-down"></i>
+                            <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="70">
+                            <i class="fas fa-volume-up"></i>
+                            <div class="volume-display" id="volume-display">70%</div>
                         </div>
+                        <button class="sound-test-btn" id="test-sound-btn">
+                            <i class="fas fa-play"></i> Test Sound
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label class="control-label">Push Notifications</label>
+                    <div class="control-row">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="push-notifications-enabled">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="ms-2">Enable browser notifications</span>
+                        <button class="sound-test-btn ms-2" id="request-permission-btn">
+                            <i class="fas fa-bell"></i> Enable Notifications
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
+    <!-- Status Cards -->
+    <div class="row mb-4">
         <!-- Next Bell -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-success shadow h-100 py-2">
@@ -907,6 +986,288 @@ function createPredefinedSchedule(type) {
 }
 </script>
 @endsection
+
+@push('scripts')
+<script src="{{ asset('js/sound-manager.js') }}"></script>
+<script src="{{ asset('js/bell-notifications.js') }}"></script>
+<script src="{{ asset('js/mobile-notification-service.js') }}"></script>
+<script>
+// Initialize enhanced bell timing system
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize sound manager
+    window.soundManager = new SoundManager();
+    
+    // Initialize bell notification system
+    window.bellNotificationSystem = new BellNotificationSystem();
+    
+    // Initialize mobile notification service
+    window.mobileNotificationService = new MobileNotificationService({
+        apiEndpoint: '/api/bell-timings/schedule/enhanced',
+        pushEndpoint: '/api/push-notifications',
+        updateInterval: 30000, // 30 seconds
+        enableVibration: true,
+        enableSound: true
+    });
+    
+    // Setup sound controls
+    setupSoundControls();
+    
+    // Setup push notification controls
+    setupPushNotificationControls();
+    
+    // Start real-time updates
+    startRealTimeUpdates();
+});
+
+function setupSoundControls() {
+    const soundToggle = document.getElementById('sound-enabled');
+    const volumeSlider = document.getElementById('volume-slider');
+    const volumeDisplay = document.getElementById('volume-display');
+    const testSoundBtn = document.getElementById('test-sound-btn');
+    
+    // Sound toggle
+    soundToggle.addEventListener('change', function() {
+        window.soundManager.setSoundEnabled(this.checked);
+        localStorage.setItem('bell-sound-enabled', this.checked);
+    });
+    
+    // Volume control
+    volumeSlider.addEventListener('input', function() {
+        const volume = parseInt(this.value);
+        window.soundManager.setVolume(volume);
+        volumeDisplay.textContent = volume + '%';
+        localStorage.setItem('bell-volume', volume);
+    });
+    
+    // Test sound
+    testSoundBtn.addEventListener('click', function() {
+        window.soundManager.playBellSound();
+    });
+    
+    // Load saved preferences
+    const savedSoundEnabled = localStorage.getItem('bell-sound-enabled');
+    if (savedSoundEnabled !== null) {
+        soundToggle.checked = savedSoundEnabled === 'true';
+        window.soundManager.setSoundEnabled(soundToggle.checked);
+    }
+    
+    const savedVolume = localStorage.getItem('bell-volume');
+    if (savedVolume) {
+        volumeSlider.value = savedVolume;
+        volumeDisplay.textContent = savedVolume + '%';
+        window.soundManager.setVolume(parseInt(savedVolume));
+    }
+}
+
+function setupPushNotificationControls() {
+    const pushToggle = document.getElementById('push-notifications-enabled');
+    const requestPermissionBtn = document.getElementById('request-permission-btn');
+    
+    // Check current permission status
+    if ('Notification' in window) {
+        pushToggle.checked = Notification.permission === 'granted';
+        requestPermissionBtn.style.display = Notification.permission === 'granted' ? 'none' : 'inline-block';
+    }
+    
+    // Push notification toggle
+    pushToggle.addEventListener('change', function() {
+        if (this.checked && Notification.permission !== 'granted') {
+            this.checked = false;
+            requestNotificationPermission();
+        } else {
+            window.bellNotificationSystem.setPushNotificationsEnabled(this.checked);
+        }
+    });
+    
+    // Request permission button
+    requestPermissionBtn.addEventListener('click', requestNotificationPermission);
+}
+
+function requestNotificationPermission() {
+    if ('Notification' in window) {
+        Notification.requestPermission().then(function(permission) {
+            const pushToggle = document.getElementById('push-notifications-enabled');
+            const requestPermissionBtn = document.getElementById('request-permission-btn');
+            
+            if (permission === 'granted') {
+                pushToggle.checked = true;
+                requestPermissionBtn.style.display = 'none';
+                window.bellNotificationSystem.setPushNotificationsEnabled(true);
+                
+                // Show success notification
+                new Notification('Bell Timing System', {
+                    body: 'Push notifications enabled successfully!',
+                    icon: '/favicon.ico'
+                });
+            } else {
+                pushToggle.checked = false;
+                alert('Please enable notifications in your browser settings to receive bell alerts.');
+            }
+        });
+    }
+}
+
+function startRealTimeUpdates() {
+     // Update clock and schedule every second
+     setInterval(updateRealTimeClock, 1000);
+     
+     // Update schedule data every minute
+     setInterval(loadEnhancedSchedule, 60000);
+     
+     // Initial load
+     updateRealTimeClock();
+     loadEnhancedSchedule();
+ }
+ 
+ function loadEnhancedSchedule() {
+     fetch('/bell-schedule/enhanced-schedule')
+         .then(response => response.json())
+         .then(data => {
+             if (data.success) {
+                 updateEnhancedDisplay(data.data);
+             }
+         })
+         .catch(error => {
+             console.error('Error loading enhanced schedule:', error);
+         });
+ }
+ 
+ function updateEnhancedDisplay(scheduleData) {
+     // Update season indicator
+     const seasonDisplay = document.getElementById('current-season-display');
+     if (seasonDisplay) {
+         seasonDisplay.textContent = scheduleData.current_season.charAt(0).toUpperCase() + scheduleData.current_season.slice(1) + ' Schedule';
+     }
+     
+     // Update current period
+     const currentPeriodName = document.getElementById('current-period-name');
+     const currentPeriodTime = document.getElementById('current-period-time');
+     const periodProgressBar = document.getElementById('period-progress-bar');
+     
+     if (scheduleData.current_period) {
+         if (currentPeriodName) {
+             currentPeriodName.textContent = scheduleData.current_period.name;
+         }
+         if (currentPeriodTime) {
+             currentPeriodTime.textContent = scheduleData.current_period.time;
+         }
+         if (periodProgressBar) {
+             periodProgressBar.style.width = scheduleData.current_period.progress + '%';
+         }
+     } else {
+         if (currentPeriodName) {
+             currentPeriodName.textContent = 'No Current Period';
+         }
+         if (currentPeriodTime) {
+             currentPeriodTime.textContent = '--:--';
+         }
+         if (periodProgressBar) {
+             periodProgressBar.style.width = '0%';
+         }
+     }
+     
+     // Update next period
+     const nextPeriodName = document.getElementById('next-period-name');
+     const timeRemaining = document.getElementById('time-remaining');
+     
+     if (scheduleData.next_period) {
+         if (nextPeriodName) {
+             nextPeriodName.textContent = scheduleData.next_period.name;
+         }
+         if (timeRemaining) {
+             const minutes = scheduleData.next_period.time_remaining_minutes;
+             const hours = Math.floor(minutes / 60);
+             const mins = minutes % 60;
+             timeRemaining.textContent = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+         }
+     } else {
+         if (nextPeriodName) {
+             nextPeriodName.textContent = 'No Upcoming Period';
+         }
+         if (timeRemaining) {
+             timeRemaining.textContent = '--:--';
+         }
+     }
+     
+     // Update legacy displays for compatibility
+     updateLegacyDisplays(scheduleData);
+ }
+ 
+ function updateLegacyDisplays(scheduleData) {
+     // Update next bell card
+     const nextBellName = document.getElementById('next-bell-name');
+     const nextBellTime = document.getElementById('next-bell-time');
+     
+     if (scheduleData.next_period) {
+         if (nextBellName) {
+             nextBellName.textContent = scheduleData.next_period.name;
+         }
+         if (nextBellTime) {
+             nextBellTime.textContent = scheduleData.next_period.time;
+         }
+     }
+     
+     // Update current season card
+     const currentSeason = document.getElementById('current-season');
+     if (currentSeason) {
+         currentSeason.textContent = scheduleData.current_season.charAt(0).toUpperCase() + scheduleData.current_season.slice(1);
+     }
+     
+     // Update active notifications count
+     const activeNotificationsCount = document.getElementById('active-notifications-count');
+     if (activeNotificationsCount) {
+         activeNotificationsCount.textContent = scheduleData.upcoming_notifications ? scheduleData.upcoming_notifications.length : 0;
+     }
+ }
+
+function updateRealTimeClock() {
+    const now = new Date();
+    
+    // Update enhanced clock display
+    const timeElement = document.getElementById('enhanced-current-time');
+    const dateElement = document.getElementById('enhanced-current-date');
+    
+    if (timeElement) {
+        timeElement.textContent = now.toLocaleTimeString('en-US', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+    
+    if (dateElement) {
+        dateElement.textContent = now.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+    
+    // Update legacy clock display for compatibility
+    const legacyTimeElement = document.getElementById('current-time');
+    const legacyDateElement = document.getElementById('current-date');
+    
+    if (legacyTimeElement) {
+        legacyTimeElement.textContent = now.toLocaleTimeString('en-US', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+    
+    if (legacyDateElement) {
+        legacyDateElement.textContent = now.toLocaleDateString('en-US', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+}
+</script>
+@endpush
 
 @section('styles')
 <style>

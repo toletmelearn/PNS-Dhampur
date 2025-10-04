@@ -96,6 +96,11 @@ class StudentVerification extends Model
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 
+    public function auditLogs()
+    {
+        return $this->hasMany(VerificationAuditLog::class, 'verification_id');
+    }
+
     /**
      * Scopes
      */

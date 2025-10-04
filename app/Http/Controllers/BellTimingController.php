@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BellTiming;
 use App\Models\BellNotification;
 use App\Models\SpecialSchedule;
+use App\Services\SeasonSwitchingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
@@ -107,6 +108,140 @@ class BellTimingController extends Controller
             'success' => true,
             'message' => 'Bell timing deleted successfully'
         ]);
+    }
+
+    /**
+     * Get current schedule with enhanced real-time information
+     */
+    public function getCurrentScheduleEnhanced(): JsonResponse
+    {
+        try {
+            $currentSeason = BellTiming::getCurrentSeason();
+            $currentTime = Carbon::now();
+            
+            // Get today's bell timings
+            $bellTimings = BellTiming::where('season', $currentSeason)
+                ->where('is_active', true)
+                ->orderBy('time')
+                ->get();
+            
+            // Find current and next periods
+            $currentPeriod = null;
+            $nextPeriod = null;
+            $periodProgress = 0;
+            
+            foreach ($bellTimings as $index => $timing) {
+                $timingTime = Carbon::createFromFormat('H:i:s', $timing->time);
+                $timingDateTime = $currentTime->copy()->setTime($timingTime->hour, $timingTime->minute, $timingTime->second);
+                
+                if ($currentTime->gte($timingDateTime)) {
+                    $currentPeriod = $timing;
+                    
+                    // Calculate progress if there's a next timing
+                    if (isset($bellTimings[$index + 1])) {
+                        $nextTiming = $bellTimings[$index + 1];
+                        $nextTimingTime = Carbon::createFromFormat('H:i:s', $nextTiming->time);
+                        $nextTimingDateTime = $currentTime->copy()->setTime($nextTimingTime->hour, $nextTimingTime->minute, $nextTimingTime->second);
+                        
+                        $totalDuration = $nextTimingDateTime->diffInMinutes($timingDateTime);
+                        $elapsed = $currentTime->diffInMinutes($timingDateTime);
+                        $periodProgress = $totalDuration > 0 ? min(100, ($elapsed / $totalDuration) * 100) : 0;
+                        
+                        $nextPeriod = $nextTiming;
+                    }
+                } else {
+                    if (!$nextPeriod) {
+                        $nextPeriod = $timing;
+                    }
+                    break;
+                }
+            }
+            
+            // Calculate time remaining to next period
+            $timeRemaining = null;
+            if ($nextPeriod) {
+                $nextTimingTime = Carbon::createFromFormat('H:i:s', $nextPeriod->time);
+                $nextTimingDateTime = $currentTime->copy()->setTime($nextTimingTime->hour, $nextTimingTime->minute, $nextTimingTime->second);
+                
+                if ($nextTimingDateTime->lt($currentTime)) {
+                    $nextTimingDateTime->addDay();
+                }
+                
+                $timeRemaining = $currentTime->diffInMinutes($nextTimingDateTime);
+            }
+            
+            // Get upcoming notifications
+            $upcomingNotifications = BellNotification::where('is_active', true)
+                ->where('bell_timing_id', $nextPeriod ? $nextPeriod->id : null)
+                ->get();
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'current_time' => $currentTime->format('H:i:s'),
+                    'current_date' => $currentTime->format('Y-m-d'),
+                    'current_season' => $currentSeason,
+                    'current_period' => $currentPeriod ? [
+                        'id' => $currentPeriod->id,
+                        'name' => $currentPeriod->name,
+                        'time' => $currentPeriod->time,
+                        'type' => $currentPeriod->type,
+                        'progress' => round($periodProgress, 1)
+                    ] : null,
+                    'next_period' => $nextPeriod ? [
+                        'id' => $nextPeriod->id,
+                        'name' => $nextPeriod->name,
+                        'time' => $nextPeriod->time,
+                        'type' => $nextPeriod->type,
+                        'time_remaining_minutes' => $timeRemaining
+                    ] : null,
+                    'bell_timings' => $bellTimings->map(function ($timing) use ($currentTime) {
+                        $timingTime = Carbon::createFromFormat('H:i:s', $timing->time);
+                        $timingDateTime = $currentTime->copy()->setTime($timingTime->hour, $timingTime->minute, $timingTime->second);
+                        
+                        return [
+                            'id' => $timing->id,
+                            'name' => $timing->name,
+                            'time' => $timing->time,
+                            'type' => $timing->type,
+                            'is_active' => $timing->is_active,
+                            'is_current' => $currentTime->gte($timingDateTime),
+                            'status' => $currentTime->gte($timingDateTime) ? 'completed' : 'upcoming'
+                        ];
+                    }),
+                    'upcoming_notifications' => $upcomingNotifications,
+                    'is_school_hours' => $this->isSchoolHours($currentTime, $bellTimings)
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error getting enhanced current schedule: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error retrieving schedule data'
+            ], 500);
+        }
+    }
+    
+    /**
+     * Check if current time is within school hours
+     */
+    private function isSchoolHours($currentTime, $bellTimings)
+    {
+        if ($bellTimings->isEmpty()) {
+            return false;
+        }
+        
+        $firstBell = $bellTimings->first();
+        $lastBell = $bellTimings->last();
+        
+        $firstTime = Carbon::createFromFormat('H:i:s', $firstBell->time);
+        $lastTime = Carbon::createFromFormat('H:i:s', $lastBell->time);
+        
+        $firstDateTime = $currentTime->copy()->setTime($firstTime->hour, $firstTime->minute, $firstTime->second);
+        $lastDateTime = $currentTime->copy()->setTime($lastTime->hour, $lastTime->minute, $lastTime->second);
+        
+        return $currentTime->between($firstDateTime, $lastDateTime);
     }
 
     /**
@@ -257,5 +392,205 @@ class BellTimingController extends Controller
             'success' => true,
             'message' => 'Notifications updated successfully'
         ]);
+    }
+
+    /**
+     * Update the current season for bell timings
+     */
+    public function updateSeason(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'season' => ['required', Rule::in(['winter', 'summer'])],
+            'effective_date' => 'nullable|date|after_or_equal:today'
+        ]);
+
+        $season = $validated['season'];
+        $effectiveDate = $validated['effective_date'] ?? now()->format('Y-m-d');
+
+        // Check if there are bell timings for the requested season
+        $seasonTimings = BellTiming::where('season', $season)->count();
+        
+        if ($seasonTimings === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "No bell timings found for {$season} season. Please create timings first."
+            ], 400);
+        }
+
+        // Deactivate all current active timings
+        BellTiming::where('is_active', true)->update(['is_active' => false]);
+
+        // Activate timings for the new season
+        BellTiming::where('season', $season)->update(['is_active' => true]);
+
+        // Log the season change
+        activity()
+            ->causedBy(auth()->user())
+            ->withProperties([
+                'old_season' => BellTiming::getCurrentSeason(),
+                'new_season' => $season,
+                'effective_date' => $effectiveDate
+            ])
+            ->log('Bell timing season changed');
+
+        return response()->json([
+            'success' => true,
+            'message' => "Season updated to {$season} successfully",
+            'data' => [
+                'current_season' => $season,
+                'effective_date' => $effectiveDate,
+                'active_timings_count' => BellTiming::where('season', $season)->where('is_active', true)->count()
+            ]
+        ]);
+    }
+
+    /**
+     * Get the active schedule for the current season
+     */
+    public function getActiveSchedule(): JsonResponse
+    {
+        $currentSeason = BellTiming::getCurrentSeason();
+        $currentTime = Carbon::now();
+        $today = $currentTime->format('Y-m-d');
+
+        // Check for special schedule first
+        $specialSchedule = SpecialSchedule::getTodaySpecialSchedule();
+        
+        if ($specialSchedule) {
+            $activeTimings = $specialSchedule->bellTimings()
+                                           ->where('is_active', true)
+                                           ->orderBy('order')
+                                           ->orderBy('time')
+                                           ->get();
+            
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'schedule_type' => 'special',
+                    'schedule_name' => $specialSchedule->name,
+                    'schedule_description' => $specialSchedule->description,
+                    'timings' => $activeTimings,
+                    'current_season' => $currentSeason,
+                    'date' => $today
+                ]
+            ]);
+        }
+
+        // Get regular season schedule
+        $activeTimings = BellTiming::where('season', $currentSeason)
+                                  ->where('is_active', true)
+                                  ->orderBy('order')
+                                  ->orderBy('time')
+                                  ->get();
+
+        // Find current and next bell
+        $currentBell = null;
+        $nextBell = null;
+        $currentTimeString = $currentTime->format('H:i');
+
+        foreach ($activeTimings as $timing) {
+            if ($timing->time <= $currentTimeString) {
+                $currentBell = $timing;
+            } elseif (!$nextBell && $timing->time > $currentTimeString) {
+                $nextBell = $timing;
+                break;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'schedule_type' => 'regular',
+                'timings' => $activeTimings,
+                'current_bell' => $currentBell,
+                'next_bell' => $nextBell,
+                'current_season' => $currentSeason,
+                'current_time' => $currentTimeString,
+                'date' => $today,
+                'total_periods' => $activeTimings->where('type', 'start')->count(),
+                'time_until_next_bell' => $nextBell ? 
+                    $currentTime->diffInMinutes(Carbon::parse($nextBell->time)) : null
+            ]
+        ]);
+    }
+
+    /**
+     * Get season information
+     */
+    public function getSeasonInfo(Request $request): JsonResponse
+    {
+        $seasonService = app(SeasonSwitchingService::class);
+        $season = $request->get('season');
+        
+        $seasonInfo = $seasonService->getSeasonInfo($season);
+        
+        return response()->json([
+            'success' => true,
+            'data' => $seasonInfo
+        ]);
+    }
+
+    /**
+     * Switch to a specific season manually
+     */
+    public function switchSeason(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'season' => ['required', Rule::in(['summer', 'winter'])]
+        ]);
+
+        $seasonService = app(SeasonSwitchingService::class);
+        
+        try {
+            $result = $seasonService->manualSeasonSwitch($validated['season']);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Season switched successfully',
+                'data' => $result
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to switch season: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Clear manual season override
+     */
+    public function clearSeasonOverride(): JsonResponse
+    {
+        $seasonService = app(SeasonSwitchingService::class);
+        $seasonService->clearManualOverride();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Manual season override cleared'
+        ]);
+    }
+
+    /**
+     * Check and perform automatic season switching
+     */
+    public function checkSeasonSwitch(): JsonResponse
+    {
+        $seasonService = app(SeasonSwitchingService::class);
+        
+        try {
+            $result = $seasonService->checkAndSwitchSeason();
+            
+            return response()->json([
+                'success' => true,
+                'message' => $result['switched'] ? 'Season switched successfully' : 'No season switch needed',
+                'data' => $result
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to check season switch: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

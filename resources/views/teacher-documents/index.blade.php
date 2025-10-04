@@ -11,9 +11,22 @@
                     <h1 class="h3 mb-0">My Documents</h1>
                     <p class="text-muted">Manage your professional documents and certificates</p>
                 </div>
-                <a href="{{ route('teacher-documents.create') }}" class="btn btn-primary">
-                    <i class="fas fa-plus me-2"></i>Upload Document
-                </a>
+                <div class="d-flex gap-2">
+                    @if(auth()->user()->role === 'admin' || auth()->user()->role === 'principal')
+                        <a href="{{ route('teacher-documents.expiry-alerts') }}" class="btn btn-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Expiry Alerts
+                        </a>
+                        <a href="{{ route('teacher-documents.admin.index') }}" class="btn btn-info">
+                            <i class="fas fa-cogs me-2"></i>Admin Panel
+                        </a>
+                    @endif
+                    <a href="{{ route('teacher-documents.bulk-upload') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-upload me-2"></i>Bulk Upload
+                    </a>
+                    <a href="{{ route('teacher-documents.create') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Upload Document
+                    </a>
+                </div>
             </div>
 
             <!-- Document Statistics -->

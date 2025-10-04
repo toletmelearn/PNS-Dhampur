@@ -18,12 +18,14 @@ use App\Http\Controllers\BudgetController;
 use App\Http\Controllers\BellTimingController;
 use App\Http\Controllers\TeacherSubstitutionController;
 use App\Http\Controllers\TeacherAvailabilityController;
+use App\Http\Controllers\Api\ExternalIntegrationController;
+use App\Http\Controllers\SubstitutionController;
 
 // -----------------------------
 // PUBLIC ROUTES
 // -----------------------------
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']); // optional if you want registration
+Route::post('/login', [AuthController::class, 'login'])->middleware('rate.limit:5,1');
+Route::post('/register', [AuthController::class, 'register'])->middleware('rate.limit:3,1'); // optional if you want registration
 Route::get('/test', function() {
     return response()->json(['message' => 'API is working!']);
 });
@@ -34,8 +36,8 @@ Route::get('/test', function() {
 Route::middleware('auth:sanctum')->group(function () {
 
     // Auth
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/user', [AuthController::class, 'me']);
+    Route::post('/logout', [AuthController::class, 'logout'])->middleware('rate.limit:10,1');
+    Route::get('/user', [AuthController::class, 'user'])->middleware('auth:sanctum');
 
     // Students
     Route::apiResource('students', StudentController::class);
@@ -97,11 +99,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('budgets', BudgetController::class);
 
     // Bell Timings
+    // Bell Timing Routes
     Route::apiResource('bell-timings', BellTimingController::class);
     Route::get('bell-timings/schedule/current', [BellTimingController::class, 'getCurrentSchedule']);
+    Route::get('bell-timings/schedule/enhanced', [BellTimingController::class, 'getCurrentScheduleEnhanced']);
     Route::get('bell-timings/notification/check', [BellTimingController::class, 'checkBellNotification']);
     Route::patch('bell-timings/{bellTiming}/toggle', [BellTimingController::class, 'toggleActive']);
     Route::patch('bell-timings/order/update', [BellTimingController::class, 'updateOrder']);
+    
+    // Season switching endpoints
+    Route::get('bell-timings/season/info', [BellTimingController::class, 'getSeasonInfo']);
+    Route::post('bell-timings/season/switch', [BellTimingController::class, 'switchSeason']);
+    Route::delete('bell-timings/season/override', [BellTimingController::class, 'clearSeasonOverride']);
+    Route::post('bell-timings/season/check', [BellTimingController::class, 'checkSeasonSwitch']);
 
     // Teacher Substitutions
     Route::apiResource('teacher-substitutions', TeacherSubstitutionController::class);
@@ -116,6 +126,55 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('teacher-availability/weekly', [TeacherAvailabilityController::class, 'createWeeklyAvailability']);
     Route::get('teacher-availability/available-teachers', [TeacherAvailabilityController::class, 'getAvailableTeachers']);
     Route::post('teacher-availability/create-default-all', [TeacherAvailabilityController::class, 'createDefaultAvailabilityForAllTeachers']);
+
+    // Students
+    Route::get('/students/verify/{id}', [App\Http\Controllers\StudentVerificationController::class, 'verify'])->middleware('rate.limit:10,1');
+    
+    // Attendance
+    Route::post('/attendance/mark', [AttendanceController::class, 'markAttendance'])->middleware('rate.limit:30,1');
+    Route::get('/attendance/student/{id}', [AttendanceController::class, 'getStudentAttendance'])->middleware('rate.limit:20,1');
+    
+    // Fee Payments
+    Route::post('/fees/payment', [FeeController::class, 'processPayment'])->middleware('rate.limit:5,1');
+    Route::get('/fees/student/{id}', [FeeController::class, 'getStudentFees'])->middleware('rate.limit:20,1');
+    
+    // Salary Payments
+    Route::post('/salary/payment', [SalaryController::class, 'processPayment'])->middleware('rate.limit:5,1');
+    Route::get('/salary/teacher/{id}', [SalaryController::class, 'getTeacherSalary'])->middleware('rate.limit:20,1');
+
+    // Substitute Notifications
+    Route::get('substitute/notifications', [SubstitutionController::class, 'getNotifications'])->name('api.substitute.notifications');
+    Route::post('substitute/notifications/{notification}/action', [SubstitutionController::class, 'handleNotificationAction']);
+    Route::post('substitute/notifications/{notification}/dismiss', [SubstitutionController::class, 'dismissNotification']);
+    Route::post('substitute/notifications/clear', [SubstitutionController::class, 'clearAllNotifications']);
+
+    // External Integrations
+    Route::prefix('external')->name('external.')
+        ->middleware('external.integration')
+        ->group(function () {
+            // Aadhaar Verification
+            Route::post('aadhaar/verify', [ExternalIntegrationController::class, 'verifyAadhaar'])
+                ->middleware(['rate.limit:10,1', 'role:admin,principal,teacher']);
+            Route::post('aadhaar/bulk-verify', [ExternalIntegrationController::class, 'bulkVerifyAadhaar'])
+                ->middleware(['rate.limit:5,1', 'role:admin,principal']);
+            Route::get('aadhaar/stats', [ExternalIntegrationController::class, 'getAadhaarStats'])
+                ->middleware('role:admin,principal');
+
+            // Biometric Device Integration
+            Route::post('biometric/import', [ExternalIntegrationController::class, 'importBiometricData'])
+                ->middleware(['rate.limit:3,1', 'role:admin,principal,teacher']);
+            Route::get('biometric/import-status/{importId}', [ExternalIntegrationController::class, 'getImportStatus'])
+                ->middleware('role:admin,principal,teacher');
+            Route::get('biometric/stats', [ExternalIntegrationController::class, 'getBiometricStats'])
+                ->middleware('role:admin,principal');
+
+            // Browser Notifications
+            Route::post('notifications/send', [ExternalIntegrationController::class, 'sendBrowserNotification'])
+                ->middleware(['rate.limit:20,1', 'role:admin,principal,teacher']);
+            Route::post('notifications/subscribe', [ExternalIntegrationController::class, 'subscribeUser'])
+                ->middleware('rate.limit:10,1');
+            Route::get('notifications/vapid-key', [ExternalIntegrationController::class, 'getVapidPublicKey']);
+        });
 });
 
 

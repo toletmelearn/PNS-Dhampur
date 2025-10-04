@@ -1,0 +1,646 @@
+/**
+ * Bell Timing System - Mobile Responsive Styles
+ */
+
+/* Real-time Clock Display */
+.bell-clock-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    padding: 2rem;
+    color: white;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.bell-clock-container::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    animation: pulse 4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+.current-time {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    font-family: 'Courier New', monospace;
+}
+
+.current-date {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    margin-bottom: 1rem;
+}
+
+.current-period {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 1rem;
+    margin: 1rem 0;
+    backdrop-filter: blur(10px);
+}
+
+.period-name {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.period-time {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+.next-period {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 0.8rem;
+    margin-top: 1rem;
+}
+
+.next-period-label {
+    font-size: 0.9rem;
+    opacity: 0.7;
+    margin-bottom: 0.3rem;
+}
+
+.next-period-name {
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.time-remaining {
+    font-size: 1.1rem;
+    color: #ffeb3b;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+/* Progress Bar */
+.period-progress {
+    margin: 1rem 0;
+}
+
+.progress-label {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.8;
+}
+
+.progress-bar-container {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    height: 8px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, #4caf50, #8bc34a);
+    height: 100%;
+    border-radius: 10px;
+    transition: width 1s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Season Indicator */
+.season-indicator {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+    backdrop-filter: blur(10px);
+}
+
+.season-winter {
+    background: linear-gradient(135deg, #74b9ff, #0984e3);
+}
+
+.season-summer {
+    background: linear-gradient(135deg, #fd79a8, #e84393);
+}
+
+/* Bell Schedule Display */
+.bell-schedule-container {
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    margin-bottom: 2rem;
+}
+
+.schedule-header {
+    background: linear-gradient(135deg, #2d3436, #636e72);
+    color: white;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.schedule-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.schedule-subtitle {
+    opacity: 0.8;
+    font-size: 0.9rem;
+}
+
+.schedule-list {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.schedule-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #f1f3f4;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.schedule-item:hover {
+    background: #f8f9fa;
+    transform: translateX(5px);
+}
+
+.schedule-item.current-period-item {
+    background: linear-gradient(135deg, #e8f5e8, #f1f8e9);
+    border-left: 4px solid #4caf50;
+    font-weight: 600;
+}
+
+.schedule-item.next-period-item {
+    background: linear-gradient(135deg, #fff3e0, #fce4ec);
+    border-left: 4px solid #ff9800;
+}
+
+.period-time-display {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #2d3436;
+    min-width: 120px;
+    font-size: 1rem;
+}
+
+.period-name-display {
+    flex: 1;
+    margin-left: 1rem;
+    font-size: 1.1rem;
+    color: #2d3436;
+}
+
+.period-status {
+    padding: 0.3rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.status-current {
+    background: #4caf50;
+    color: white;
+}
+
+.status-next {
+    background: #ff9800;
+    color: white;
+}
+
+.status-upcoming {
+    background: #e0e0e0;
+    color: #666;
+}
+
+.status-completed {
+    background: #9e9e9e;
+    color: white;
+    opacity: 0.7;
+}
+
+/* Notification Controls */
+.notification-controls {
+    background: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+}
+
+.controls-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.controls-icon {
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    margin-right: 1rem;
+}
+
+.controls-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #2d3436;
+}
+
+.control-group {
+    margin-bottom: 1.5rem;
+}
+
+.control-label {
+    display: block;
+    font-weight: 500;
+    color: #636e72;
+    margin-bottom: 0.5rem;
+}
+
+.control-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #4caf50;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+}
+
+.volume-slider {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: #ddd;
+    outline: none;
+    -webkit-appearance: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #4caf50;
+    cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #4caf50;
+    cursor: pointer;
+    border: none;
+}
+
+.volume-display {
+    min-width: 40px;
+    text-align: center;
+    font-weight: 600;
+    color: #2d3436;
+}
+
+.sound-test-btn {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.sound-test-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* Emergency Alert */
+.emergency-alert {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+    color: white;
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    text-align: center;
+    animation: emergencyPulse 2s ease-in-out infinite;
+    display: none;
+}
+
+.emergency-alert.active {
+    display: block;
+}
+
+@keyframes emergencyPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+.emergency-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.emergency-message {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+/* Mobile Responsive Design */
+@media (max-width: 768px) {
+    .bell-clock-container {
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .current-time {
+        font-size: 2.5rem;
+    }
+    
+    .period-name {
+        font-size: 1.3rem;
+    }
+    
+    .schedule-item {
+        padding: 0.8rem 1rem;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .period-time-display {
+        min-width: auto;
+        font-size: 0.9rem;
+    }
+    
+    .period-name-display {
+        margin-left: 0;
+        font-size: 1rem;
+    }
+    
+    .control-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.8rem;
+    }
+    
+    .volume-control {
+        width: 100%;
+    }
+    
+    .notification-controls {
+        padding: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .bell-clock-container {
+        padding: 1rem;
+        border-radius: 15px;
+    }
+    
+    .current-time {
+        font-size: 2rem;
+    }
+    
+    .current-date {
+        font-size: 1rem;
+    }
+    
+    .period-name {
+        font-size: 1.1rem;
+    }
+    
+    .schedule-header {
+        padding: 1rem;
+    }
+    
+    .schedule-title {
+        font-size: 1.3rem;
+    }
+    
+    .controls-title {
+        font-size: 1.1rem;
+    }
+    
+    .emergency-title {
+        font-size: 1.3rem;
+    }
+    
+    .emergency-message {
+        font-size: 1rem;
+    }
+}
+
+/* Dark Mode Support */
+@media (prefers-color-scheme: dark) {
+    .bell-schedule-container {
+        background: #2d3436;
+        color: white;
+    }
+    
+    .schedule-item {
+        border-bottom-color: #636e72;
+    }
+    
+    .schedule-item:hover {
+        background: #636e72;
+    }
+    
+    .period-time-display,
+    .period-name-display {
+        color: white;
+    }
+    
+    .notification-controls {
+        background: #2d3436;
+        color: white;
+    }
+    
+    .controls-title {
+        color: white;
+    }
+    
+    .control-label {
+        color: #b2bec3;
+    }
+    
+    .volume-display {
+        color: white;
+    }
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-in-left {
+    animation: slideInLeft 0.5s ease-out;
+}
+
+@keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-30px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.bounce-in {
+    animation: bounceIn 0.6s ease-out;
+}
+
+@keyframes bounceIn {
+    0% { opacity: 0; transform: scale(0.3); }
+    50% { opacity: 1; transform: scale(1.05); }
+    70% { transform: scale(0.9); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+/* Notification Badge */
+.notification-badge {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #ff4757;
+    color: white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    z-index: 1000;
+    animation: bounceIn 0.5s ease-out;
+}
+
+/* Loading States */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    opacity: 0.7;
+    font-style: italic;
+}
+
+/* Accessibility */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Focus States */
+.toggle-switch:focus-within .slider {
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+}
+
+.sound-test-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+}
+
+.volume-slider:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.3);
+}

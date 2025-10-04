@@ -325,7 +325,7 @@ class LearningApiController extends Controller
             ];
         } elseif ($user->hasRole('teacher')) {
             // Teacher dashboard stats
-            $teacher = Teacher::where('user_id', $user->id)->first();
+            $teacher = Teacher::with(['user', 'subjects', 'classModel'])->where('user_id', $user->id)->first();
             if ($teacher) {
                 $stats = [
                     'my_assignments' => Assignment::where('teacher_id', $teacher->id)->count(),

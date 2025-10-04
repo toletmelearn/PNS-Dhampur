@@ -78,7 +78,8 @@ class AttendanceController extends Controller
         $existingAttendances = collect();
         
         if ($classId) {
-            $students = Student::where('class_id', $classId)
+            $students = Student::with(['classModel', 'user'])
+                ->where('class_id', $classId)
                 ->where('status', 'active')
                 ->orderBy('name')
                 ->get();

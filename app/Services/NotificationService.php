@@ -8,6 +8,12 @@ use App\Models\Syllabus;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use App\Models\NotificationSubscription;
+use Minishlink\WebPush\WebPush;
+use Minishlink\WebPush\Subscription;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class NotificationService
 {
@@ -339,5 +345,339 @@ class NotificationService
             Log::error('Failed to create custom notification: ' . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Browser notification constants
+     */
+    const TYPE_ATTENDANCE = 'attendance';
+    const TYPE_FEE_REMINDER = 'fee_reminder';
+    const TYPE_EXAM_ALERT = 'exam_alert';
+    const TYPE_ANNOUNCEMENT = 'announcement';
+    const TYPE_EMERGENCY = 'emergency';
+    const TYPE_SYSTEM = 'system';
+    
+    const PRIORITY_LOW = 'low';
+    const PRIORITY_NORMAL = 'normal';
+    const PRIORITY_HIGH = 'high';
+    const PRIORITY_URGENT = 'urgent';
+    
+    protected $webPush;
+    protected $vapidKeys;
+    
+    public function __construct()
+    {
+        $this->vapidKeys = [
+            'subject' => config('services.webpush.subject', 'mailto:admin@pnsdhampur.edu'),
+            'publicKey' => config('services.webpush.public_key'),
+            'privateKey' => config('services.webpush.private_key')
+        ];
+        
+        if ($this->vapidKeys['publicKey'] && $this->vapidKeys['privateKey']) {
+            $this->webPush = new WebPush($this->vapidKeys);
+        }
+    }
+
+    /**
+     * Send browser push notification
+     */
+    public function sendBrowserNotification(string $title, string $message, array $options = []): array
+    {
+        try {
+            if (!$this->webPush) {
+                return [
+                    'success' => false,
+                    'error' => 'WebPush not configured',
+                    'error_code' => 'WEBPUSH_NOT_CONFIGURED'
+                ];
+            }
+
+            $defaultOptions = [
+                'type' => self::TYPE_SYSTEM,
+                'priority' => self::PRIORITY_NORMAL,
+                'icon' => '/images/notification-icon.png',
+                'badge' => '/images/notification-badge.png',
+                'tag' => null,
+                'requireInteraction' => false,
+                'silent' => false,
+                'data' => [],
+                'actions' => [],
+                'users' => [],
+                'url' => null
+            ];
+            
+            $options = array_merge($defaultOptions, $options);
+            
+            // Get target users
+            $users = $this->getTargetUsersForBrowser($options['users']);
+            
+            if (empty($users)) {
+                return [
+                    'success' => false,
+                    'error' => 'No target users found',
+                    'error_code' => 'NO_USERS'
+                ];
+            }
+            
+            // Prepare notification payload
+            $payload = $this->prepareNotificationPayload($title, $message, $options);
+            
+            // Send notifications
+            $results = $this->sendToUsersViaBrowser($users, $payload, $options);
+            
+            // Log notification
+            $this->logBrowserNotification($title, $message, $options, $results);
+            
+            return [
+                'success' => true,
+                'sent_count' => $results['sent_count'],
+                'failed_count' => $results['failed_count'],
+                'total_users' => count($users),
+                'notification_id' => $results['notification_id']
+            ];
+            
+        } catch (\Exception $e) {
+            Log::error('Browser notification failed', [
+                'error' => $e->getMessage(),
+                'title' => $title
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => 'Notification failed: ' . $e->getMessage(),
+                'error_code' => 'NOTIFICATION_FAILED'
+            ];
+        }
+    }
+
+    /**
+     * Subscribe user to push notifications
+     */
+    public function subscribeUser(int $userId, array $subscriptionData): array
+    {
+        try {
+            // Validate subscription data
+            $validation = $this->validateSubscriptionData($subscriptionData);
+            if (!$validation['valid']) {
+                return $validation;
+            }
+            
+            // Check if subscription already exists
+            $existingSubscription = NotificationSubscription::where('user_id', $userId)
+                ->where('endpoint', $subscriptionData['endpoint'])
+                ->first();
+            
+            if ($existingSubscription) {
+                // Update existing subscription
+                $existingSubscription->update([
+                    'p256dh_key' => $subscriptionData['keys']['p256dh'],
+                    'auth_key' => $subscriptionData['keys']['auth'],
+                    'user_agent' => request()->userAgent(),
+                    'updated_at' => Carbon::now()
+                ]);
+                
+                return [
+                    'success' => true,
+                    'subscription_id' => $existingSubscription->id,
+                    'action' => 'updated'
+                ];
+            }
+            
+            // Create new subscription
+            $subscription = NotificationSubscription::create([
+                'user_id' => $userId,
+                'endpoint' => $subscriptionData['endpoint'],
+                'p256dh_key' => $subscriptionData['keys']['p256dh'],
+                'auth_key' => $subscriptionData['keys']['auth'],
+                'user_agent' => request()->userAgent(),
+                'is_active' => true
+            ]);
+            
+            return [
+                'success' => true,
+                'subscription_id' => $subscription->id,
+                'action' => 'created'
+            ];
+            
+        } catch (\Exception $e) {
+            Log::error('User subscription failed', [
+                'error' => $e->getMessage(),
+                'user_id' => $userId
+            ]);
+            
+            return [
+                'success' => false,
+                'error' => 'Subscription failed: ' . $e->getMessage(),
+                'error_code' => 'SUBSCRIPTION_FAILED'
+            ];
+        }
+    }
+
+    /**
+     * Get target users for browser notifications
+     */
+    protected function getTargetUsersForBrowser(array $userIds): array
+    {
+        if (empty($userIds)) {
+            // Get all users with active subscriptions
+            return NotificationSubscription::with('user')
+                ->where('is_active', true)
+                ->get()
+                ->pluck('user')
+                ->unique('id')
+                ->toArray();
+        }
+        
+        // Get specific users with active subscriptions
+        return NotificationSubscription::with('user')
+            ->whereIn('user_id', $userIds)
+            ->where('is_active', true)
+            ->get()
+            ->pluck('user')
+            ->unique('id')
+            ->toArray();
+    }
+
+    /**
+     * Prepare notification payload
+     */
+    protected function prepareNotificationPayload(string $title, string $message, array $options): array
+    {
+        return [
+            'title' => $title,
+            'body' => $message,
+            'icon' => $options['icon'],
+            'badge' => $options['badge'],
+            'tag' => $options['tag'] ?? uniqid('notif_'),
+            'requireInteraction' => $options['requireInteraction'],
+            'silent' => $options['silent'],
+            'data' => array_merge($options['data'], [
+                'type' => $options['type'],
+                'priority' => $options['priority'],
+                'timestamp' => Carbon::now()->toISOString(),
+                'url' => $options['url']
+            ]),
+            'actions' => $options['actions']
+        ];
+    }
+
+    /**
+     * Send notifications to users via browser
+     */
+    protected function sendToUsersViaBrowser(array $users, array $payload, array $options): array
+    {
+        $sentCount = 0;
+        $failedCount = 0;
+        $notificationId = 'NOTIF_' . strtoupper(uniqid());
+        
+        foreach ($users as $user) {
+            $subscriptions = NotificationSubscription::where('user_id', $user['id'])
+                ->where('is_active', true)
+                ->get();
+            
+            foreach ($subscriptions as $subscriptionData) {
+                try {
+                    $subscription = Subscription::create([
+                        'endpoint' => $subscriptionData->endpoint,
+                        'keys' => [
+                            'p256dh' => $subscriptionData->p256dh_key,
+                            'auth' => $subscriptionData->auth_key
+                        ]
+                    ]);
+                    
+                    $result = $this->webPush->sendOneNotification(
+                        $subscription,
+                        json_encode($payload)
+                    );
+                    
+                    if ($result->isSuccess()) {
+                        $sentCount++;
+                    } else {
+                        $failedCount++;
+                        
+                        // Handle expired subscriptions
+                        if ($result->isSubscriptionExpired()) {
+                            $subscriptionData->update(['is_active' => false]);
+                        }
+                        
+                        Log::warning('Push notification failed', [
+                            'user_id' => $user['id'],
+                            'endpoint' => $subscriptionData->endpoint,
+                            'reason' => $result->getReason()
+                        ]);
+                    }
+                    
+                } catch (\Exception $e) {
+                    $failedCount++;
+                    Log::error('Push notification exception', [
+                        'user_id' => $user['id'],
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+        }
+        
+        return [
+            'sent_count' => $sentCount,
+            'failed_count' => $failedCount,
+            'notification_id' => $notificationId
+        ];
+    }
+
+    /**
+     * Validate subscription data
+     */
+    protected function validateSubscriptionData(array $data): array
+    {
+        if (empty($data['endpoint'])) {
+            return [
+                'valid' => false,
+                'error' => 'Missing endpoint',
+                'error_code' => 'MISSING_ENDPOINT'
+            ];
+        }
+        
+        if (empty($data['keys']['p256dh']) || empty($data['keys']['auth'])) {
+            return [
+                'valid' => false,
+                'error' => 'Missing encryption keys',
+                'error_code' => 'MISSING_KEYS'
+            ];
+        }
+        
+        return ['valid' => true];
+    }
+
+    /**
+     * Log browser notification for analytics
+     */
+    protected function logBrowserNotification(string $title, string $message, array $options, array $results): void
+    {
+        try {
+            DB::table('notification_logs')->insert([
+                'notification_id' => $results['notification_id'],
+                'type' => $options['type'],
+                'priority' => $options['priority'],
+                'title' => $title,
+                'message' => $message,
+                'sent_count' => $results['sent_count'],
+                'failed_count' => $results['failed_count'],
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now()
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to log notification', [
+                'error' => $e->getMessage(),
+                'notification_id' => $results['notification_id']
+            ]);
+        }
+    }
+
+    /**
+     * Get VAPID public key for client-side subscription
+     */
+    public function getVapidPublicKey(): string
+    {
+        return $this->vapidKeys['publicKey'] ?? '';
     }
 }

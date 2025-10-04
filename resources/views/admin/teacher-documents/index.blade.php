@@ -93,7 +93,7 @@
             <!-- Filters -->
             <div class="card mb-4">
                 <div class="card-body">
-                    <form method="GET" action="{{ route('admin.teacher-documents.index') }}" class="row g-3">
+                    <form method="GET" action="{{ route('teacher-documents.admin.index') }}" class="row g-3">
                         <div class="col-md-3">
                             <label for="status" class="form-label">Status</label>
                             <select class="form-select" id="status" name="status">
@@ -125,7 +125,7 @@
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-search me-2"></i>Filter
                                 </button>
-                                <a href="{{ route('admin.teacher-documents.index') }}" class="btn btn-outline-secondary">
+                                <a href="{{ route('teacher-documents.admin.index') }}" class="btn btn-outline-secondary">
                                     <i class="fas fa-times me-2"></i>Clear
                                 </a>
                             </div>
@@ -223,7 +223,7 @@
                                             </td>
                                             <td>
                                                 <div class="btn-group" role="group">
-                                                    <a href="{{ route('admin.teacher-documents.show', $document) }}" 
+                                                    <a href="{{ route('teacher-documents.show', $document) }}" 
                                                        class="btn btn-sm btn-outline-primary" 
                                                        data-bs-toggle="tooltip" 
                                                        title="View Details">
@@ -400,7 +400,7 @@ $(document).ready(function() {
 
 function approveDocument(documentId) {
     const form = document.getElementById('approveForm');
-    form.action = `/admin/teacher-documents/${documentId}/approve`;
+    form.action = `/teacher-documents/${documentId}/approve`;
     
     const modal = new bootstrap.Modal(document.getElementById('approveModal'));
     modal.show();
@@ -408,7 +408,7 @@ function approveDocument(documentId) {
 
 function rejectDocument(documentId) {
     const form = document.getElementById('rejectForm');
-    form.action = `/admin/teacher-documents/${documentId}/reject`;
+    form.action = `/teacher-documents/${documentId}/reject`;
     
     const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
     modal.show();
@@ -431,7 +431,7 @@ function bulkApprove() {
     document.getElementById('bulk_action').value = 'approve';
     document.getElementById('bulkActionBtn').className = 'btn btn-success';
     document.getElementById('bulkActionBtn').textContent = 'Approve All';
-    document.getElementById('bulkActionForm').action = '{{ route("admin.teacher-documents.bulk-action") }}';
+    document.getElementById('bulkActionForm').action = '{{ route("teacher-documents.admin.bulk-action") }}';
 
     const modal = new bootstrap.Modal(document.getElementById('bulkActionModal'));
     modal.show();
@@ -454,7 +454,7 @@ function bulkReject() {
     document.getElementById('bulk_action').value = 'reject';
     document.getElementById('bulkActionBtn').className = 'btn btn-danger';
     document.getElementById('bulkActionBtn').textContent = 'Reject All';
-    document.getElementById('bulkActionForm').action = '{{ route("admin.teacher-documents.bulk-action") }}';
+    document.getElementById('bulkActionForm').action = '{{ route("teacher-documents.admin.bulk-action") }}';
 
     const modal = new bootstrap.Modal(document.getElementById('bulkActionModal'));
     modal.show();
@@ -466,7 +466,7 @@ function getSelectedDocumentIds() {
 }
 
 function checkExpiringDocuments() {
-    window.location.href = '{{ route("admin.teacher-documents.expiring") }}';
+    window.location.href = '{{ route("teacher-documents.admin.expiring") }}';
 }
 </script>
 @endpush

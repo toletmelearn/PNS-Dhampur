@@ -54,7 +54,7 @@ class DocumentVerificationController extends Controller
      */
     public function create(Request $request)
     {
-        $students = Student::all();
+        $students = Student::with(['classModel', 'user'])->get();
         $documentTypes = [
             'birth_certificate' => 'Birth Certificate',
             'transfer_certificate' => 'Transfer Certificate',
@@ -67,7 +67,7 @@ class DocumentVerificationController extends Controller
         ];
 
         $selectedStudent = $request->has('student_id') ? 
-            Student::find($request->student_id) : null;
+            Student::with(['classModel', 'user'])->find($request->student_id) : null;
 
         return view('document-verification.create', compact('students', 'documentTypes', 'selectedStudent'));
     }

@@ -425,6 +425,16 @@
     <!-- Custom App JS -->
     <script src="{{ asset('js/app.js') }}"></script>
     
+    <!-- Global AJAX CSRF Setup -->
+    <script>
+        // Setup CSRF token for all AJAX requests
+        $.ajaxSetup({
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            }
+        });
+    </script>
+    
     <!-- Attendance System JavaScript -->
     <script src="{{ asset('js/attendance-notifications.js') }}"></script>
     <script src="{{ asset('js/attendance-validation.js') }}"></script>

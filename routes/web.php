@@ -27,6 +27,10 @@ use App\Http\Controllers\LearningApiController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ClassDataAuditController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\SalaryController;
+use App\Http\Controllers\BudgetController;
+use App\Http\Controllers\AssetDepreciationController;
+use App\Http\Controllers\BudgetReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,7 +45,7 @@ use App\Http\Controllers\InventoryController;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
-});
+})->middleware('auth');
 
 // Teacher Substitution Platform Routes
 Route::middleware(['auth'])->group(function () {
@@ -75,28 +79,33 @@ Route::middleware(['auth'])->group(function () {
     
     // My Substitutions (for substitute teachers)
     Route::get('/my-substitutions', [SubstitutionController::class, 'mySubstitutions'])->name('substitutions.my');
+    
+    // Mobile Notifications for Substitutes
+    Route::get('/substitutions/mobile-notifications', function () {
+        return view('substitution.mobile-notifications');
+    })->name('substitutions.mobile-notifications');
 });
 
 // Authentication Routes (manual implementation)
 Route::get('/login', function () {
     return view('auth.login');
-})->name('login');
+})->name('login')->middleware('guest');
 
 Route::post('/login', function () {
     // Login logic here
-})->name('login.post');
+})->name('login.post')->middleware('guest');
 
 Route::post('/logout', function () {
     // Logout logic here
-})->name('logout');
+})->name('logout')->middleware('auth');
 
 Route::get('/register', function () {
     return view('auth.register');
-})->name('register');
+})->name('register')->middleware('guest');
 
 Route::post('/register', function () {
     // Registration logic here
-})->name('register.post');
+})->name('register.post')->middleware('guest');
 
 // Protected routes that require authentication
 Route::middleware(['auth'])->group(function () {
@@ -332,10 +341,19 @@ Route::post('/api/reports/export', [ReportsController::class, 'exportPdf'])->nam
         Route::resource('students', StudentController::class);
         Route::resource('teachers', TeacherController::class);
         Route::resource('exams', ExamController::class);
+        Route::resource('bell-timings', BellTimingController::class);
+        Route::resource('substitutions', SubstitutionController::class);
+        Route::resource('biometric', BiometricAttendanceController::class);
         
         // System audit and reports
         Route::get('/system/audit-report', [ClassTeacherPermissionController::class, 'systemAuditReport'])->name('system.audit-report');
         Route::get('/system/permissions-report', [ClassTeacherPermissionController::class, 'permissionsReport'])->name('system.permissions-report');
+    });
+    
+    // Admin-only routes with middleware protection for financial modules
+    Route::middleware(['auth', 'role:admin'])->group(function () {
+        Route::resource('salaries', SalaryController::class);
+        Route::resource('budgets', BudgetController::class);
     });
     
     // Basic authenticated routes for students (accessible to all authenticated users)
@@ -372,6 +390,8 @@ Route::post('/api/reports/export', [ReportsController::class, 'exportPdf'])->nam
             Route::get('/', [TeacherDocumentController::class, 'index'])->name('index');
             Route::get('/create', [TeacherDocumentController::class, 'create'])->name('create');
             Route::post('/', [TeacherDocumentController::class, 'store'])->name('store');
+            Route::get('/bulk-upload', [TeacherDocumentController::class, 'bulkUpload'])->name('bulk-upload');
+            Route::post('/bulk-upload', [TeacherDocumentController::class, 'storeBulkUpload'])->name('bulk-upload.store');
             Route::get('/{document}', [TeacherDocumentController::class, 'show'])->name('show');
             Route::get('/{document}/download', [TeacherDocumentController::class, 'download'])->name('download');
             Route::delete('/{document}', [TeacherDocumentController::class, 'destroy'])->name('destroy');
@@ -380,11 +400,17 @@ Route::post('/api/reports/export', [ReportsController::class, 'exportPdf'])->nam
         // Admin routes - for managing all teacher documents
         Route::middleware(['role:admin,principal'])->group(function () {
             Route::get('/admin', [TeacherDocumentController::class, 'adminIndex'])->name('admin.index');
-            Route::patch('/{document}/approve', [TeacherDocumentController::class, 'approve'])->name('approve');
-            Route::patch('/{document}/reject', [TeacherDocumentController::class, 'reject'])->name('reject');
-            Route::post('/bulk-approve', [TeacherDocumentController::class, 'bulkApprove'])->name('bulk-approve');
-            Route::post('/bulk-reject', [TeacherDocumentController::class, 'bulkReject'])->name('bulk-reject');
-            Route::get('/expiring', [TeacherDocumentController::class, 'expiring'])->name('expiring');
+            Route::patch('/{document}/approve', [TeacherDocumentController::class, 'approve'])->name('admin.approve');
+            Route::patch('/{document}/reject', [TeacherDocumentController::class, 'reject'])->name('admin.reject');
+            Route::post('/bulk-action', [TeacherDocumentController::class, 'bulkAction'])->name('admin.bulk-action');
+            Route::get('/expiring', [TeacherDocumentController::class, 'getExpiringDocuments'])->name('admin.expiring');
+            
+            // Document Expiry Alert Routes
+            Route::get('/expiry-alerts', [TeacherDocumentController::class, 'showExpiryAlerts'])->name('expiry-alerts');
+            Route::get('/expiry-alerts/data', [TeacherDocumentController::class, 'getExpiryAlerts'])->name('expiry-alerts.data');
+            Route::post('/expiry-alerts/process', [TeacherDocumentController::class, 'processExpiryAlerts'])->name('expiry-alerts.process');
+            Route::get('/expiry-alerts/service-check', [TeacherDocumentController::class, 'checkExpiryAlertService'])->name('expiry-alerts.service-check');
+            Route::get('/expiry-alerts/teacher/{teacher}', [TeacherDocumentController::class, 'getTeacherExpiryAlerts'])->name('expiry-alerts.teacher');
         });
     });
 
@@ -399,6 +425,18 @@ Route::post('/api/reports/export', [ReportsController::class, 'exportPdf'])->nam
             Route::get('/{verification}/download', [App\Http\Controllers\StudentVerificationController::class, 'download'])->name('download');
             Route::delete('/{verification}', [App\Http\Controllers\StudentVerificationController::class, 'destroy'])->name('destroy');
             Route::get('/{verification}/status', [App\Http\Controllers\StudentVerificationController::class, 'checkStatus'])->name('status');
+    
+    // Aadhaar Verification Routes
+    Route::get('/aadhaar/verify', [App\Http\Controllers\StudentVerificationController::class, 'showAadhaarVerification'])->name('aadhaar.verify-form');
+    Route::post('/aadhaar/verify', [App\Http\Controllers\StudentVerificationController::class, 'verifyAadhaar'])->name('aadhaar.verify');
+    Route::get('/aadhaar/status/{student}', [App\Http\Controllers\StudentVerificationController::class, 'getAadhaarStatus'])->name('aadhaar.status');
+    Route::get('/aadhaar/service-check', [App\Http\Controllers\StudentVerificationController::class, 'checkAadhaarService'])->name('aadhaar.service-check');
+
+    // Birth Certificate OCR Routes
+    Route::get('/birth-certificate/ocr', [App\Http\Controllers\StudentVerificationController::class, 'showBirthCertificateOCR'])->name('birth-certificate.ocr-form');
+    Route::post('/birth-certificate/ocr', [App\Http\Controllers\StudentVerificationController::class, 'processBirthCertificateOCR'])->name('birth-certificate.ocr');
+    Route::get('/birth-certificate/status', [App\Http\Controllers\StudentVerificationController::class, 'getBirthCertificateStatus'])->name('birth-certificate.status');
+    Route::get('/birth-certificate/service-check', [App\Http\Controllers\StudentVerificationController::class, 'checkBirthCertificateService'])->name('birth-certificate.service-check');
         });
         
         // Admin routes - for managing all student document verifications
@@ -408,7 +446,29 @@ Route::post('/api/reports/export', [ReportsController::class, 'exportPdf'])->nam
             Route::patch('/{verification}/reject', [App\Http\Controllers\StudentVerificationController::class, 'reject'])->name('reject');
             Route::post('/bulk-approve', [App\Http\Controllers\StudentVerificationController::class, 'bulkApprove'])->name('bulk-approve');
             Route::post('/bulk-reject', [App\Http\Controllers\StudentVerificationController::class, 'bulkReject'])->name('bulk-reject');
-            Route::post('/{verification}/reprocess', [App\Http\Controllers\StudentVerificationController::class, 'reprocess'])->name('reprocess');
+            
+            // Bulk verification routes
+            Route::get('/bulk-verification', [App\Http\Controllers\StudentVerificationController::class, 'showBulkVerification'])->name('bulk-verification');
+            Route::post('/bulk-verification/process', [App\Http\Controllers\StudentVerificationController::class, 'processBulkVerification'])->name('bulk-verification.process');
+            Route::get('/bulk-verification/progress', [App\Http\Controllers\StudentVerificationController::class, 'getBulkVerificationProgress'])->name('bulk-verification.progress');
+            Route::post('/bulk-verification/cancel', [App\Http\Controllers\StudentVerificationController::class, 'cancelBulkVerification'])->name('bulk-verification.cancel');
+            Route::get('/bulk-verification/stats', [App\Http\Controllers\StudentVerificationController::class, 'getBulkVerificationStats'])->name('bulk-verification.stats');
+        
+        // Mismatch Resolution Routes
+        Route::get('/{verification}/analyze-mismatches', [App\Http\Controllers\StudentVerificationController::class, 'analyzeMismatches'])->name('analyze-mismatches');
+        Route::post('/{verification}/apply-resolution', [App\Http\Controllers\StudentVerificationController::class, 'applyAutomaticResolution'])->name('apply-resolution');
+        Route::get('/{verification}/mismatch-resolution', [App\Http\Controllers\StudentVerificationController::class, 'showMismatchResolution'])->name('mismatch-resolution');
+        Route::post('/batch-analyze-mismatches', [App\Http\Controllers\StudentVerificationController::class, 'batchAnalyzeMismatches'])->name('batch-analyze-mismatches');
+        Route::post('/batch-apply-resolution', [App\Http\Controllers\StudentVerificationController::class, 'batchApplyAutomaticResolution'])->name('batch-apply-resolution');
+        
+        // Verification History and Audit Trail Routes
+        Route::get('/{verification}/history', [App\Http\Controllers\StudentVerificationController::class, 'showHistory'])->name('history');
+        Route::get('/student/{student}/history', [App\Http\Controllers\StudentVerificationController::class, 'showStudentHistory'])->name('student-history');
+        Route::get('/audit-trail', [App\Http\Controllers\StudentVerificationController::class, 'getAuditTrail'])->name('audit-trail');
+        Route::get('/audit-trail/export', [App\Http\Controllers\StudentVerificationController::class, 'exportAuditTrail'])->name('audit-trail.export');
+        Route::get('/audit-trail/statistics', [App\Http\Controllers\StudentVerificationController::class, 'getAuditStatistics'])->name('audit-trail.statistics');
+        
+        Route::post('/{verification}/reprocess', [App\Http\Controllers\StudentVerificationController::class, 'reprocess'])->name('reprocess');
             Route::post('/process-pending', [App\Http\Controllers\StudentVerificationController::class, 'processPending'])->name('process-pending');
             Route::get('/statistics', [App\Http\Controllers\StudentVerificationController::class, 'getStatistics'])->name('statistics');
             Route::get('/{verification}/compare', [App\Http\Controllers\StudentVerificationController::class, 'compareData'])->name('compare');
@@ -459,6 +519,7 @@ Route::post('/api/reports/export', [ReportsController::class, 'exportPdf'])->nam
         Route::post('/', [BellTimingController::class, 'store'])->name('store')->middleware('role:admin,principal');
         Route::get('/dashboard', [BellTimingController::class, 'dashboard'])->name('dashboard');
         Route::get('/current-schedule', [BellTimingController::class, 'getCurrentSchedule'])->name('current-schedule');
+        Route::get('/enhanced-schedule', [BellTimingController::class, 'getCurrentScheduleEnhanced'])->name('enhanced-schedule');
         Route::get('/check-notification', [BellTimingController::class, 'checkBellNotification'])->name('check-notification');
         
         Route::prefix('timings')->name('timings.')->group(function () {
@@ -783,6 +844,64 @@ Route::post('/api/reports/export', [ReportsController::class, 'exportPdf'])->nam
         Route::get('/ajax/user-search', [ClassDataAuditController::class, 'searchUsers'])->name('ajax.users')
             ->middleware('permission:delegate_audit_approvals');
     });
+});
+
+// Asset Depreciation Management Routes
+Route::prefix('asset-depreciation')->name('asset-depreciation.')->middleware(['auth', 'role:admin,manager,accountant'])->group(function () {
+    // Dashboard and Overview
+    Route::get('/', [AssetDepreciationController::class, 'index'])->name('index');
+    Route::get('/dashboard', [AssetDepreciationController::class, 'dashboard'])->name('dashboard');
+    
+    // Asset Depreciation Setup
+    Route::get('/setup', [AssetDepreciationController::class, 'setup'])->name('setup');
+    Route::post('/setup', [AssetDepreciationController::class, 'store'])->name('store');
+    Route::get('/{assetDepreciation}/edit', [AssetDepreciationController::class, 'edit'])->name('edit');
+    Route::put('/{assetDepreciation}', [AssetDepreciationController::class, 'update'])->name('update');
+    Route::delete('/{assetDepreciation}', [AssetDepreciationController::class, 'destroy'])->name('destroy');
+    
+    // Depreciation Calculations
+    Route::post('/run-calculations', [AssetDepreciationController::class, 'runCalculations'])->name('run-calculations');
+    Route::post('/{assetDepreciation}/calculate', [AssetDepreciationController::class, 'calculateDepreciation'])->name('calculate');
+    Route::get('/{assetDepreciation}/schedule', [AssetDepreciationController::class, 'generateSchedule'])->name('schedule');
+    
+    // Manual Entries and Adjustments
+    Route::post('/{assetDepreciation}/manual-entry', [AssetDepreciationController::class, 'createManualEntry'])->name('manual-entry');
+    Route::get('/{assetDepreciation}/history', [AssetDepreciationController::class, 'history'])->name('history');
+    
+    // Reports and Analytics
+    Route::get('/reports', [AssetDepreciationController::class, 'reports'])->name('reports');
+    Route::get('/export', [AssetDepreciationController::class, 'export'])->name('export');
+    Route::get('/requires-attention', [AssetDepreciationController::class, 'requiresAttention'])->name('requires-attention');
+    
+    // Asset Details
+    Route::get('/{assetDepreciation}', [AssetDepreciationController::class, 'show'])->name('show');
+    
+    // AJAX Endpoints
+    Route::get('/available-assets', [AssetDepreciationController::class, 'availableAssets'])->name('available-assets');
+    Route::get('/methods', [AssetDepreciationController::class, 'methods'])->name('methods');
+});
+
+// Budget vs Actual Reports Routes
+Route::prefix('reports/budget-vs-actual')->name('reports.budget-vs-actual.')->middleware(['auth', 'role:admin,manager,accountant'])->group(function () {
+    Route::get('/', [BudgetReportController::class, 'index'])->name('index');
+    Route::get('/dashboard', [BudgetReportController::class, 'dashboard'])->name('dashboard');
+    Route::get('/summary', [BudgetReportController::class, 'summary'])->name('summary');
+    Route::get('/monthly-comparison', [BudgetReportController::class, 'monthlyComparison'])->name('monthly-comparison');
+    Route::get('/variance-analysis', [BudgetReportController::class, 'varianceAnalysis'])->name('variance-analysis');
+    Route::get('/department-performance', [BudgetReportController::class, 'departmentPerformance'])->name('department-performance');
+    Route::get('/trend-analysis', [BudgetReportController::class, 'trendAnalysis'])->name('trend-analysis');
+    Route::get('/risk-indicators', [BudgetReportController::class, 'riskIndicators'])->name('risk-indicators');
+    Route::post('/generate-monthly', [BudgetReportController::class, 'generateMonthlyReport'])->name('generate-monthly');
+    Route::get('/export', [BudgetReportController::class, 'export'])->name('export');
+    Route::get('/quick-stats', [BudgetReportController::class, 'quickStats'])->name('quick-stats');
+    Route::get('/departments', [BudgetReportController::class, 'departments'])->name('departments');
+    Route::get('/years', [BudgetReportController::class, 'years'])->name('years');
+    
+    // Report Management
+    Route::get('/reports', [BudgetReportController::class, 'reports'])->name('reports');
+    Route::get('/reports/{report}', [BudgetReportController::class, 'showReport'])->name('reports.show');
+    Route::put('/reports/{report}', [BudgetReportController::class, 'updateReport'])->name('reports.update');
+    Route::delete('/reports/{report}', [BudgetReportController::class, 'deleteReport'])->name('reports.delete');
 });
 
 

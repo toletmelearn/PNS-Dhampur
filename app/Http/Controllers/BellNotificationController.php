@@ -175,27 +175,154 @@ class BellNotificationController extends Controller
     }
 
     /**
-     * Test a notification
+     * Test notification
      */
-    public function test(BellNotification $bellNotification): JsonResponse
+    public function testNotification(Request $request)
     {
-        // This would trigger the actual notification system
-        // For now, we'll just return the notification data
+        $request->validate([
+            'id' => 'required|exists:bell_notifications,id'
+        ]);
+
+        $notification = BellNotification::findOrFail($request->id);
+        
+        // Send test push notification
+        $pushService = app(PushNotificationService::class);
+        $result = $pushService->sendEmergencyNotification(
+            $notification->title,
+            $notification->message,
+            [
+                'type' => 'test',
+                'sound' => $notification->sound_file,
+                'notification_id' => $notification->id
+            ]
+        );
+        
+        return response()->json([
+            'success' => $result['success'],
+            'message' => $result['success'] ? 'Test notification sent successfully' : 'Failed to send test notification',
+            'notification' => $notification,
+            'push_result' => $result
+        ]);
+    }
+
+    /**
+     * Get pending push notifications
+     */
+    public function getPendingPushNotifications()
+    {
+        $pushService = app(PushNotificationService::class);
+        $webNotifications = $pushService->getPendingWebNotifications();
+        $bellNotifications = BellNotification::getActiveNotifications();
         
         return response()->json([
             'success' => true,
-            'message' => 'Test notification sent successfully',
             'data' => [
-                'notification' => $bellNotification,
-                'test_time' => Carbon::now()->format('Y-m-d H:i:s'),
-                'notification_content' => [
-                    'title' => $bellNotification->title,
-                    'message' => $bellNotification->message,
-                    'type' => $bellNotification->notification_type,
-                    'priority' => $bellNotification->priority
-                ]
+                'web_notifications' => $webNotifications,
+                'bell_notifications' => $bellNotifications,
+                'total_count' => count($webNotifications) + $bellNotifications->count(),
+                'timestamp' => now()->toISOString()
             ]
         ]);
+    }
+
+    /**
+     * Subscribe to push notifications
+     */
+    public function subscribeToPush(Request $request)
+    {
+        $request->validate([
+            'endpoint' => 'required|string',
+            'keys' => 'required|array',
+            'keys.p256dh' => 'required|string',
+            'keys.auth' => 'required|string'
+        ]);
+
+        // Store subscription in session or database
+        session(['push_subscription' => $request->all()]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Successfully subscribed to push notifications'
+        ]);
+    }
+
+    /**
+     * Get real-time schedule status
+     */
+    public function getScheduleStatus()
+    {
+        $currentTime = now();
+        $currentSeason = BellTiming::getCurrentSeason();
+        $nextBell = BellTiming::getNextBell();
+        $currentSchedule = BellTiming::getCurrentSchedule();
+
+        // Find current period
+        $currentPeriod = null;
+        $nextPeriod = null;
+
+        foreach ($currentSchedule as $index => $bell) {
+            $bellTime = \Carbon\Carbon::parse($bell->time);
+            
+            if ($currentTime->greaterThanOrEqualTo($bellTime)) {
+                $currentPeriod = $bell;
+                $nextPeriod = $currentSchedule->get($index + 1);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'current_time' => $currentTime->format('H:i:s'),
+                'current_date' => $currentTime->format('Y-m-d'),
+                'current_season' => $currentSeason,
+                'current_period' => $currentPeriod,
+                'next_period' => $nextPeriod,
+                'next_bell' => $nextBell,
+                'minutes_to_next_bell' => $nextBell ? $currentTime->diffInMinutes($nextBell->time) : null,
+                'schedule' => $currentSchedule,
+                'is_school_hours' => $this->isSchoolHours($currentTime),
+                'period_progress' => $this->calculatePeriodProgress($currentPeriod, $nextPeriod, $currentTime)
+            ]
+        ]);
+    }
+
+    /**
+     * Check if current time is within school hours
+     */
+    private function isSchoolHours($time): bool
+    {
+        $hour = $time->hour;
+        $minute = $time->minute;
+        $timeInMinutes = ($hour * 60) + $minute;
+
+        // School hours: 7:00 AM to 6:00 PM
+        $schoolStart = 7 * 60; // 7:00 AM in minutes
+        $schoolEnd = 18 * 60;  // 6:00 PM in minutes
+
+        return $timeInMinutes >= $schoolStart && $timeInMinutes <= $schoolEnd;
+    }
+
+    /**
+     * Calculate period progress percentage
+     */
+    private function calculatePeriodProgress($currentPeriod, $nextPeriod, $currentTime): ?int
+    {
+        if (!$currentPeriod || !$nextPeriod) {
+            return null;
+        }
+
+        $currentPeriodTime = \Carbon\Carbon::parse($currentPeriod->time);
+        $nextPeriodTime = \Carbon\Carbon::parse($nextPeriod->time);
+
+        $totalMinutes = $currentPeriodTime->diffInMinutes($nextPeriodTime);
+        $elapsedMinutes = $currentPeriodTime->diffInMinutes($currentTime);
+
+        if ($totalMinutes <= 0) {
+            return 100;
+        }
+
+        $progress = ($elapsedMinutes / $totalMinutes) * 100;
+        return min(100, max(0, (int) $progress));
     }
 
     /**

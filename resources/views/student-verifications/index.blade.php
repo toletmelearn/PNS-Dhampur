@@ -10,9 +10,17 @@
             <h1 class="h3 mb-0 text-gray-800">My Document Verifications</h1>
             <p class="mb-0 text-muted">Track the status of your uploaded documents</p>
         </div>
-        <a href="{{ route('student-verifications.upload') }}" class="btn btn-primary">
-            <i class="fas fa-upload"></i> Upload New Document
-        </a>
+        <div class="btn-group">
+            <a href="{{ route('student-verifications.upload') }}" class="btn btn-primary">
+                <i class="fas fa-upload"></i> Upload New Document
+            </a>
+            <a href="{{ route('aadhaar.verify-form') }}" class="btn btn-info">
+                <i class="fas fa-id-card"></i> Aadhaar Verification
+            </a>
+            <a href="{{ route('birth-certificate.ocr-form') }}" class="btn btn-success">
+                <i class="fas fa-file-medical-alt"></i> Birth Certificate OCR
+            </a>
+        </div>
     </div>
 
     <!-- Statistics Cards -->

@@ -11,6 +11,9 @@
             <p class="text-muted">Manage and review student document verifications</p>
         </div>
         <div>
+            <a href="{{ route('student-verifications.bulk-verification') }}" class="btn btn-success">
+                <i class="fas fa-users-cog"></i> Bulk Verification
+            </a>
             <a href="{{ route('admin.student-verifications.create') }}" class="btn btn-primary">
                 <i class="fas fa-upload"></i> Upload Document
             </a>
@@ -290,6 +293,10 @@
                                                         onclick="rejectVerification({{ $verification->id }})" title="Reject">
                                                     <i class="fas fa-times"></i>
                                                 </button>
+                                                <a href="{{ route('student-verifications.mismatch-resolution', $verification) }}" 
+                                                   class="btn btn-sm btn-outline-warning" title="Resolve Mismatches">
+                                                    <i class="fas fa-exclamation-triangle"></i>
+                                                </a>
                                             @endif
                                             <button type="button" class="btn btn-sm btn-outline-warning" 
                                                     onclick="reprocessVerification({{ $verification->id }})" title="Reprocess">

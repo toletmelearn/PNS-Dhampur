@@ -69,7 +69,7 @@ class SRRegisterController extends Controller
         // Get filter options
         $classes = ClassModel::orderBy('name')->get();
         $subjects = Subject::orderBy('name')->get();
-        $students = Student::orderBy('name')->get();
+        $students = Student::with(['classModel', 'user'])->orderBy('name')->get();
         $academicYears = SRRegister::distinct()->pluck('academic_year')->sort()->values();
         
         return view('sr-register.index', compact('srRegisters', 'classes', 'subjects', 'students', 'academicYears'));
@@ -86,7 +86,7 @@ class SRRegisterController extends Controller
         
         $students = collect();
         if ($selectedClass) {
-            $students = Student::where('class_id', $selectedClass)->orderBy('name')->get();
+            $students = Student::with(['classModel', 'user'])->where('class_id', $selectedClass)->orderBy('name')->get();
         }
         
         return view('sr-register.create', compact('classes', 'subjects', 'students', 'selectedClass', 'selectedSubject'));

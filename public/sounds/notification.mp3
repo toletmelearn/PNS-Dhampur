@@ -1,0 +1,5 @@
+# Notification Sound File
+# This is a placeholder for the actual MP3 file
+# In production, replace this with an actual notification.mp3 audio file
+# Recommended: A gentle, pleasant notification sound (1-2 seconds duration)
+# File size should be optimized for web delivery (under 30KB recommended)

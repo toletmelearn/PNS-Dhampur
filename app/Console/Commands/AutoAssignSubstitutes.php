@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\TeacherSubstitution;
+use App\Services\AutoTeacherAssignmentService;
+use App\Services\ConflictResolutionService;
 use Carbon\Carbon;
 
 class AutoAssignSubstitutes extends Command
@@ -16,14 +18,28 @@ class AutoAssignSubstitutes extends Command
     protected $signature = 'substitutes:auto-assign 
                            {--date= : Specific date to process (Y-m-d format)}
                            {--emergency : Only process emergency requests}
-                           {--dry-run : Show what would be assigned without actually assigning}';
+                           {--dry-run : Show what would be assigned without actually assigning}
+                           {--priority= : Priority criteria (subject_expertise, availability, workload, performance)}
+                           {--resolve-conflicts : Also run conflict resolution}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Automatically assign substitute teachers to pending substitution requests';
+    protected $description = 'Automatically assign substitute teachers to pending substitution requests and resolve conflicts';
+
+    protected AutoTeacherAssignmentService $assignmentService;
+    protected ConflictResolutionService $conflictService;
+
+    public function __construct(
+        AutoTeacherAssignmentService $assignmentService,
+        ConflictResolutionService $conflictService
+    ) {
+        parent::__construct();
+        $this->assignmentService = $assignmentService;
+        $this->conflictService = $conflictService;
+    }
 
     /**
      * Execute the console command.
@@ -33,8 +49,10 @@ class AutoAssignSubstitutes extends Command
         $date = $this->option('date') ? Carbon::parse($this->option('date')) : Carbon::today();
         $emergencyOnly = $this->option('emergency');
         $dryRun = $this->option('dry-run');
+        $priority = $this->option('priority') ?? 'subject_expertise';
+        $resolveConflicts = $this->option('resolve-conflicts');
 
-        $this->info("Processing substitution requests for: {$date->format('Y-m-d')}");
+        $this->info("Starting automatic substitute assignment for {$date->format('Y-m-d')}");
         
         if ($emergencyOnly) {
             $this->info("Processing emergency requests only");
@@ -44,9 +62,152 @@ class AutoAssignSubstitutes extends Command
             $this->warn("DRY RUN MODE - No actual assignments will be made");
         }
 
-        // Get pending substitution requests
-        $query = TeacherSubstitution::pending()
-                                   ->whereDate('date', $date);
+        // Step 1: Resolve conflicts if requested
+        if ($resolveConflicts) {
+            $this->info('Resolving conflicts for multiple absences...');
+            $conflictResults = $this->conflictService->resolveMultipleAbsenceConflicts($date);
+            $this->displayConflictResults($conflictResults);
+        }
+
+        // Step 2: Auto-assign substitutes using the new service
+        $this->info('Running automatic substitute assignment...');
+        $assignmentResults = $this->assignmentService->autoAssignSubstitutes($priority, $dryRun);
+        $this->displayAssignmentResults($assignmentResults);
+
+        // Step 3: Show statistics
+        if (!$dryRun) {
+            $this->info('Generating assignment statistics...');
+            $stats = $this->assignmentService->getAssignmentStats($date, $date);
+            $this->displayStatistics($stats);
+        }
+
+        $this->info('Automatic substitute assignment completed.');
+        
+        return Command::SUCCESS;
+    }
+
+    /**
+     * Display conflict resolution results
+     */
+    private function displayConflictResults(array $results): void
+    {
+        $this->newLine();
+        $this->info('=== CONFLICT RESOLUTION RESULTS ===');
+        
+        $this->table([
+            'Metric', 'Value'
+        ], [
+            ['Date', $results['date']],
+            ['Total Conflicts', $results['total_conflicts']],
+            ['Resolved Conflicts', $results['resolved_conflicts']],
+            ['Unresolved Conflicts', $results['unresolved_conflicts']],
+            ['Strategies Used', implode(', ', $results['strategies_used'])]
+        ]);
+
+        if (!empty($results['conflicts'])) {
+            $this->newLine();
+            $this->info('Conflict Details:');
+            
+            foreach ($results['conflicts'] as $conflict) {
+                $status = $conflict['resolution']['success'] ? '✅ RESOLVED' : '❌ UNRESOLVED';
+                $this->line("Group {$conflict['group_id']}: {$conflict['requests_count']} requests - {$status}");
+                
+                if ($conflict['resolution']['success']) {
+                    $strategies = implode(', ', $conflict['resolution']['strategies_used']);
+                    $this->line("  Strategies: {$strategies}");
+                }
+            }
+        }
+    }
+
+    /**
+     * Display assignment results
+     */
+    private function displayAssignmentResults(array $results): void
+    {
+        $this->newLine();
+        $this->info('=== ASSIGNMENT RESULTS ===');
+        
+        $this->table([
+            'Metric', 'Value'
+        ], [
+            ['Assigned', $results['assigned']],
+            ['Failed', $results['failed']],
+            ['Conflicts Resolved', $results['conflicts_resolved']],
+            ['Success Rate', $results['assigned'] + $results['failed'] > 0 
+                ? round(($results['assigned'] / ($results['assigned'] + $results['failed'])) * 100, 2) . '%' 
+                : '0%']
+        ]);
+
+        // Show successful assignments
+        if (!empty($results['assignments'])) {
+            $this->newLine();
+            $this->info('Successful Assignments:');
+            
+            $assignmentTable = [];
+            foreach ($results['assignments'] as $assignment) {
+                $assignmentTable[] = [
+                    $assignment['request_id'],
+                    $assignment['substitute_teacher_name'] ?? 'N/A',
+                    $assignment['assignment_score'] ?? 'N/A',
+                    $assignment['dry_run'] ? 'DRY RUN' : 'ASSIGNED'
+                ];
+            }
+            
+            $this->table([
+                'Request ID', 'Substitute Teacher', 'Score', 'Status'
+            ], $assignmentTable);
+        }
+
+        // Show failures
+        if (!empty($results['failures'])) {
+            $this->newLine();
+            $this->error('Failed Assignments:');
+            
+            $failureTable = [];
+            foreach ($results['failures'] as $failure) {
+                $failureTable[] = [
+                    $failure['request_id'],
+                    $failure['reason']
+                ];
+            }
+            
+            $this->table([
+                'Request ID', 'Reason'
+            ], $failureTable);
+        }
+    }
+
+    /**
+     * Display assignment statistics
+     */
+    private function displayStatistics(array $stats): void
+    {
+        $this->newLine();
+        $this->info('=== ASSIGNMENT STATISTICS ===');
+        
+        $this->table([
+            'Metric', 'Value'
+        ], [
+            ['Total Requests', $stats['total_requests']],
+            ['Auto Assigned', $stats['auto_assigned']],
+            ['Manual Assigned', $stats['manual_assigned']],
+            ['Pending', $stats['pending']],
+            ['Completed', $stats['completed']],
+            ['Cancelled', $stats['cancelled']],
+            ['Emergency Requests', $stats['emergency_requests']],
+            ['Average Assignment Time (minutes)', round($stats['average_assignment_time'] ?? 0, 2)],
+            ['Success Rate', round($stats['success_rate'], 2) . '%']
+        ]);
+    }
+
+    /**
+     * Process pending substitution requests
+     */
+    private function processPendingRequests($date, $emergencyOnly, $dryRun, $resolveConflicts)
+    {
+        $query = TeacherSubstitution::where('status', 'pending')
+                                   ->where('date', $date);
 
         if ($emergencyOnly) {
             $query->where('is_emergency', true);

@@ -86,6 +86,11 @@ class InventoryItem extends Model
                     ->orderBy('scheduled_date');
     }
 
+    public function assetDepreciation()
+    {
+        return $this->hasOne(AssetDepreciation::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {

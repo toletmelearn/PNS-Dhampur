@@ -42,9 +42,17 @@ class Kernel extends ConsoleKernel
         $schedule->command('notifications:send-reminders --type=scheduled')
                  ->everyFifteenMinutes();
 
+        // Process substitute notifications every 5 minutes
+        $schedule->command('substitute:process-notifications')
+                 ->everyFiveMinutes();
+
         // Clean up expired notifications daily at midnight
         $schedule->command('notifications:send-reminders --type=cleanup')
                  ->dailyAt('00:00');
+
+        // Check for season switching daily at 6 AM
+        $schedule->command('bell:check-season-switch')
+                 ->dailyAt('06:00');
     }
 
     /**

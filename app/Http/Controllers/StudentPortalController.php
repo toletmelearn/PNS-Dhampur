@@ -22,7 +22,7 @@ class StudentPortalController extends Controller
      */
     public function dashboard()
     {
-        $student = Student::where('user_id', Auth::id())->first();
+        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
         
         if (!$student) {
             abort(403, 'Student profile not found.');
@@ -86,7 +86,7 @@ class StudentPortalController extends Controller
      */
     public function assignments(Request $request)
     {
-        $student = Student::where('user_id', Auth::id())->first();
+        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
         
         if (!$student) {
             abort(403, 'Student profile not found.');
@@ -162,7 +162,7 @@ class StudentPortalController extends Controller
      */
     public function showAssignment($id)
     {
-        $student = Student::where('user_id', Auth::id())->first();
+        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
         
         if (!$student) {
             abort(403, 'Student profile not found.');
@@ -186,7 +186,7 @@ class StudentPortalController extends Controller
      */
     public function submitAssignment(Request $request, $id)
     {
-        $student = Student::where('user_id', Auth::id())->first();
+        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
         
         if (!$student) {
             return response()->json([
@@ -225,7 +225,7 @@ class StudentPortalController extends Controller
             $rules['submission_text'] = 'required|string';
         }
         if ($assignment->submission_type === 'file' || $assignment->submission_type === 'both') {
-            $rules['attachment'] = 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png,gif,zip,rar|max:10240';
+            $rules['attachment'] = 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120'; // Removed potentially unsafe formats
         }
 
         $validator = Validator::make($request->all(), $rules);
@@ -288,7 +288,7 @@ class StudentPortalController extends Controller
      */
     public function saveDraft(Request $request, $id)
     {
-        $student = Student::where('user_id', Auth::id())->first();
+        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
         
         if (!$student) {
             return response()->json([
@@ -300,6 +300,20 @@ class StudentPortalController extends Controller
         $assignment = Assignment::published()
             ->forClass($student->class_id)
             ->findOrFail($id);
+
+        // Validate file upload if present
+        if ($request->hasFile('attachment')) {
+            $validator = Validator::make($request->all(), [
+                'attachment' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+        }
 
         try {
             $data = [
@@ -346,7 +360,7 @@ class StudentPortalController extends Controller
      */
     public function downloadSubmissionAttachment($submissionId)
     {
-        $student = Student::where('user_id', Auth::id())->first();
+        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
         
         if (!$student) {
             abort(403, 'Student profile not found.');
@@ -370,7 +384,7 @@ class StudentPortalController extends Controller
      */
     public function syllabi(Request $request)
     {
-        $student = Student::where('user_id', Auth::id())->first();
+        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
         
         if (!$student) {
             abort(403, 'Student profile not found.');
@@ -415,7 +429,7 @@ class StudentPortalController extends Controller
      */
     public function showSyllabus($id)
     {
-        $student = Student::where('user_id', Auth::id())->first();
+        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
         
         if (!$student) {
             abort(403, 'Student profile not found.');
@@ -445,7 +459,7 @@ class StudentPortalController extends Controller
      */
     public function downloadSyllabus($id)
     {
-        $student = Student::where('user_id', Auth::id())->first();
+        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
         
         if (!$student) {
             abort(403, 'Student profile not found.');
@@ -481,7 +495,7 @@ class StudentPortalController extends Controller
      */
     public function getUpcomingDeadlines()
     {
-        $student = Student::where('user_id', Auth::id())->first();
+        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
         
         if (!$student) {
             return response()->json([
@@ -516,7 +530,7 @@ class StudentPortalController extends Controller
      */
     public function getProgressSummary()
     {
-        $student = Student::where('user_id', Auth::id())->first();
+        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
         
         if (!$student) {
             return response()->json([

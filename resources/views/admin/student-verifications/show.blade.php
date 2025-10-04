@@ -24,6 +24,9 @@
             <a href="{{ route('admin.student-verifications.download', $verification) }}" class="btn btn-info">
                 <i class="fas fa-download"></i> Download
             </a>
+            <a href="{{ route('student-verifications.history', $verification) }}" class="btn btn-outline-primary">
+                <i class="fas fa-history"></i> View History
+            </a>
             @if(in_array($verification->verification_status, ['manual_review', 'pending']))
                 <button type="button" class="btn btn-success" onclick="approveVerification()">
                     <i class="fas fa-check"></i> Approve
