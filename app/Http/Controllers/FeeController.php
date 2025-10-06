@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Fee;
 use App\Models\Student;
-use App\Models\ClassModel;
-use App\Models\FeePayment;
+use App\Models\Payment;
+use App\Services\UserFriendlyErrorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class FeeController extends Controller
 {
@@ -133,13 +134,13 @@ class FeeController extends Controller
             DB::rollBack();
             
             if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error creating fee record: ' . $e->getMessage()
-                ], 500);
+                return response()->json(
+                    UserFriendlyErrorService::jsonErrorResponse($e, 'fee_create'),
+                    500
+                );
             }
 
-            return back()->withInput()->withErrors(['error' => 'Error creating fee record: ' . $e->getMessage()]);
+            return back()->withInput()->withErrors(['error' => UserFriendlyErrorService::getErrorMessage($e, 'fee_create')]);
         }
     }
 
@@ -223,13 +224,13 @@ class FeeController extends Controller
             DB::rollBack();
             
             if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error updating fee record: ' . $e->getMessage()
-                ], 500);
+                return response()->json(
+                    UserFriendlyErrorService::jsonErrorResponse($e, 'fee_update'),
+                    500
+                );
             }
 
-            return back()->withInput()->withErrors(['error' => 'Error updating fee record: ' . $e->getMessage()]);
+            return back()->withInput()->withErrors(['error' => UserFriendlyErrorService::getErrorMessage($e, 'fee_update')]);
         }
     }
 
@@ -259,13 +260,13 @@ class FeeController extends Controller
 
         } catch (\Exception $e) {
             if (request()->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Error deleting fee record: ' . $e->getMessage()
-                ], 500);
+                return response()->json(
+                    UserFriendlyErrorService::jsonErrorResponse($e, 'fee_delete'),
+                    500
+                );
             }
 
-            return back()->withErrors(['error' => 'Error deleting fee record: ' . $e->getMessage()]);
+            return back()->withErrors(['error' => UserFriendlyErrorService::getErrorMessage($e, 'fee_delete')]);
         }
     }
 
@@ -337,10 +338,10 @@ class FeeController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Error recording payment: ' . $e->getMessage()
-            ], 500);
+            return response()->json(
+                UserFriendlyErrorService::jsonErrorResponse($e, 'payment_record'),
+                500
+            );
         }
     }
 
@@ -395,9 +396,16 @@ class FeeController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             
+            Log::error('Error creating bulk fees', [
+                'class_id' => $request->class_id ?? null,
+                'fee_type' => $request->fee_type ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Error creating bulk fees: ' . $e->getMessage()
+                'message' => UserFriendlyErrorService::getErrorMessage($e, 'general')
             ], 500);
         }
     }

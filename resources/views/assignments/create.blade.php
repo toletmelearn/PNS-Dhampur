@@ -252,20 +252,26 @@
                     <div class="card-body">
                         <div class="mb-3">
                             <label for="attachment" class="form-label">Upload File</label>
-                            <input type="file" class="form-control @error('attachment') is-invalid @enderror" 
-                                   id="attachment" name="attachment" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.rar">
-                            <small class="text-muted">
-                                Supported formats: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, ZIP, RAR (Max: 10MB)
-                            </small>
+                            <div class="drop-zone" 
+                                 data-max-size="{{ config('fileupload.max_size', 10485760) }}"
+                                 data-accept="{{ config('fileupload.allowed_types.documents', '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.rar') }}">
+                                <input type="file" 
+                                       class="drop-zone-input @error('attachment') is-invalid @enderror" 
+                                       id="attachment" 
+                                       name="attachment" 
+                                       accept="{{ config('fileupload.allowed_types.documents', '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.rar') }}">
+                                <div class="drop-zone-content">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <p>Drag and drop your file here or <span class="browse-link">browse</span></p>
+                                    <small class="text-muted">
+                                        Supported formats: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX, ZIP, RAR (Max: {{ number_format(config('fileupload.max_size', 10485760) / 1048576, 0) }}MB)
+                                    </small>
+                                </div>
+                                <div class="file-preview"></div>
+                            </div>
                             @error('attachment')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                        </div>
-                        <div id="filePreview" class="mt-3" style="display: none;">
-                            <div class="alert alert-info">
-                                <i class="fas fa-file"></i> <span id="fileName"></span>
-                                <button type="button" class="btn-close float-end" onclick="removeFile()"></button>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -480,6 +486,7 @@
 @endsection
 
 @push('styles')
+<link href="{{ asset('css/file-upload-enhanced.css') }}" rel="stylesheet">
 <style>
 .form-check-label strong {
     color: #495057;
@@ -491,10 +498,6 @@
 
 .btn-outline-info:hover {
     color: #fff;
-}
-
-#filePreview .alert {
-    margin-bottom: 0;
 }
 
 .list-unstyled li {
@@ -510,17 +513,17 @@
 @endpush
 
 @push('scripts')
+<script src="{{ asset('js/file-upload-enhanced.js') }}"></script>
 <script>
 $(document).ready(function() {
-    // Handle file upload preview
-    $('#attachment').change(function() {
-        const file = this.files[0];
-        if (file) {
-            $('#fileName').text(file.name);
-            $('#filePreview').show();
-        } else {
-            $('#filePreview').hide();
-        }
+    // Initialize enhanced file upload for attachment
+    const attachmentUploader = new EnhancedFileUpload({
+        maxFileSize: {{ config('fileupload.max_size', 10485760) }},
+        allowedTypes: '{{ config('fileupload.allowed_types.documents', '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.zip,.rar') }}'.split(','),
+        dropZone: document.querySelector('#attachment').closest('.drop-zone'),
+        fileInput: document.querySelector('#attachment'),
+        previewContainer: document.querySelector('#attachment').closest('.drop-zone').querySelector('.file-preview'),
+        autoUpload: false
     });
 
     // Handle late submission checkbox
@@ -609,11 +612,6 @@ $(document).ready(function() {
         }
     });
 });
-
-function removeFile() {
-    $('#attachment').val('');
-    $('#filePreview').hide();
-}
 
 function previewAssignment() {
     // Collect form data

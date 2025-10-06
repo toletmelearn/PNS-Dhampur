@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\SalaryStructure;
 use App\Models\PayrollDeduction;
 use App\Services\SalaryCalculationService;
+use App\Services\UserFriendlyErrorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -157,12 +158,13 @@ class PayrollController extends Controller
             Log::error('Salary calculation failed', [
                 'employee_id' => $employee->id,
                 'period' => $period->format('Y-m'),
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to calculate salary: ' . $e->getMessage()
+                'message' => UserFriendlyErrorService::getErrorMessage($e, 'general')
             ], 500);
         }
     }
@@ -193,12 +195,13 @@ class PayrollController extends Controller
             Log::error('Bulk payroll processing failed', [
                 'period' => $period->format('Y-m'),
                 'employee_ids' => $employeeIds,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to process bulk payroll: ' . $e->getMessage()
+                'message' => UserFriendlyErrorService::getErrorMessage($e, 'general')
             ], 500);
         }
     }
@@ -389,12 +392,13 @@ class PayrollController extends Controller
             DB::rollBack();
             Log::error('Salary structure creation failed', [
                 'user_id' => $request->user_id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create salary structure: ' . $e->getMessage()
+                'message' => UserFriendlyErrorService::getErrorMessage($e, 'general')
             ], 500);
         }
     }
@@ -538,12 +542,13 @@ class PayrollController extends Controller
             Log::error('Salary validation failed', [
                 'employee_id' => $employee->id,
                 'period' => $period->format('Y-m'),
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to validate salary calculation: ' . $e->getMessage()
+                'message' => UserFriendlyErrorService::getErrorMessage($e, 'general')
             ], 500);
         }
     }

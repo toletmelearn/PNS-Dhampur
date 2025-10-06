@@ -22,6 +22,9 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
         \App\Http\Middleware\SecurityHeadersMiddleware::class,
+        \App\Http\Middleware\AuditMiddleware::class,
+        \App\Http\Middleware\PerformanceTrackingMiddleware::class,
+        \App\Http\Middleware\UserActivityMiddleware::class,
     ];
 
     /**
@@ -72,6 +75,14 @@ class Kernel extends HttpKernel
         'permission' => \App\Http\Middleware\PermissionMiddleware::class,
         'attendance.security' => \App\Http\Middleware\AttendanceSecurityMiddleware::class,
         'rate.limit' => \App\Http\Middleware\RateLimitMiddleware::class,
+        'login.rate.limit' => \App\Http\Middleware\LoginRateLimitMiddleware::class,
+        'form.throttle' => \App\Http\Middleware\FormSubmissionThrottleMiddleware::class,
+        'download.rate.limit' => \App\Http\Middleware\DownloadRateLimitMiddleware::class,
+        'api.rate.limit' => \App\Http\Middleware\ApiRateLimitMiddleware::class,
         'external.integration' => \App\Http\Middleware\ExternalIntegrationMiddleware::class,
+        'password.expiration' => \App\Http\Middleware\CheckPasswordExpiration::class,
+        'account.lockout' => \App\Http\Middleware\CheckAccountLockout::class,
+        'session.timeout' => \App\Http\Middleware\RoleBasedSessionTimeout::class,
+        'session.security' => \App\Http\Middleware\SecureSessionConfig::class,
     ];
 }

@@ -29,13 +29,14 @@ return [
     | to be allowed to remain idle before it expires. If you want them
     | to immediately expire on the browser closing, set that option.
     |
-    | For security, we set a shorter session lifetime for attendance system.
+    | For security, we use role-based session lifetimes. This default value
+    | is overridden by middleware based on user roles.
     |
     */
 
-    'lifetime' => env('SESSION_LIFETIME', 60), // Reduced from 120 to 60 minutes for security
+    'lifetime' => env('SESSION_LIFETIME', 30), // Default 30 minutes, overridden by role-based middleware
 
-    'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', true), // Force session expiry on browser close
+    'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', true), // Default true for security, can be overridden by role
 
     /*
     |--------------------------------------------------------------------------

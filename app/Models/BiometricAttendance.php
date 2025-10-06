@@ -27,7 +27,8 @@ class BiometricAttendance extends Model
         'check_out_location',
         'absence_reason',
         'marked_by',
-        'notes'
+        'notes',
+        'import_source'
     ];
 
     protected $casts = [

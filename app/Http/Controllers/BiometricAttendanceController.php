@@ -6,11 +6,14 @@ use App\Models\BiometricAttendance;
 use App\Models\Teacher;
 use App\Models\AttendanceAnalytics;
 use App\Models\AttendanceRegularization;
+use App\Services\UserFriendlyErrorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Exception;
 
 class BiometricAttendanceController extends Controller
 {
@@ -109,11 +112,9 @@ class BiometricAttendanceController extends Controller
                 ]
             ]);
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Check-in failed: ' . $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            Log::error('Biometric check-in error: ' . $e->getTraceAsString());
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'biometric_checkin');
         }
     }
 
@@ -184,11 +185,9 @@ class BiometricAttendanceController extends Controller
                 ]
             ]);
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Check-out failed: ' . $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            Log::error('Biometric check-out error: ' . $e->getTraceAsString());
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'biometric_checkout');
         }
     }
 
@@ -246,11 +245,9 @@ class BiometricAttendanceController extends Controller
                 ]
             ]);
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to mark absent: ' . $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            Log::error('Mark absent error: ' . $e->getTraceAsString());
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'attendance_mark');
         }
     }
 
@@ -288,11 +285,9 @@ class BiometricAttendanceController extends Controller
                 'data' => array_merge($data, ['status' => $status])
             ]);
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get teacher status: ' . $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            Log::error('Get teacher status error: ' . $e->getTraceAsString());
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'teacher_fetch');
         }
     }
 
@@ -459,11 +454,9 @@ class BiometricAttendanceController extends Controller
                 'data' => $results
             ]);
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Bulk check-in failed: ' . $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            Log::error('Bulk check-in error: ' . $e->getTraceAsString());
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'biometric_checkin');
         }
     }
 
@@ -510,7 +503,9 @@ class BiometricAttendanceController extends Controller
                     $checkOutTime = $row[3] ? Carbon::createFromFormat($timeFormat, trim($row[3])) : null;
                     
                     // Find teacher by employee ID
-                    $teacher = Teacher::where('employee_id', $employeeId)->first();
+                    $teacher = Teacher::whereHas('user', function ($query) use ($employeeId) {
+            $query->where('employee_id', $employeeId);
+        })->first();
                     if (!$teacher) {
                         $errors[] = "Row " . ($index + 2) . ": Teacher not found for employee ID: $employeeId";
                         continue;
@@ -557,12 +552,10 @@ class BiometricAttendanceController extends Controller
                 ]
             ]);
             
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollback();
-            return response()->json([
-                'success' => false,
-                'message' => 'CSV import failed: ' . $e->getMessage()
-            ], 500);
+            Log::error('CSV import error: ' . $e->getTraceAsString());
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'import_data');
         }
     }
 
@@ -602,11 +595,9 @@ class BiometricAttendanceController extends Controller
                 ]
             ]);
             
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get analytics dashboard: ' . $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            Log::error('Analytics dashboard error: ' . $e->getTraceAsString());
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'report_generate');
         }
     }
 
@@ -626,11 +617,9 @@ class BiometricAttendanceController extends Controller
                 'data' => $result
             ]);
             
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to calculate analytics: ' . $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            Log::error('Analytics calculation error: ' . $e->getTraceAsString());
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'report_generate');
         }
     }
 
@@ -713,11 +702,9 @@ class BiometricAttendanceController extends Controller
                 'data' => $regularization->load(['teacher', 'biometricAttendance'])
             ]);
             
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create regularization request: ' . $e->getMessage()
-            ], 500);
+        } catch (Exception $e) {
+            Log::error('Regularization request error: ' . $e->getTraceAsString());
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'general');
         }
     }
 

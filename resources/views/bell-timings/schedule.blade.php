@@ -289,8 +289,22 @@
 @endsection
 
 @section('scripts')
+<!-- Bell Timing Scripts -->
+<script src="{{ asset('js/sound-manager.js') }}"></script>
+<script src="{{ asset('js/bell-notifications.js') }}"></script>
+
 <script>
+// Initialize sound manager and notification system
+let soundManager;
+let bellNotificationSystem;
+
 $(document).ready(function() {
+    // Initialize sound manager
+    soundManager = new SoundManager();
+    
+    // Initialize bell notification system
+    bellNotificationSystem = new BellNotificationSystem();
+    
     // Update current time every second
     setInterval(updateCurrentTime, 1000);
     
@@ -373,12 +387,41 @@ function refreshSchedule() {
                 if (response.data.remaining_time) {
                     $('#remainingTime').text(response.data.remaining_time + ' min');
                 }
+                
+                // Check for period changes and trigger notifications
+                if (response.data.period_changed) {
+                    playBellSound();
+                    sendBrowserNotification(response.data.current_period);
+                }
             }
         },
         error: function(xhr) {
             console.error('Error refreshing schedule');
         }
     });
+}
+
+// Bell sound function implementation
+function playBellSound() {
+    if (soundManager) {
+        soundManager.playBellSound();
+    } else {
+        console.warn('Sound manager not initialized');
+    }
+}
+
+// Browser notification function implementation
+function sendBrowserNotification(periodData) {
+    if (bellNotificationSystem) {
+        const title = 'Bell Timing Alert';
+        const message = periodData ? 
+            `${periodData.period_name} has started (${periodData.start_time} - ${periodData.end_time})` :
+            'Period change notification';
+        
+        bellNotificationSystem.showNotification(title, message);
+    } else {
+        console.warn('Bell notification system not initialized');
+    }
 }
 
 function viewPeriodDetails(periodId) {

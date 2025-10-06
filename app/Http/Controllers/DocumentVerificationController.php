@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\DocumentVerification;
 use App\Models\Student;
+use App\Services\UserFriendlyErrorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
+use Exception;
 
 class DocumentVerificationController extends Controller
 {
@@ -118,8 +121,15 @@ class DocumentVerificationController extends Controller
                 ->with('success', 'Document uploaded successfully and is pending verification.');
 
         } catch (\Exception $e) {
+            Log::error('Failed to upload document', [
+                'student_id' => $request->student_id,
+                'document_type' => $request->document_type,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Failed to upload document: ' . $e->getMessage())
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'))
                 ->withInput();
         }
     }
@@ -205,8 +215,15 @@ class DocumentVerificationController extends Controller
                 ->with('success', 'Document updated successfully.');
 
         } catch (\Exception $e) {
+            Log::error('Failed to update document', [
+                'document_id' => $documentVerification->id,
+                'student_id' => $documentVerification->student_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Failed to update document: ' . $e->getMessage())
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'))
                 ->withInput();
         }
     }
@@ -228,8 +245,16 @@ class DocumentVerificationController extends Controller
                 ->with('success', 'Document deleted successfully.');
 
         } catch (\Exception $e) {
+            Log::error('Failed to delete document', [
+                'document_id' => $documentVerification->id,
+                'student_id' => $documentVerification->student_id,
+                'file_path' => $documentVerification->file_path,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Failed to delete document: ' . $e->getMessage());
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'));
         }
     }
 
@@ -253,8 +278,16 @@ class DocumentVerificationController extends Controller
                 ->with('success', 'Document verified successfully.');
 
         } catch (\Exception $e) {
+            Log::error('Failed to verify document', [
+                'document_id' => $documentVerification->id,
+                'student_id' => $documentVerification->student_id,
+                'verifier_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Failed to verify document: ' . $e->getMessage());
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'));
         }
     }
 
@@ -278,8 +311,16 @@ class DocumentVerificationController extends Controller
                 ->with('success', 'Document rejected with notes.');
 
         } catch (\Exception $e) {
+            Log::error('Failed to reject document', [
+                'document_id' => $documentVerification->id,
+                'student_id' => $documentVerification->student_id,
+                'rejector_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Failed to reject document: ' . $e->getMessage());
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'));
         }
     }
 
@@ -346,8 +387,16 @@ class DocumentVerificationController extends Controller
             return redirect()->back()->with('success', $message);
 
         } catch (\Exception $e) {
+            Log::error('Failed to process bulk action', [
+                'action' => $request->action,
+                'document_ids' => $request->document_ids,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Failed to process bulk action: ' . $e->getMessage());
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'));
         }
     }
 }

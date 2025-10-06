@@ -22,8 +22,8 @@ return new class extends Migration
             $table->string('url')->nullable();
             
             // Auditable model information
-            $table->string('auditable_type');
-            $table->unsignedBigInteger('auditable_id');
+            $table->string('auditable_type')->nullable();
+            $table->unsignedBigInteger('auditable_id')->nullable();
             $table->string('event'); // created, updated, deleted, viewed, exported, etc.
             
             // Change tracking
@@ -32,7 +32,7 @@ return new class extends Migration
             $table->json('changes')->nullable(); // Computed differences
             
             // Educational context
-            $table->foreignId('student_id')->nullable()->constrained('students')->onDelete('set null');
+            $table->unsignedBigInteger('student_id')->nullable();
             $table->unsignedBigInteger('class_id')->nullable(); // Remove foreign key constraint for now
             $table->unsignedBigInteger('subject_id')->nullable(); // Remove foreign key constraint for now
             $table->string('academic_year', 20)->nullable();
@@ -41,10 +41,10 @@ return new class extends Migration
             // Correction and approval workflow
             $table->text('correction_reason')->nullable();
             $table->enum('status', ['normal', 'pending_approval', 'approved', 'rejected'])->default('normal');
-            $table->foreignId('approved_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->unsignedBigInteger('approved_by')->nullable();
             $table->timestamp('approved_at')->nullable();
             $table->text('approval_notes')->nullable();
-            $table->foreignId('rejected_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->unsignedBigInteger('rejected_by')->nullable();
             $table->timestamp('rejected_at')->nullable();
             $table->text('rejection_reason')->nullable();
             

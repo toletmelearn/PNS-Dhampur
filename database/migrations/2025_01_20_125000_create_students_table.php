@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('students', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id')->nullable()->unique(); // link to user if needed
-            $table->string('admission_no')->unique()->nullable();
+            $table->string('admission_no')->unique(); // Fixed: Made required (not nullable)
             $table->string('name');
             $table->string('father_name')->nullable();
             $table->string('mother_name')->nullable();
@@ -25,7 +25,7 @@ return new class extends Migration
             $table->json('meta')->nullable(); // flexible additional data (address, phone...)
             $table->timestamps();
 
-            $table->foreign('class_id')->references('id')->on('class_models')->onDelete('set null');
+            $table->foreign('class_id')->references('id')->on('class_models')->onDelete('cascade');
         });
     }
 

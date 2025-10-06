@@ -4,12 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Teacher;
 use App\Models\User;
+use App\Models\Role;
 use App\Models\ClassModel;
 use App\Models\Subject;
+use App\Services\UserFriendlyErrorService;
+use App\Rules\PasswordComplexity;
+use App\Rules\PasswordHistory;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class TeacherController extends Controller
@@ -99,11 +104,19 @@ class TeacherController extends Controller
      */
     public function store(Request $request)
     {
+        $maxDocumentSize = config('fileupload.max_file_sizes.teacher_documents', config('fileupload.max_file_sizes.document'));
+        $documentMimes = config('fileupload.allowed_file_types.teacher_documents.mimes');
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'phone' => 'nullable|string|max:20',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => [
+                'required',
+                'string',
+                'confirmed',
+                new PasswordComplexity(null, 'teacher')
+            ],
             'qualification' => 'required|string|max:500',
             'experience_years' => 'required|integer|min:0|max:50',
             'salary' => 'required|numeric|min:0',
@@ -111,7 +124,7 @@ class TeacherController extends Controller
             'address' => 'nullable|string|max:1000',
             'emergency_contact' => 'nullable|string|max:20',
             'blood_group' => 'nullable|string|max:5',
-            'documents.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'documents.*' => "nullable|file|mimes:{$documentMimes}|max:{$maxDocumentSize}",
             'subjects' => 'nullable|array',
             'subjects.*' => 'exists:subjects,id',
         ]);
@@ -123,10 +136,13 @@ class TeacherController extends Controller
             $user = User::create([
                 'name' => $validated['name'],
                 'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
                 'phone' => $validated['phone'] ?? null,
                 'status' => 'active',
+                'password' => 'temp', // Temporary password
             ]);
+
+            // Use the new updatePassword method which handles history and expiration
+            $user->updatePassword($validated['password']);
 
             // Assign teacher role
             $user->assignRole('teacher');
@@ -172,14 +188,14 @@ class TeacherController extends Controller
             DB::rollBack();
             
             if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to create teacher: ' . $e->getMessage()
-                ], 500);
+                return response()->json(
+                    UserFriendlyErrorService::jsonErrorResponse($e, 'teacher_create'),
+                    500
+                );
             }
 
             return back()->withInput()
-                        ->withErrors(['error' => 'Failed to create teacher: ' . $e->getMessage()]);
+                        ->withErrors(['error' => UserFriendlyErrorService::getErrorMessage($e, 'teacher_create')]);
         }
     }
 
@@ -220,6 +236,9 @@ class TeacherController extends Controller
     {
         $teacher = Teacher::findOrFail($id);
         
+        $maxDocumentSize = config('fileupload.max_file_sizes.teacher_documents', config('fileupload.max_file_sizes.document'));
+        $documentMimes = config('fileupload.allowed_file_types.teacher_documents.mimes');
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($teacher->user_id)],
@@ -231,7 +250,7 @@ class TeacherController extends Controller
             'address' => 'nullable|string|max:1000',
             'emergency_contact' => 'nullable|string|max:20',
             'blood_group' => 'nullable|string|max:5',
-            'documents.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+            'documents.*' => "nullable|file|mimes:{$documentMimes}|max:{$maxDocumentSize}",
             'subjects' => 'nullable|array',
             'subjects.*' => 'exists:subjects,id',
             'status' => 'required|in:active,inactive,suspended',
@@ -293,14 +312,14 @@ class TeacherController extends Controller
             DB::rollBack();
             
             if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to update teacher: ' . $e->getMessage()
-                ], 500);
+                return response()->json(
+                    UserFriendlyErrorService::jsonErrorResponse($e, 'teacher_update'),
+                    500
+                );
             }
 
             return back()->withInput()
-                        ->withErrors(['error' => 'Failed to update teacher: ' . $e->getMessage()]);
+                        ->withErrors(['error' => UserFriendlyErrorService::getErrorMessage($e, 'teacher_update')]);
         }
     }
 
@@ -344,13 +363,13 @@ class TeacherController extends Controller
             DB::rollBack();
             
             if (request()->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to deactivate teacher: ' . $e->getMessage()
-                ], 500);
+                return response()->json(
+                    UserFriendlyErrorService::jsonErrorResponse($e, 'teacher_delete'),
+                    500
+                );
             }
 
-            return back()->withErrors(['error' => 'Failed to deactivate teacher: ' . $e->getMessage()]);
+            return back()->withErrors(['error' => UserFriendlyErrorService::getErrorMessage($e, 'teacher_delete')]);
         }
     }
 

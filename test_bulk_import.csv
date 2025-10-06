@@ -1,0 +1,7 @@
+name,email,role,password,class_id,subject_id
+John Doe,john.doe@test.com,teacher,Password123,1,1
+Jane Smith,jane.smith@test.com,teacher,Password123,2,2
+Bob Johnson,bob.johnson@test.com,student,Password123,1,
+Alice Brown,alice.brown@test.com,student,Password123,2,
+Mike Wilson,mike.wilson@test.com,admin,Password123,,
+Sarah Davis,sarah.davis@test.com,teacher,Password123,3,3

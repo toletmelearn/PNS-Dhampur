@@ -2,93 +2,299 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreStudentRequest;
 use App\Models\Student;
+use App\Models\StudentDocument;
+use App\Models\StudentVerification;
+use App\Models\User;
+use App\Models\Role;
 use App\Models\ClassModel;
+use App\Models\Section;
+use App\Models\SavedSearch;
+use App\Services\AadhaarVerificationService;
+use App\Services\BirthCertificateOCRService;
+use App\Services\UserFriendlyErrorService;
+use App\Services\StudentSearchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
 
 class StudentController extends Controller
 {
-    // GET /api/students or /students
+    protected $searchService;
+
+    public function __construct(StudentSearchService $searchService)
+    {
+        $this->searchService = $searchService;
+    }
+
+    // GET /api/students or /students - Enhanced with comprehensive search
     public function index(Request $request)
     {
-        $q = Student::with('classModel'); // Load class relationship
+        try {
+            // Apply saved search if requested
+            if ($request->filled('saved_search_id')) {
+                $savedSearch = SavedSearch::find($request->saved_search_id);
+                if ($savedSearch && ($savedSearch->user_id === Auth::id() || $savedSearch->is_public)) {
+                    $request = $savedSearch->applyToRequest($request);
+                }
+            }
 
-        // optional filters: class_id, status, search by name/admission_no
-        if ($request->filled('class_id')) {
-            $q->where('class_id', $request->class_id);
+            // Get search results using the enhanced search service
+            $results = $this->searchService->search($request);
+            
+            // Get filter options for the UI
+            $filterOptions = $this->searchService->getFilterOptions();
+            
+            // Get search statistics
+            $searchStats = $this->searchService->getSearchStatistics($request);
+
+            // Return JSON for API requests
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'students' => $results,
+                    'filter_options' => $filterOptions,
+                    'search_stats' => $searchStats,
+                    'current_filters' => $request->only([
+                        'search', 'class_id', 'status', 'gender', 'age_min', 'age_max',
+                        'dob_from', 'dob_to', 'admission_from', 'admission_to',
+                        'verification_status', 'verified', 'has_aadhaar', 'has_documents',
+                        'father_name', 'mother_name', 'contact_number', 'email', 'address',
+                        'class_ids', 'academic_year', 'sort_by', 'sort_order'
+                    ])
+                ]);
+            }
+
+            // Get user's saved searches for the view
+            $savedSearches = SavedSearch::getUserRecentSearches(Auth::id(), 'student', 10);
+            $popularSearches = SavedSearch::getPopularSearches('student', 5);
+
+            return view('students.index', compact(
+                'results', 
+                'filterOptions', 
+                'searchStats', 
+                'savedSearches', 
+                'popularSearches'
+            ));
+
+        } catch (\Exception $e) {
+            Log::error('Student search failed', [
+                'error' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
+
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'error' => 'Search failed',
+                    'message' => 'An error occurred while searching students.'
+                ], 500);
+            }
+
+            return back()->with('error', 'Search failed. Please try again.');
         }
-        if ($request->filled('status')) {
-            $q->where('status', $request->status);
-        }
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $q->where(function($w) use ($search) {
-                $w->where('name', 'like', "%$search%")
-                  ->orWhere('admission_no', 'like', "%$search%")
-                  ->orWhere('aadhaar', 'like', "%$search%");
-            });
+    }
+
+    /**
+     * Advanced search with export functionality
+     */
+    public function advancedSearch(Request $request)
+    {
+        $request->validate([
+            'export_format' => 'nullable|in:csv,excel,pdf',
+            'export_fields' => 'nullable|array',
+            'export_fields.*' => 'string|in:admission_no,name,father_name,mother_name,dob,gender,aadhaar,class,status,contact_number,email,address'
+        ]);
+
+        $results = $this->searchService->search($request);
+        
+        if ($request->filled('export_format')) {
+            return $this->searchService->exportResults(
+                $results, 
+                $request->export_format, 
+                $request->export_fields ?? []
+            );
         }
 
-        $students = $q->orderBy('name')->paginate(15); // Reduced to 15 per page for better UX
+        $filterOptions = $this->searchService->getFilterOptions();
+        $searchStats = $this->searchService->getSearchStatistics($request);
 
-        // Return JSON for API requests, view for web requests
         if ($request->expectsJson() || $request->is('api/*')) {
-            return response()->json($students);
+            return response()->json([
+                'students' => $results,
+                'filter_options' => $filterOptions,
+                'search_stats' => $searchStats
+            ]);
         }
 
-        $classes = ClassModel::all();
-        return view('students.index', compact('students', 'classes'));
+        return view('students.advanced-search', compact('results', 'filterOptions', 'searchStats'));
+    }
+
+    /**
+     * Save current search as a saved search
+     */
+    public function saveSearch(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:500',
+            'is_public' => 'nullable|boolean',
+            'is_default' => 'nullable|boolean'
+        ]);
+
+        try {
+            $savedSearch = SavedSearch::createFromRequest(
+                $request, 
+                Auth::id(), 
+                $request->name, 
+                $request->description
+            );
+
+            if ($request->is_public) {
+                $savedSearch->update(['is_public' => true]);
+            }
+
+            if ($request->is_default) {
+                $savedSearch->setAsDefault();
+            }
+
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Search saved successfully',
+                    'saved_search' => $savedSearch
+                ]);
+            }
+
+            return back()->with('success', 'Search "' . $savedSearch->name . '" saved successfully.');
+
+        } catch (\Exception $e) {
+            Log::error('Failed to save search', [
+                'error' => $e->getMessage(),
+                'user_id' => Auth::id(),
+                'request' => $request->all()
+            ]);
+
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to save search'
+                ], 500);
+            }
+
+            return back()->with('error', 'Failed to save search. Please try again.');
+        }
+    }
+
+    /**
+     * Get user's saved searches
+     */
+    public function getSavedSearches(Request $request)
+    {
+        $searches = SavedSearch::forUser(Auth::id())
+                              ->byType('student')
+                              ->orderBy('last_used_at', 'desc')
+                              ->get();
+
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json($searches);
+        }
+
+        return view('students.saved-searches', compact('searches'));
+    }
+
+    /**
+     * Delete a saved search
+     */
+    public function deleteSavedSearch(Request $request, SavedSearch $savedSearch)
+    {
+        // Check if user owns the search or is admin
+        if ($savedSearch->user_id !== Auth::id() && !Auth::user()->hasRole('admin')) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['error' => 'Unauthorized'], 403);
+            }
+            return back()->with('error', 'You are not authorized to delete this search.');
+        }
+
+        $searchName = $savedSearch->name;
+        $savedSearch->delete();
+
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json(['message' => 'Search deleted successfully']);
+        }
+
+        return back()->with('success', 'Search "' . $searchName . '" deleted successfully.');
+    }
+
+    /**
+     * Get search suggestions based on partial input
+     */
+    public function getSearchSuggestions(Request $request)
+    {
+        $request->validate([
+            'query' => 'required|string|min:2|max:100',
+            'field' => 'nullable|string|in:name,admission_no,father_name,mother_name,contact_number,email'
+        ]);
+
+        $field = $request->field ?? 'name';
+        $query = $request->query;
+
+        $suggestions = Student::select($field)
+                             ->where($field, 'like', "%{$query}%")
+                             ->whereNotNull($field)
+                             ->where($field, '!=', '')
+                             ->distinct()
+                             ->limit(10)
+                             ->pluck($field)
+                             ->toArray();
+
+        return response()->json($suggestions);
+    }
+
+    /**
+     * Get filter statistics for dashboard
+     */
+    public function getFilterStats(Request $request)
+    {
+        $stats = [
+            'total_students' => Student::count(),
+            'by_status' => Student::select('status', DB::raw('count(*) as count'))
+                                 ->groupBy('status')
+                                 ->pluck('count', 'status'),
+            'by_class' => Student::join('class_models', 'students.class_id', '=', 'class_models.id')
+                                ->select('class_models.name', 'class_models.section', DB::raw('count(*) as count'))
+                                ->groupBy('class_models.id', 'class_models.name', 'class_models.section')
+                                ->get()
+                                ->map(function($item) {
+                                    return [
+                                        'class' => $item->name . ' - ' . $item->section,
+                                        'count' => $item->count
+                                    ];
+                                }),
+            'by_gender' => Student::select('gender', DB::raw('count(*) as count'))
+                                 ->whereNotNull('gender')
+                                 ->groupBy('gender')
+                                 ->pluck('count', 'gender'),
+            'verification_status' => Student::select('verification_status', DB::raw('count(*) as count'))
+                                          ->groupBy('verification_status')
+                                          ->pluck('count', 'verification_status'),
+            'recent_admissions' => Student::where('created_at', '>=', now()->subDays(30))->count(),
+            'pending_verifications' => Student::where('verification_status', 'pending')->count()
+        ];
+
+        return response()->json($stats);
     }
 
     // POST /api/students
-    public function store(Request $request)
+    public function store(StoreStudentRequest $request)
     {
         try {
-            // Enhanced validation with custom messages
-            $data = $request->validate([
-                'first_name' => 'required|string|max:100|regex:/^[a-zA-Z\s]+$/',
-                'last_name' => 'required|string|max:100|regex:/^[a-zA-Z\s]+$/',
-                'admission_no' => 'nullable|string|unique:students,admission_no|max:20',
-                'father_name' => 'nullable|string|max:255|regex:/^[a-zA-Z\s]+$/',
-                'mother_name' => 'nullable|string|max:255|regex:/^[a-zA-Z\s]+$/',
-                'date_of_birth' => 'nullable|date|before:today|after:1900-01-01',
-                'gender' => 'nullable|in:male,female,other',
-                'aadhaar' => 'nullable|string|unique:students,aadhaar|regex:/^[0-9]{12}$/',
-                'class' => 'nullable|integer|exists:class_models,id',
-                'roll_number' => 'nullable|string|max:20',
-                'contact_number' => 'nullable|string|regex:/^[\+]?[0-9\s\-\(\)]{10,15}$/',
-                'email' => 'nullable|email|unique:students,email|max:255',
-                'address' => 'nullable|string|max:500',
-                'status' => ['nullable', Rule::in(['active','inactive','left','alumni'])],
-                'meta' => 'nullable|array',
-                
-                // File validation
-                'birth_cert' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
-                'aadhaar_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
-                'other_docs.*' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
-            ], [
-                'first_name.required' => 'First name is required.',
-                'first_name.regex' => 'First name should only contain letters and spaces.',
-                'last_name.required' => 'Last name is required.',
-                'last_name.regex' => 'Last name should only contain letters and spaces.',
-                'admission_no.unique' => 'This admission number is already taken.',
-                'aadhaar.unique' => 'This Aadhaar number is already registered.',
-                'aadhaar.regex' => 'Aadhaar number must be exactly 12 digits.',
-                'date_of_birth.before' => 'Date of birth must be before today.',
-                'date_of_birth.after' => 'Please enter a valid date of birth.',
-                'class.exists' => 'Selected class does not exist.',
-                'contact_number.regex' => 'Please enter a valid contact number.',
-                'email.unique' => 'This email address is already registered.',
-                'birth_cert.mimes' => 'Birth certificate must be a PDF, JPG, JPEG, or PNG file.',
-                'birth_cert.max' => 'Birth certificate file size must not exceed 2MB.',
-                'aadhaar_file.mimes' => 'Aadhaar file must be a PDF, JPG, JPEG, or PNG file.',
-                'aadhaar_file.max' => 'Aadhaar file size must not exceed 2MB.',
-                'other_docs.*.mimes' => 'Document files must be PDF, JPG, JPEG, or PNG.',
-                'other_docs.*.max' => 'Each document file must not exceed 2MB.',
-            ]);
+            // Get validated data from the request
+            $data = $request->validated();
 
             // Generate admission number if not provided
             if (empty($data['admission_no'])) {
@@ -124,7 +330,7 @@ class StudentController extends Controller
                 try {
                     $documents['birth_cert'] = $this->storeFileSecurely($request->file('birth_cert'), 'students/documents');
                 } catch (\Exception $e) {
-                    $uploadErrors[] = 'Failed to upload birth certificate: ' . $e->getMessage();
+                    $uploadErrors[] = UserFriendlyErrorService::getErrorMessage($e, 'document_upload');
                 }
             }
 
@@ -132,7 +338,7 @@ class StudentController extends Controller
                 try {
                     $documents['aadhaar'] = $this->storeFileSecurely($request->file('aadhaar_file'), 'students/documents');
                 } catch (\Exception $e) {
-                    $uploadErrors[] = 'Failed to upload Aadhaar file: ' . $e->getMessage();
+                    $uploadErrors[] = UserFriendlyErrorService::getErrorMessage($e, 'document_upload');
                 }
             }
 
@@ -142,7 +348,7 @@ class StudentController extends Controller
                     try {
                         $other[] = $this->storeFileSecurely($file, 'students/documents');
                     } catch (\Exception $e) {
-                        $uploadErrors[] = "Failed to upload document " . ($index + 1) . ": " . $e->getMessage();
+                        $uploadErrors[] = "Document " . ($index + 1) . ": " . UserFriendlyErrorService::getErrorMessage($e, 'document_upload');
                     }
                 }
                 if (!empty($other)) {
@@ -213,14 +419,13 @@ class StudentController extends Controller
             }
 
             if ($request->expectsJson() || $request->is('api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to create student. Please try again.',
-                    'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
-                ], 500);
+                return response()->json(
+                    UserFriendlyErrorService::jsonErrorResponse($e, 'student_create'),
+                    500
+                );
             }
             
-            return back()->with('error', 'Failed to create student. Please try again.')->withInput();
+            return back()->with('error', UserFriendlyErrorService::getErrorMessage($e, 'student_create'))->withInput();
         }
     }
 
@@ -356,7 +561,8 @@ class StudentController extends Controller
     {
         // Validate file type and size
         $allowedMimes = ['pdf', 'jpg', 'jpeg', 'png'];
-        $maxSize = 2048; // 2MB in KB
+        // Update file size limit based on configuration
+            $maxSize = config('fileupload.max_file_sizes.document'); // Get from config instead of hardcoded value
         
         if (!in_array($file->getClientOriginalExtension(), $allowedMimes)) {
             throw new \Exception('Invalid file type. Only PDF, JPG, JPEG, and PNG files are allowed.');
@@ -446,5 +652,378 @@ class StudentController extends Controller
             ->get();
         
         return view('students.create', compact('classes'));
+    }
+
+    /**
+     * Bulk mark attendance for multiple students
+     */
+    public function bulkAttendance(Request $request)
+    {
+        try {
+            $request->validate([
+                'student_ids' => 'required|array|min:1',
+                'student_ids.*' => 'exists:students,id',
+                'date' => 'required|date',
+                'status' => 'required|in:present,absent,late,excused',
+                'remarks' => 'nullable|string|max:500'
+            ]);
+
+            $date = $request->date;
+            $status = $request->status;
+            $remarks = $request->remarks;
+            $studentIds = $request->student_ids;
+
+            $attendanceRecords = [];
+            $updatedCount = 0;
+
+            foreach ($studentIds as $studentId) {
+                // Check if attendance already exists for this date
+                $existingAttendance = Attendance::where('student_id', $studentId)
+                    ->where('date', $date)
+                    ->first();
+
+                if ($existingAttendance) {
+                    // Update existing record
+                    $existingAttendance->update([
+                        'status' => $status,
+                        'remarks' => $remarks,
+                        'marked_by' => auth()->id()
+                    ]);
+                    $updatedCount++;
+                } else {
+                    // Create new record
+                    $attendanceRecords[] = [
+                        'student_id' => $studentId,
+                        'date' => $date,
+                        'status' => $status,
+                        'remarks' => $remarks,
+                        'marked_by' => auth()->id(),
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ];
+                }
+            }
+
+            // Bulk insert new records
+            if (!empty($attendanceRecords)) {
+                Attendance::insert($attendanceRecords);
+            }
+
+            $totalProcessed = count($attendanceRecords) + $updatedCount;
+
+            \Log::info('Bulk attendance marked', [
+                'date' => $date,
+                'status' => $status,
+                'students_processed' => $totalProcessed,
+                'marked_by' => auth()->id()
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Attendance marked for {$totalProcessed} students",
+                    'processed_count' => $totalProcessed
+                ]);
+            }
+
+            return back()->with('success', "Attendance marked for {$totalProcessed} students");
+
+        } catch (\Exception $e) {
+            \Log::error('Bulk attendance marking failed', [
+                'error' => $e->getMessage(),
+                'request_data' => $request->all()
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to mark attendance: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return back()->with('error', 'Failed to mark attendance: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Bulk fee collection for multiple students
+     */
+    public function bulkFeeCollection(Request $request)
+    {
+        try {
+            $request->validate([
+                'student_ids' => 'required|array|min:1',
+                'student_ids.*' => 'exists:students,id',
+                'fee_type' => 'required|string|max:100',
+                'amount' => 'required|numeric|min:0',
+                'payment_method' => 'required|in:cash,online,cheque,dd',
+                'payment_date' => 'required|date',
+                'remarks' => 'nullable|string|max:500',
+                'receipt_prefix' => 'nullable|string|max:10'
+            ]);
+
+            $studentIds = $request->student_ids;
+            $feeType = $request->fee_type;
+            $amount = $request->amount;
+            $paymentMethod = $request->payment_method;
+            $paymentDate = $request->payment_date;
+            $remarks = $request->remarks;
+            $receiptPrefix = $request->receipt_prefix ?? 'FEE';
+
+            $feeRecords = [];
+            $receiptNumbers = [];
+
+            foreach ($studentIds as $index => $studentId) {
+                $receiptNumber = $receiptPrefix . date('Ymd') . str_pad($index + 1, 4, '0', STR_PAD_LEFT);
+                
+                $feeRecords[] = [
+                    'student_id' => $studentId,
+                    'fee_type' => $feeType,
+                    'amount' => $amount,
+                    'payment_method' => $paymentMethod,
+                    'payment_date' => $paymentDate,
+                    'receipt_number' => $receiptNumber,
+                    'status' => 'paid',
+                    'remarks' => $remarks,
+                    'collected_by' => auth()->id(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ];
+
+                $receiptNumbers[] = $receiptNumber;
+            }
+
+            // Bulk insert fee records
+            FeePayment::insert($feeRecords);
+
+            $totalAmount = $amount * count($studentIds);
+
+            \Log::info('Bulk fee collection completed', [
+                'fee_type' => $feeType,
+                'students_count' => count($studentIds),
+                'total_amount' => $totalAmount,
+                'collected_by' => auth()->id()
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Fee collected for " . count($studentIds) . " students",
+                    'total_amount' => $totalAmount,
+                    'receipt_numbers' => $receiptNumbers
+                ]);
+            }
+
+            return back()->with('success', "Fee collected for " . count($studentIds) . " students. Total amount: ₹{$totalAmount}");
+
+        } catch (\Exception $e) {
+            \Log::error('Bulk fee collection failed', [
+                'error' => $e->getMessage(),
+                'request_data' => $request->except(['student_ids'])
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to collect fees: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return back()->with('error', 'Failed to collect fees: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Bulk document upload for multiple students
+     */
+    public function bulkDocumentUpload(Request $request)
+    {
+        try {
+            $request->validate([
+                'student_ids' => 'required|array|min:1',
+                'student_ids.*' => 'exists:students,id',
+                'document_type' => 'required|in:birth_cert,aadhaar,photo,other',
+                'documents' => 'required|array|min:1',
+                'documents.*' => 'file|mimes:pdf,jpg,jpeg,png|max:5120', // 5MB max
+                'document_names' => 'nullable|array',
+                'document_names.*' => 'nullable|string|max:255'
+            ]);
+
+            $studentIds = $request->student_ids;
+            $documentType = $request->document_type;
+            $documents = $request->file('documents');
+            $documentNames = $request->document_names ?? [];
+
+            if (count($documents) !== count($studentIds)) {
+                throw new \Exception('Number of documents must match number of students');
+            }
+
+            $uploadedFiles = [];
+            $updatedStudents = 0;
+
+            foreach ($studentIds as $index => $studentId) {
+                $student = Student::find($studentId);
+                if (!$student) continue;
+
+                $document = $documents[$index];
+                $customName = $documentNames[$index] ?? null;
+
+                // Generate file name
+                $fileName = $customName ?: ($documentType . '_' . $student->admission_no . '_' . time());
+                $fileName .= '.' . $document->getClientOriginalExtension();
+
+                // Store file
+                $path = $document->storeAs('student_documents/' . $student->id, $fileName, 'public');
+
+                // Update student documents
+                $studentDocuments = $student->documents ?? [];
+                
+                if ($documentType === 'other') {
+                    $studentDocuments['other_docs'][] = $path;
+                } else {
+                    $studentDocuments[$documentType] = $path;
+                }
+
+                $student->update(['documents' => $studentDocuments]);
+
+                $uploadedFiles[] = [
+                    'student_id' => $studentId,
+                    'student_name' => $student->name,
+                    'document_type' => $documentType,
+                    'file_path' => $path,
+                    'file_name' => $fileName
+                ];
+
+                $updatedStudents++;
+            }
+
+            \Log::info('Bulk document upload completed', [
+                'document_type' => $documentType,
+                'students_count' => $updatedStudents,
+                'uploaded_by' => auth()->id()
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Documents uploaded for {$updatedStudents} students",
+                    'uploaded_files' => $uploadedFiles
+                ]);
+            }
+
+            return back()->with('success', "Documents uploaded for {$updatedStudents} students");
+
+        } catch (\Exception $e) {
+            \Log::error('Bulk document upload failed', [
+                'error' => $e->getMessage(),
+                'request_data' => $request->except(['documents'])
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to upload documents: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return back()->with('error', 'Failed to upload documents: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Bulk status update for multiple students
+     */
+    public function bulkStatusUpdate(Request $request)
+    {
+        try {
+            $request->validate([
+                'student_ids' => 'required|array|min:1',
+                'student_ids.*' => 'exists:students,id',
+                'status' => 'required|in:active,inactive,left,alumni,suspended',
+                'reason' => 'nullable|string|max:500',
+                'effective_date' => 'nullable|date'
+            ]);
+
+            $studentIds = $request->student_ids;
+            $status = $request->status;
+            $reason = $request->reason;
+            $effectiveDate = $request->effective_date ?? now()->toDateString();
+
+            // Update students
+            $updatedCount = Student::whereIn('id', $studentIds)
+                ->update([
+                    'status' => $status,
+                    'updated_at' => now()
+                ]);
+
+            // Log status changes for audit trail
+            foreach ($studentIds as $studentId) {
+                $student = Student::find($studentId);
+                if ($student) {
+                    \Log::info('Student status updated', [
+                        'student_id' => $studentId,
+                        'student_name' => $student->name,
+                        'admission_no' => $student->admission_no,
+                        'old_status' => $student->getOriginal('status'),
+                        'new_status' => $status,
+                        'reason' => $reason,
+                        'effective_date' => $effectiveDate,
+                        'updated_by' => auth()->id()
+                    ]);
+                }
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Status updated for {$updatedCount} students",
+                    'updated_count' => $updatedCount,
+                    'new_status' => $status
+                ]);
+            }
+
+            return back()->with('success', "Status updated to '{$status}' for {$updatedCount} students");
+
+        } catch (\Exception $e) {
+            \Log::error('Bulk status update failed', [
+                'error' => $e->getMessage(),
+                'request_data' => $request->all()
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update status: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return back()->with('error', 'Failed to update status: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get bulk operation form
+     */
+    public function bulkOperationsForm(Request $request)
+    {
+        $operation = $request->get('operation', 'attendance');
+        $studentIds = $request->get('student_ids', []);
+
+        if (empty($studentIds)) {
+            return back()->with('error', 'Please select at least one student');
+        }
+
+        $students = Student::whereIn('id', $studentIds)
+            ->select('id', 'name', 'admission_no', 'class_id')
+            ->with('class:id,name,section')
+            ->get();
+
+        $classes = ClassModel::select('id', 'name', 'section')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->orderBy('section')
+            ->get();
+
+        return view('students.bulk_operations', compact('operation', 'students', 'classes'));
     }
 }

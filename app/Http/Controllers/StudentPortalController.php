@@ -221,11 +221,14 @@ class StudentPortalController extends Controller
 
         // Validate based on submission type
         $rules = [];
+        $maxAssignmentSize = config('fileupload.max_file_sizes.assignment');
+        $assignmentMimes = config('fileupload.allowed_file_types.assignment.mimes');
+        
         if ($assignment->submission_type === 'text' || $assignment->submission_type === 'both') {
             $rules['submission_text'] = 'required|string';
         }
         if ($assignment->submission_type === 'file' || $assignment->submission_type === 'both') {
-            $rules['attachment'] = 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120'; // Removed potentially unsafe formats
+            $rules['attachment'] = "required|file|mimes:{$assignmentMimes}|max:{$maxAssignmentSize}"; // Updated with config values
         }
 
         $validator = Validator::make($request->all(), $rules);

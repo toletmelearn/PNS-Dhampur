@@ -50,31 +50,20 @@
                             <label class="form-label">
                                 Document File <span class="text-danger">*</span>
                             </label>
-                            <div class="upload-area" id="upload-area">
-                                <div class="upload-content">
-                                    <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
-                                    <h5>Drag & Drop your document here</h5>
-                                    <p class="text-muted">or <span class="text-primary">click to browse</span></p>
+                            <div class="drop-zone" id="upload-area">
+                                <div class="drop-zone-content">
+                                    <i class="fas fa-cloud-upload-alt drop-zone-icon"></i>
+                                    <div class="drop-zone-text">Drag & Drop your document here</div>
+                                    <div class="drop-zone-subtext">or click to browse files</div>
                                     <input type="file" id="document_file" name="document_file" 
-                                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required hidden>
-                                </div>
-                                <div class="upload-preview" id="upload-preview" style="display: none;">
-                                    <div class="preview-content">
-                                        <div class="preview-icon">
-                                            <i class="fas fa-file fa-2x"></i>
-                                        </div>
-                                        <div class="preview-info">
-                                            <div class="file-name"></div>
-                                            <div class="file-size text-muted"></div>
-                                        </div>
-                                        <button type="button" class="btn btn-sm btn-danger remove-file">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </div>
+                                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" 
+                                           data-max-size="{{ config('fileupload.max_file_sizes.document') }}"
+                                           required style="display: none;">
                                 </div>
                             </div>
+                            <div class="file-preview mt-3" id="file-preview"></div>
                             <small class="form-text text-muted">
-                                Supported formats: PDF, JPG, PNG, DOC, DOCX. Maximum size: 10MB
+                                Supported formats: PDF, JPG, PNG, DOC, DOCX. Maximum size: {{ number_format(config('fileupload.max_file_sizes.document') / 1024, 0) }}MB
                             </small>
                         </div>
 
@@ -206,191 +195,28 @@
 @endsection
 
 @push('styles')
-<style>
-.upload-area {
-    border: 2px dashed #d1d3e2;
-    border-radius: 10px;
-    padding: 40px 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    background-color: #f8f9fc;
-}
-
-.upload-area:hover {
-    border-color: #4e73df;
-    background-color: #f1f3ff;
-}
-
-.upload-area.dragover {
-    border-color: #4e73df;
-    background-color: #e3f2fd;
-    transform: scale(1.02);
-}
-
-.upload-preview {
-    border: 2px solid #4e73df;
-    border-radius: 10px;
-    padding: 20px;
-    background-color: #f1f3ff;
-}
-
-.preview-content {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.preview-icon {
-    color: #4e73df;
-}
-
-.preview-info {
-    flex-grow: 1;
-}
-
-.file-name {
-    font-weight: bold;
-    color: #5a5c69;
-}
-
-.upload-progress {
-    margin-top: 20px;
-}
-
-.progress {
-    height: 25px;
-}
-
-.btn-lg {
-    padding: 12px 30px;
-    font-size: 16px;
-}
-</style>
+<link href="{{ asset('css/file-upload-enhanced.css') }}" rel="stylesheet">
 @endpush
 
 @push('scripts')
+<script src="{{ asset('js/file-upload-enhanced.js') }}"></script>
 <script>
 $(document).ready(function() {
-    const uploadArea = $('#upload-area');
-    const fileInput = $('#document_file');
-    const uploadPreview = $('#upload-preview');
-    const uploadProgress = $('#upload-progress');
-    const submitBtn = $('#submit-btn');
-
-    // Click to browse
-    uploadArea.on('click', function() {
-        if (!uploadPreview.is(':visible')) {
-            fileInput.click();
-        }
+    // Initialize enhanced file upload with specific configuration
+    const uploader = new EnhancedFileUpload({
+        maxFileSize: {{ config('fileupload.max_file_sizes.document') }},
+        allowedTypes: {!! json_encode(explode(',', config('fileupload.allowed_file_types.verification.extensions'))) !!},
+        dropZone: '#upload-area',
+        fileInput: '#document_file',
+        previewContainer: '#file-preview',
+        autoUpload: false
     });
 
-    // Drag and drop events
-    uploadArea.on('dragover', function(e) {
-        e.preventDefault();
-        $(this).addClass('dragover');
-    });
-
-    uploadArea.on('dragleave', function(e) {
-        e.preventDefault();
-        $(this).removeClass('dragover');
-    });
-
-    uploadArea.on('drop', function(e) {
-        e.preventDefault();
-        $(this).removeClass('dragover');
-        
-        const files = e.originalEvent.dataTransfer.files;
-        if (files.length > 0) {
-            handleFileSelect(files[0]);
-        }
-    });
-
-    // File input change
-    fileInput.on('change', function() {
-        if (this.files.length > 0) {
-            handleFileSelect(this.files[0]);
-        }
-    });
-
-    // Remove file
-    $(document).on('click', '.remove-file', function() {
-        resetFileUpload();
-    });
-
-    function handleFileSelect(file) {
-        // Validate file
-        if (!validateFile(file)) {
-            return;
-        }
-
-        // Show preview
-        showFilePreview(file);
-    }
-
-    function validateFile(file) {
-        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 
-                             'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-        const maxSize = 10 * 1024 * 1024; // 10MB
-
-        if (!allowedTypes.includes(file.type)) {
-            Swal.fire('Error!', 'Please select a valid file type (PDF, JPG, PNG, DOC, DOCX)', 'error');
-            return false;
-        }
-
-        if (file.size > maxSize) {
-            Swal.fire('Error!', 'File size must be less than 10MB', 'error');
-            return false;
-        }
-
-        return true;
-    }
-
-    function showFilePreview(file) {
-        const fileName = file.name;
-        const fileSize = formatFileSize(file.size);
-        
-        uploadPreview.find('.file-name').text(fileName);
-        uploadPreview.find('.file-size').text(fileSize);
-        
-        // Update icon based on file type
-        let iconClass = 'fas fa-file';
-        if (file.type.includes('pdf')) {
-            iconClass = 'fas fa-file-pdf text-danger';
-        } else if (file.type.includes('image')) {
-            iconClass = 'fas fa-file-image text-info';
-        } else if (file.type.includes('word')) {
-            iconClass = 'fas fa-file-word text-primary';
-        }
-        
-        uploadPreview.find('.preview-icon i').attr('class', iconClass + ' fa-2x');
-        
-        uploadArea.find('.upload-content').hide();
-        uploadPreview.show();
-    }
-
-    function resetFileUpload() {
-        fileInput.val('');
-        uploadPreview.hide();
-        uploadArea.find('.upload-content').show();
-        uploadProgress.hide();
-    }
-
-    function formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
-
-    // Form submission
+    // Form submission with enhanced progress tracking
     $('#upload-form').on('submit', function(e) {
         e.preventDefault();
 
-        const formData = new FormData(this);
-        
-        if (!fileInput[0].files.length) {
+        if (!$('#document_file')[0].files.length) {
             Swal.fire('Error!', 'Please select a file to upload', 'error');
             return;
         }
@@ -400,76 +226,14 @@ $(document).ready(function() {
             return;
         }
 
-        // Show progress
-        uploadProgress.show();
-        submitBtn.prop('disabled', true);
-
-        $.ajax({
-            url: '{{ route("student-verifications.store") }}',
-            method: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            xhr: function() {
-                const xhr = new window.XMLHttpRequest();
-                xhr.upload.addEventListener('progress', function(evt) {
-                    if (evt.lengthComputable) {
-                        const percentComplete = Math.round((evt.loaded / evt.total) * 100);
-                        updateProgress(percentComplete);
-                    }
-                }, false);
-                return xhr;
-            },
-            success: function(response) {
-                updateProgress(100);
-                setTimeout(function() {
-                    Swal.fire({
-                        title: 'Success!',
-                        text: response.message,
-                        icon: 'success',
-                        confirmButtonText: 'View Verification'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = response.redirect_url;
-                        } else {
-                            resetForm();
-                        }
-                    });
-                }, 500);
-            },
-            error: function(xhr) {
-                const response = xhr.responseJSON;
-                let errorMessage = 'An error occurred during upload';
-                
-                if (response && response.errors) {
-                    errorMessage = Object.values(response.errors).flat().join('\n');
-                } else if (response && response.message) {
-                    errorMessage = response.message;
-                }
-                
-                Swal.fire('Error!', errorMessage, 'error');
-                submitBtn.prop('disabled', false);
-                uploadProgress.hide();
-            }
-        });
+        // Use the enhanced uploader's form submission handler
+        return uploader.handleFormSubmission(this);
     });
-
-    function updateProgress(percent) {
-        const progressBar = uploadProgress.find('.progress-bar');
-        const progressText = uploadProgress.find('.progress-text small');
-        
-        progressBar.css('width', percent + '%');
-        progressText.text(`Uploading... ${percent}%`);
-        
-        if (percent === 100) {
-            progressText.text('Processing...');
-        }
-    }
 
     window.resetForm = function() {
         $('#upload-form')[0].reset();
-        resetFileUpload();
-        submitBtn.prop('disabled', false);
+        $('#file-preview').empty();
+        $('#submit-btn').prop('disabled', false);
     };
 });
 </script>

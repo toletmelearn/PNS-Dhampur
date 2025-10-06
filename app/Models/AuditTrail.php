@@ -258,7 +258,7 @@ class AuditTrail extends Model
             'academic_year' => $options['academic_year'] ?? date('Y'),
             'term' => $options['term'] ?? null,
             'correction_reason' => $options['correction_reason'] ?? null,
-            'status' => $options['status'] ?? ($event === 'correction' ? 'pending_approval' : 'auto_approved')
+            'status' => $options['status'] ?? ($event === 'correction' ? 'pending_approval' : 'normal')
         ]);
     }
 

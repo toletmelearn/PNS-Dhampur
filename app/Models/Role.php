@@ -9,6 +9,19 @@ class Role extends Model
 {
     use HasFactory;
 
+    protected $fillable = [
+        'name',
+        'display_name',
+        'description',
+        'permissions',
+        'is_active'
+    ];
+
+    protected $casts = [
+        'permissions' => 'array',
+        'is_active' => 'boolean'
+    ];
+
     // Define the three main roles for attendance system
     const ADMIN = 'admin';
     const TEACHER = 'teacher';

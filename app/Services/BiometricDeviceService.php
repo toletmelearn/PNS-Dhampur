@@ -400,9 +400,10 @@ class BiometricDeviceService
         }
         
         // Try to find as teacher
-        $teacher = Teacher::where('employee_id', $employeeId)
-                         ->orWhere('teacher_id', $employeeId)
-                         ->first();
+        $teacher = Teacher::whereHas('user', function ($query) use ($employeeId) {
+            $query->where('employee_id', $employeeId);
+        })->orWhere('teacher_id', $employeeId)
+          ->first();
         
         if ($teacher) {
             return [

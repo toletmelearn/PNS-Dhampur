@@ -48,8 +48,10 @@
                                 <!-- File Upload Area -->
                                 <div class="mb-4">
                                     <label for="document_file" class="form-label">Document File <span class="text-danger">*</span></label>
-                                    <div class="file-upload-area" id="fileUploadArea">
-                                        <div class="file-upload-content">
+                                    <div class="drop-zone" 
+                                         id="document-drop-zone"
+                                         data-max-size="{{ config('fileupload.max_file_sizes.document') }}">
+                                        <div class="drop-zone-content">
                                             <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
                                             <h5>Drag and drop your file here</h5>
                                             <p class="text-muted mb-3">or click to browse files</p>
@@ -57,32 +59,20 @@
                                                    class="form-control d-none @error('document_file') is-invalid @enderror" 
                                                    id="document_file" 
                                                    name="document_file" 
-                                                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                   accept="{{ implode(',', config('fileupload.allowed_types.document')) }}"
                                                    required>
                                             <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('document_file').click()">
                                                 Choose File
                                             </button>
                                             <div class="mt-2">
                                                 <small class="text-muted">
-                                                    Supported formats: PDF, DOC, DOCX, JPG, JPEG, PNG<br>
-                                                    Maximum file size: 5MB
+                                                    Supported formats: {{ strtoupper(str_replace(['.', ','], ['', ', '], implode(',', config('fileupload.allowed_types.document')))) }}<br>
+                                                    Maximum file size: {{ config('fileupload.max_file_sizes.document') / (1024 * 1024) }}MB
                                                 </small>
                                             </div>
                                         </div>
-                                        <div class="file-preview d-none" id="filePreview">
-                                            <div class="d-flex align-items-center">
-                                                <i class="fas fa-file-alt fa-2x text-primary me-3"></i>
-                                                <div class="flex-grow-1">
-                                                    <div class="fw-medium" id="fileName"></div>
-                                                    <div class="text-muted" id="fileSize"></div>
-                                                    <div class="progress mt-2 d-none" id="uploadProgress">
-                                                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-                                                    </div>
-                                                </div>
-                                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFile()">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            </div>
+                                        <div class="file-preview d-none" id="document-preview">
+                                            <!-- Enhanced file preview will be populated by JavaScript -->
                                         </div>
                                     </div>
                                     @error('document_file')
@@ -175,26 +165,8 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="{{ asset('css/file-upload-enhanced.css') }}">
 <style>
-.file-upload-area {
-    border: 2px dashed #dee2e6;
-    border-radius: 8px;
-    padding: 2rem;
-    text-align: center;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.file-upload-area:hover {
-    border-color: #0d6efd;
-    background-color: #f8f9fa;
-}
-
-.file-upload-area.dragover {
-    border-color: #0d6efd;
-    background-color: #e7f3ff;
-}
-
 .file-preview {
     border: 1px solid #dee2e6;
     border-radius: 8px;
@@ -204,84 +176,18 @@
 @endpush
 
 @push('scripts')
+<script src="{{ asset('js/file-upload-enhanced.js') }}"></script>
 <script>
 $(document).ready(function() {
-    const fileUploadArea = document.getElementById('fileUploadArea');
-    const fileInput = document.getElementById('document_file');
-    const filePreview = document.getElementById('filePreview');
-    const fileUploadContent = document.querySelector('.file-upload-content');
-    
-    // Drag and drop functionality
-    fileUploadArea.addEventListener('dragover', function(e) {
-        e.preventDefault();
-        fileUploadArea.classList.add('dragover');
+    // Initialize enhanced file upload for document
+    const documentUpload = new EnhancedFileUpload({
+        maxFileSize: {{ config('fileupload.max_file_sizes.document') }},
+        allowedTypes: {!! json_encode(config('fileupload.allowed_types.document')) !!},
+        dropZone: '#document-drop-zone',
+        fileInput: '#document_file',
+        previewContainer: '#document-preview',
+        autoUpload: false
     });
-    
-    fileUploadArea.addEventListener('dragleave', function(e) {
-        e.preventDefault();
-        fileUploadArea.classList.remove('dragover');
-    });
-    
-    fileUploadArea.addEventListener('drop', function(e) {
-        e.preventDefault();
-        fileUploadArea.classList.remove('dragover');
-        
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-            fileInput.files = files;
-            handleFileSelect(files[0]);
-        }
-    });
-    
-    // Click to upload
-    fileUploadArea.addEventListener('click', function() {
-        fileInput.click();
-    });
-    
-    // File input change
-    fileInput.addEventListener('change', function() {
-        if (this.files.length > 0) {
-            handleFileSelect(this.files[0]);
-        }
-    });
-    
-    function handleFileSelect(file) {
-        // Validate file size
-        if (file.size > 5 * 1024 * 1024) { // 5MB
-            Swal.fire({
-                icon: 'error',
-                title: 'File Too Large',
-                text: 'Please select a file smaller than 5MB.'
-            });
-            return;
-        }
-        
-        // Validate file type
-        const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/jpg', 'image/png'];
-        if (!allowedTypes.includes(file.type)) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Invalid File Type',
-                text: 'Please select a PDF, DOC, DOCX, JPG, JPEG, or PNG file.'
-            });
-            return;
-        }
-        
-        // Show file preview
-        document.getElementById('fileName').textContent = file.name;
-        document.getElementById('fileSize').textContent = formatFileSize(file.size);
-        
-        fileUploadContent.classList.add('d-none');
-        filePreview.classList.remove('d-none');
-    }
-    
-    function formatFileSize(bytes) {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-    }
     
     // Form submission with progress
     $('#documentUploadForm').on('submit', function(e) {
@@ -289,10 +195,8 @@ $(document).ready(function() {
         
         const formData = new FormData(this);
         const submitBtn = document.getElementById('submitBtn');
-        const progressBar = document.getElementById('uploadProgress');
         
-        // Show progress bar
-        progressBar.classList.remove('d-none');
+        // Show loading state
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Uploading...';
         
@@ -302,16 +206,6 @@ $(document).ready(function() {
             data: formData,
             processData: false,
             contentType: false,
-            xhr: function() {
-                const xhr = new window.XMLHttpRequest();
-                xhr.upload.addEventListener('progress', function(e) {
-                    if (e.lengthComputable) {
-                        const percentComplete = (e.loaded / e.total) * 100;
-                        $('.progress-bar').css('width', percentComplete + '%');
-                    }
-                });
-                return xhr;
-            },
             success: function(response) {
                 Swal.fire({
                     icon: 'success',
@@ -340,17 +234,9 @@ $(document).ready(function() {
                 // Reset form
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = '<i class="fas fa-upload me-2"></i>Upload Document';
-                progressBar.classList.add('d-none');
-                $('.progress-bar').css('width', '0%');
             }
         });
     });
 });
-
-function removeFile() {
-    document.getElementById('document_file').value = '';
-    document.querySelector('.file-upload-content').classList.remove('d-none');
-    document.getElementById('filePreview').classList.add('d-none');
-}
 </script>
 @endpush

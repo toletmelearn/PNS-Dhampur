@@ -50,21 +50,32 @@ class RoleMiddleware
             return $next($request);
         }
 
+        // Parse roles - handle comma-separated strings from route definitions
+        $parsedRoles = [];
+        foreach ($roles as $role) {
+            if (strpos($role, ',') !== false) {
+                // Split comma-separated role string
+                $parsedRoles = array_merge($parsedRoles, array_map('trim', explode(',', $role)));
+            } else {
+                $parsedRoles[] = $role;
+            }
+        }
+
         // Check if user has any of the required roles
-        if (!$user->hasAnyRole($roles)) {
+        if (!$user->hasAnyRole($parsedRoles)) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'error' => 'Forbidden',
-                    'message' => 'Insufficient privileges. Required roles: ' . implode(', ', $roles),
+                    'message' => 'Insufficient privileges. Required roles: ' . implode(', ', $parsedRoles),
                     'user_role' => $user->role,
-                    'required_roles' => $roles
+                    'required_roles' => $parsedRoles
                 ], 403);
             }
             
             return redirect()->route('dashboard')->with('error', 
                 'Access denied. You need one of the following roles: ' . implode(', ', array_map(function($role) {
                     return Role::getRoleName($role);
-                }, $roles))
+                }, $parsedRoles))
             );
         }
 

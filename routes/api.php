@@ -19,13 +19,14 @@ use App\Http\Controllers\BellTimingController;
 use App\Http\Controllers\TeacherSubstitutionController;
 use App\Http\Controllers\TeacherAvailabilityController;
 use App\Http\Controllers\Api\ExternalIntegrationController;
+use App\Http\Controllers\BiometricController;
 use App\Http\Controllers\SubstitutionController;
 
 // -----------------------------
 // PUBLIC ROUTES
 // -----------------------------
-Route::post('/login', [AuthController::class, 'login'])->middleware('rate.limit:5,1');
-Route::post('/register', [AuthController::class, 'register'])->middleware('rate.limit:3,1'); // optional if you want registration
+Route::post('/login', [AuthController::class, 'login'])->middleware(['login.rate.limit', 'api.rate.limit:auth.login']);
+Route::post('/register', [AuthController::class, 'register'])->middleware(['login.rate.limit', 'api.rate.limit:auth.register']); // optional if you want registration
 Route::get('/test', function() {
     return response()->json(['message' => 'API is working!']);
 });
@@ -33,15 +34,39 @@ Route::get('/test', function() {
 // -----------------------------
 // PROTECTED ROUTES (Sanctum)
 // -----------------------------
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'api.rate.limit'])->group(function () {
 
     // Auth
-    Route::post('/logout', [AuthController::class, 'logout'])->middleware('rate.limit:10,1');
-    Route::get('/user', [AuthController::class, 'user'])->middleware('auth:sanctum');
+    Route::post('/logout', [AuthController::class, 'logout'])->middleware('api.rate.limit:auth.logout');
+    Route::get('/user', [AuthController::class, 'user']);
+    
+    // Password Policy
+    Route::get('/password-policy', [App\Http\Controllers\PasswordController::class, 'getPasswordPolicy']);
+    
+    // Session Management
+    Route::get('/session/info', [App\Http\Controllers\SessionController::class, 'getSessionInfo']);
+    Route::post('/session/extend', [App\Http\Controllers\SessionController::class, 'extendSession']);
+    Route::get('/session/timeout-warning', [App\Http\Controllers\SessionController::class, 'getTimeoutWarning']);
+    Route::post('/session/logout', [App\Http\Controllers\SessionController::class, 'forceLogout']);
+    Route::get('/session/policies', [App\Http\Controllers\SessionController::class, 'getSessionPolicies']);
 
     // Students
     Route::apiResource('students', StudentController::class);
     Route::post('students/{student}/verify', [StudentController::class, 'verify']);
+    
+    // Advanced student search and filter API routes
+    Route::get('students/advanced-search', [StudentController::class, 'advancedSearch'])->name('api.students.advanced-search');
+    Route::post('students/save-search', [StudentController::class, 'saveSearch'])->name('api.students.save-search');
+    Route::get('students/saved-searches', [StudentController::class, 'getSavedSearches'])->name('api.students.saved-searches');
+    Route::delete('students/saved-searches/{savedSearch}', [StudentController::class, 'deleteSavedSearch'])->name('api.students.delete-saved-search');
+    Route::get('students/search-suggestions', [StudentController::class, 'getSearchSuggestions'])->name('api.students.search-suggestions');
+    Route::get('students/filter-stats', [StudentController::class, 'getFilterStats'])->name('api.students.filter-stats');
+    
+    // Bulk operations API routes
+    Route::post('students/bulk-attendance', [StudentController::class, 'bulkAttendance'])->name('api.students.bulk-attendance');
+    Route::post('students/bulk-fee-collection', [StudentController::class, 'bulkFeeCollection'])->name('api.students.bulk-fee-collection');
+    Route::post('students/bulk-document-upload', [StudentController::class, 'bulkDocumentUpload'])->name('api.students.bulk-document-upload');
+    Route::post('students/bulk-status-update', [StudentController::class, 'bulkStatusUpdate'])->name('api.students.bulk-status-update');
 
     // Teachers
     Route::apiResource('teachers', TeacherController::class);
@@ -168,6 +193,24 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::get('biometric/stats', [ExternalIntegrationController::class, 'getBiometricStats'])
                 ->middleware('role:admin,principal');
 
+            // Real-time Biometric Device Integration
+            Route::prefix('biometric')->group(function () {
+                Route::post('import-data', [BiometricController::class, 'importData'])
+                    ->middleware(['rate.limit:10,1', 'role:admin,principal,teacher']);
+                Route::post('stream', [BiometricController::class, 'handleDeviceStream'])
+                    ->middleware(['rate.limit:100,1', 'role:admin,principal,teacher']);
+                Route::post('bulk-sync/{deviceId}', [BiometricController::class, 'bulkSyncFromDevice'])
+                    ->middleware(['rate.limit:5,1', 'role:admin,principal,teacher']);
+                Route::get('device-status/{deviceId}', [BiometricController::class, 'getDeviceStatus'])
+                    ->middleware('role:admin,principal,teacher');
+                Route::post('device-register', [BiometricController::class, 'registerDevice'])
+                    ->middleware(['rate.limit:3,1', 'role:admin,principal']);
+                Route::get('devices', [BiometricController::class, 'getRegisteredDevices'])
+                    ->middleware('role:admin,principal,teacher');
+                Route::post('test-connection/{deviceId}', [BiometricController::class, 'testDeviceConnection'])
+                    ->middleware(['rate.limit:10,1', 'role:admin,principal,teacher']);
+            });
+
             // Browser Notifications
             Route::post('notifications/send', [ExternalIntegrationController::class, 'sendBrowserNotification'])
                 ->middleware(['rate.limit:20,1', 'role:admin,principal,teacher']);
@@ -175,6 +218,23 @@ Route::middleware('auth:sanctum')->group(function () {
                 ->middleware('rate.limit:10,1');
             Route::get('notifications/vapid-key', [ExternalIntegrationController::class, 'getVapidPublicKey']);
         });
-});
+    
+        // Performance Monitoring API Routes
+        Route::prefix('performance')->name('performance.')->group(function () {
+            Route::get('/dashboard-stats', [\App\Http\Controllers\Api\PerformanceApiController::class, 'dashboardStats']);
+            Route::get('/system-health', [\App\Http\Controllers\Api\PerformanceApiController::class, 'systemHealth']);
+            Route::get('/system-health/chart', [\App\Http\Controllers\Api\PerformanceApiController::class, 'systemHealthChart']);
+            Route::get('/metrics', [\App\Http\Controllers\Api\PerformanceApiController::class, 'metrics']);
+            Route::get('/metrics/chart', [\App\Http\Controllers\Api\PerformanceApiController::class, 'metricsChart']);
+            Route::get('/errors', [\App\Http\Controllers\Api\PerformanceApiController::class, 'errors']);
+            Route::get('/errors/chart', [\App\Http\Controllers\Api\PerformanceApiController::class, 'errorsChart']);
+            Route::get('/activities', [\App\Http\Controllers\Api\PerformanceApiController::class, 'activities']);
+            Route::get('/activities/chart', [\App\Http\Controllers\Api\PerformanceApiController::class, 'activitiesChart']);
+            Route::get('/activities/user/{userId}', [\App\Http\Controllers\Api\PerformanceApiController::class, 'userActivities']);
+            Route::get('/activities/{activityId}', [\App\Http\Controllers\Api\PerformanceApiController::class, 'activityDetails']);
+            Route::post('/system-health', [\App\Http\Controllers\Api\PerformanceApiController::class, 'recordSystemHealth']);
+            Route::post('/errors/{errorId}/resolve', [\App\Http\Controllers\Api\PerformanceApiController::class, 'resolveError']);
+        });
+    });
 
 

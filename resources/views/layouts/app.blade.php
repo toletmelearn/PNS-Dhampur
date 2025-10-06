@@ -332,6 +332,11 @@
                                     <i class="fas fa-file-check me-2"></i>Teacher Documents
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('maintenance.*') ? 'active' : '' }}" href="{{ route('maintenance.index') }}">
+                                    <i class="fas fa-tools me-2"></i>System Maintenance
+                                </a>
+                            </li>
                             @endcan
                         </ul>
                     </div>

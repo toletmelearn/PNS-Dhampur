@@ -53,6 +53,46 @@ class Kernel extends ConsoleKernel
         // Check for season switching daily at 6 AM
         $schedule->command('bell:check-season-switch')
                  ->dailyAt('06:00');
+
+        // Automated backup scheduling
+        // Daily database backup at 2 AM
+        $schedule->command('backup:database --compress')
+                 ->dailyAt('02:00')
+                 ->withoutOverlapping()
+                 ->onFailure(function () {
+                     \Log::error('Daily database backup failed');
+                 });
+
+        // Weekly full file backup on Sundays at 3 AM
+        $schedule->command('backup:files --compress --exclude=node_modules,vendor,.git')
+                 ->weeklyOn(0, '03:00')
+                 ->withoutOverlapping()
+                 ->onFailure(function () {
+                     \Log::error('Weekly file backup failed');
+                 });
+
+        // Monthly full system export on the 1st at 4 AM
+        $schedule->command('data:export --format=json --all-tables')
+                 ->monthlyOn(1, '04:00')
+                 ->withoutOverlapping()
+                 ->onFailure(function () {
+                     \Log::error('Monthly data export failed');
+                 });
+
+        // Clean up old backups daily at 5 AM (keep last 30 days)
+        $schedule->call(function () {
+            $backupPath = storage_path('app/backups');
+            if (is_dir($backupPath)) {
+                $files = glob($backupPath . '/*');
+                $cutoff = now()->subDays(30)->timestamp;
+                
+                foreach ($files as $file) {
+                    if (is_file($file) && filemtime($file) < $cutoff) {
+                        unlink($file);
+                    }
+                }
+            }
+        })->dailyAt('05:00');
     }
 
     /**

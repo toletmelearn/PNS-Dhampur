@@ -2,6 +2,10 @@
 
 @section('title', 'Biometric Data Import')
 
+@push('styles')
+<link href="{{ asset('css/file-upload-enhanced.css') }}" rel="stylesheet">
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <div class="row">
@@ -142,10 +146,17 @@
                         
                         <div class="mb-3">
                             <label for="import_file" class="form-label">Select File</label>
-                            <input type="file" class="form-control" id="import_file" name="import_file" 
-                                   accept=".csv,.xlsx,.txt,.dat" required>
-                            <div class="form-text">
-                                Supported formats: CSV, Excel, TXT, DAT. Maximum file size: 10MB
+                            <div class="drop-zone" 
+                                 data-max-size="{{ config('fileupload.max_file_size', 10485760) }}" 
+                                 data-accept=".csv,.xlsx,.txt,.dat">
+                                <input type="file" class="drop-zone-input" id="import_file" name="import_file" 
+                                       accept=".csv,.xlsx,.txt,.dat" required>
+                                <div class="drop-zone-content">
+                                    <i class="mdi mdi-cloud-upload drop-zone-icon"></i>
+                                    <p class="drop-zone-text">Drop your biometric data file here or click to browse</p>
+                                    <p class="drop-zone-subtext">Supported formats: CSV, Excel, TXT, DAT. Maximum file size: {{ number_format(config('fileupload.max_file_size', 10485760) / 1048576, 1) }}MB</p>
+                                </div>
+                                <div class="file-preview"></div>
                             </div>
                         </div>
                         
@@ -487,10 +498,22 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/file-upload-enhanced.js') }}"></script>
 <script>
 let importInterval;
+let biometricFileUpload;
 
 $(document).ready(function() {
+    // Initialize enhanced file upload
+    biometricFileUpload = new EnhancedFileUpload({
+        maxFileSize: {{ config('fileupload.max_file_size', 10485760) }},
+        allowedTypes: ['.csv', '.xlsx', '.txt', '.dat'],
+        dropZone: '#import_file',
+        fileInput: '#import_file',
+        previewContainer: '.file-preview',
+        autoUpload: false
+    });
+    
     // Initialize date range picker
     $('#date_range').daterangepicker({
         locale: {

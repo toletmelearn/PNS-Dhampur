@@ -131,19 +131,18 @@
                                     <span class="text-danger">*</span>
                                 @endif
                             </label>
-                            <div class="file-upload-area border-2 border-dashed border-muted rounded p-4 text-center">
+                            <div class="drop-zone" id="assignment-drop-zone" 
+                                 data-max-size="{{ config('fileupload.max_file_sizes.assignment') }}">
                                 <input type="file" class="form-control @error('attachments') is-invalid @enderror" 
                                        id="attachments" name="attachments[]" multiple 
-                                       accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.zip,.rar"
+                                       accept="{{ config('fileupload.allowed_file_types.assignment.accept') }}"
                                        {{ $assignment->submission_type == 'file' ? 'required' : '' }}>
-                                <div class="mt-2">
+                                <div class="drop-zone-content">
                                     <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-2"></i>
                                     <p class="mb-1">Click to select files or drag and drop</p>
                                     <small class="text-muted">
-                                        Supported formats: PDF, DOC, DOCX, TXT, JPG, PNG, ZIP, RAR
-                                        @if($assignment->max_file_size)
-                                            | Max size: {{ $assignment->max_file_size }}MB per file
-                                        @endif
+                                        Supported formats: {{ config('fileupload.allowed_file_types.assignment.display') }}
+                                        | Max size: {{ number_format(config('fileupload.max_file_sizes.assignment') / (1024 * 1024), 1) }}MB per file
                                     </small>
                                 </div>
                             </div>
@@ -152,7 +151,7 @@
                             @enderror
                             
                             <!-- File Preview -->
-                            <div id="filePreview" class="mt-3"></div>
+                            <div id="assignment-preview" class="mt-3"></div>
                             
                             <!-- Existing Files (for editing) -->
                             @if(isset($submission) && $submission->attachments && count($submission->attachments) > 0)
@@ -407,6 +406,7 @@
 @endsection
 
 @push('styles')
+<link href="{{ asset('css/file-upload-enhanced.css') }}" rel="stylesheet">
 <style>
 .file-upload-area {
     transition: all 0.3s ease;
@@ -458,23 +458,29 @@
 @endpush
 
 @push('scripts')
+<script src="{{ asset('js/file-upload-enhanced.js') }}"></script>
 <script>
 $(document).ready(function() {
+    // Initialize enhanced file upload for assignment submissions
+    const assignmentUploader = new EnhancedFileUpload({
+        maxFileSize: {{ config('fileupload.max_file_sizes.assignment') }},
+        allowedTypes: {!! json_encode(explode(',', config('fileupload.allowed_file_types.assignment.extensions'))) !!},
+        dropZone: '#assignment-drop-zone',
+        fileInput: '#attachments',
+        previewContainer: '#assignment-preview',
+        autoUpload: false,
+        multiple: true
+    });
+
     // Character count
     updateCharacterCount();
     $('#content').on('input', updateCharacterCount);
-    
-    // File upload handling
-    setupFileUpload();
     
     // Auto-save functionality
     setupAutoSave();
     
     // Form validation
     setupFormValidation();
-    
-    // Drag and drop
-    setupDragAndDrop();
 });
 
 function updateCharacterCount() {
@@ -502,69 +508,6 @@ function updateCharacterCount() {
             $('#contentCount').addClass('text-success').removeClass('text-danger');
         }
     @endif
-}
-
-function setupFileUpload() {
-    $('#attachments').on('change', function() {
-        const files = this.files;
-        displayFilePreview(files);
-        validateFiles(files);
-    });
-}
-
-function displayFilePreview(files) {
-    const preview = $('#filePreview');
-    preview.empty();
-    
-    if (files.length === 0) return;
-    
-    const previewHtml = '<label class="form-label">Selected Files:</label>';
-    preview.append(previewHtml);
-    
-    Array.from(files).forEach((file, index) => {
-        const fileSize = (file.size / 1024 / 1024).toFixed(2);
-        const fileItem = $(`
-            <div class="file-item d-flex align-items-center justify-content-between p-2 border rounded mb-2">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-file me-2 text-muted"></i>
-                    <span>${file.name}</span>
-                    <small class="text-muted ms-2">(${fileSize} MB)</small>
-                </div>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFile(${index})">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        `);
-        preview.append(fileItem);
-    });
-}
-
-function validateFiles(files) {
-    const maxSize = {{ $assignment->max_file_size ?? 10 }} * 1024 * 1024; // Convert MB to bytes
-    let valid = true;
-    
-    Array.from(files).forEach(file => {
-        if (file.size > maxSize) {
-            valid = false;
-            showAlert('error', `File "${file.name}" exceeds maximum size limit.`);
-        }
-    });
-    
-    return valid;
-}
-
-function removeFile(index) {
-    const input = document.getElementById('attachments');
-    const dt = new DataTransfer();
-    
-    Array.from(input.files).forEach((file, i) => {
-        if (i !== index) {
-            dt.items.add(file);
-        }
-    });
-    
-    input.files = dt.files;
-    displayFilePreview(input.files);
 }
 
 function removeExistingFile(filename, button) {
@@ -737,30 +680,6 @@ function previewSubmission() {
 function submitFromPreview() {
     $('#previewModal').modal('hide');
     $('#submissionForm').submit();
-}
-
-function setupDragAndDrop() {
-    const uploadArea = $('.file-upload-area');
-    
-    uploadArea.on('dragover', function(e) {
-        e.preventDefault();
-        $(this).addClass('dragover');
-    });
-    
-    uploadArea.on('dragleave', function(e) {
-        e.preventDefault();
-        $(this).removeClass('dragover');
-    });
-    
-    uploadArea.on('drop', function(e) {
-        e.preventDefault();
-        $(this).removeClass('dragover');
-        
-        const files = e.originalEvent.dataTransfer.files;
-        $('#attachments')[0].files = files;
-        displayFilePreview(files);
-        validateFiles(files);
-    });
 }
 
 function showAlert(type, message) {

@@ -1,0 +1,189 @@
+/* Mobile Responsiveness Fixes */
+
+/* Attendance Table - Responsive Design */
+.attendance-table {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Mobile-first approach for attendance table */
+@media (max-width: 767.98px) {
+    .attendance-table {
+        font-size: 14px;
+        border-radius: 12px;
+    }
+    
+    .attendance-table table {
+        min-width: 600px; /* Minimum width to prevent cramping */
+    }
+    
+    .attendance-table th,
+    .attendance-table td {
+        padding: 8px 6px;
+        white-space: nowrap;
+    }
+    
+    .attendance-table .btn {
+        padding: 6px 10px;
+        font-size: 12px;
+        min-width: 60px;
+    }
+}
+
+/* Tablet styles */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .attendance-table {
+        font-size: 15px;
+    }
+    
+    .attendance-table th,
+    .attendance-table td {
+        padding: 10px 8px;
+    }
+}
+
+/* Desktop styles */
+@media (min-width: 992px) {
+    .attendance-table {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+}
+
+/* Fee Receipt - Responsive Design */
+.fee-receipt {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Mobile-first approach for fee receipt */
+@media (max-width: 767.98px) {
+    .fee-receipt {
+        padding: 15px;
+        margin: 10px;
+        border-radius: 12px;
+        font-size: 14px;
+    }
+    
+    .fee-receipt .receipt-header {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    
+    .fee-receipt .receipt-header h2 {
+        font-size: 18px;
+        margin-bottom: 5px;
+    }
+    
+    .fee-receipt .receipt-header h4 {
+        font-size: 16px;
+        color: #666;
+    }
+    
+    .fee-receipt table {
+        width: 100%;
+        font-size: 14px;
+    }
+    
+    .fee-receipt table td {
+        padding: 8px 6px;
+        border: 1px solid #ddd;
+    }
+    
+    .fee-receipt .footer {
+        margin-top: 30px;
+        font-size: 12px;
+        text-align: center;
+        color: #666;
+    }
+}
+
+/* Tablet styles */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .fee-receipt {
+        max-width: 600px;
+        padding: 25px;
+    }
+    
+    .fee-receipt table {
+        font-size: 15px;
+    }
+}
+
+/* Desktop styles */
+@media (min-width: 992px) {
+    .fee-receipt {
+        max-width: 800px;
+        padding: 30px;
+    }
+}
+
+/* Print styles for fee receipt */
+@media print {
+    .fee-receipt {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding: 20px;
+        box-shadow: none;
+        border: none;
+    }
+    
+    .fee-receipt table {
+        page-break-inside: avoid;
+    }
+}
+
+/* Additional responsive utilities */
+@media (max-width: 575.98px) {
+    /* Extra small devices */
+    .attendance-table,
+    .fee-receipt {
+        margin-left: 5px;
+        margin-right: 5px;
+    }
+    
+    .attendance-table table {
+        min-width: 500px;
+    }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .attendance-table,
+    .fee-receipt {
+        border: 0.5px solid #e2e8f0;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .attendance-table,
+    .fee-receipt {
+        background: #2d3748;
+        color: #e2e8f0;
+        border-color: #4a5568;
+    }
+    
+    .fee-receipt table td {
+        border-color: #4a5568;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .attendance-table,
+    .fee-receipt {
+        transition: none;
+    }
+}

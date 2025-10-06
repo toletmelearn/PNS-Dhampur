@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\Student;
 use App\Models\ClassModel;
+use App\Services\UserFriendlyErrorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -182,14 +183,11 @@ class AttendanceController extends Controller
             ]);
             
             if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to mark attendance. Please try again.'
-                ], 500);
+                return UserFriendlyErrorService::jsonErrorResponse($e, 'attendance_mark');
             }
             
             return redirect()->back()
-                ->with('error', 'Failed to mark attendance. Please try again.')
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'attendance_mark'))
                 ->withInput();
         }
     }
@@ -261,10 +259,7 @@ class AttendanceController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to mark bulk attendance. Please try again.'
-            ], 500);
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'attendance_mark');
         }
     }
 
@@ -317,10 +312,7 @@ class AttendanceController extends Controller
                 'error' => $e->getMessage()
             ]);
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch students'
-            ], 500);
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'student_fetch');
         }
     }
 
@@ -378,15 +370,12 @@ class AttendanceController extends Controller
             }
 
         } catch (\Exception $e) {
-            Log::error('Export attendance report error', [
+            Log::error('Export report error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to export report. Please try again.'
-            ], 500);
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'export_data');
         }
     }
 
@@ -496,10 +485,7 @@ class AttendanceController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch analytics data'
-            ], 500);
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'report_generate');
         }
     }
 
@@ -542,10 +528,7 @@ class AttendanceController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to generate monthly report'
-            ], 500);
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'report_generate');
         }
     }
 
@@ -606,10 +589,7 @@ class AttendanceController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch daily summary'
-            ], 500);
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'report_generate');
         }
     }
 
@@ -668,6 +648,9 @@ class AttendanceController extends Controller
                 'success' => false,
                 'message' => 'Failed to update attendance records'
             ], 500);
+        } catch (Exception $e) {
+            Log::error('Bulk update attendance error: ' . $e->getTraceAsString());
+            return UserFriendlyErrorService::jsonErrorResponse($e, 'attendance_mark');
         }
     }
 

@@ -3,6 +3,7 @@
 @section('title', 'Add New Student - PNS Dhampur')
 
 @push('styles')
+<link href="{{ asset('css/file-upload-enhanced.css') }}" rel="stylesheet">
 <style>
     .form-card {
         border: none;
@@ -174,7 +175,16 @@
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Aadhaar Number</label>
                                 <input type="text" class="form-control @error('aadhaar') is-invalid @enderror" 
-                                       name="aadhaar" value="{{ old('aadhaar') }}" placeholder="XXXX-XXXX-XXXX">
+                                       name="aadhaar" id="aadhaar" value="{{ old('aadhaar') }}" 
+                                       placeholder="XXXX-XXXX-XXXX" 
+                                       minlength="12" maxlength="14" 
+                                       pattern="[0-9]{4}[-\s]?[0-9]{4}[-\s]?[0-9]{4}"
+                                       data-validation="aadhaar"
+                                       autocomplete="off">
+                                <div class="invalid-feedback" id="aadhaar-error"></div>
+                                <div class="valid-feedback" id="aadhaar-success">
+                                    <i class="fas fa-check-circle me-1"></i>Valid Aadhaar number
+                                </div>
                                 @error('aadhaar')
                                     <div class="error-message">{{ $message }}</div>
                                 @enderror
@@ -284,28 +294,42 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Birth Certificate</label>
-                                <div class="file-upload-area" onclick="document.getElementById('birth_cert').click()">
-                                    <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
-                                    <p class="mb-0">Click to upload birth certificate</p>
-                                    <small class="text-muted">PDF, JPG, PNG (Max: 2MB)</small>
+                                <div class="drop-zone" id="birth-cert-drop-zone">
+                                    <div class="drop-zone-content">
+                                        <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
+                                        <div class="drop-zone-text">Drag & Drop birth certificate here</div>
+                                        <div class="drop-zone-subtext">or click to browse files</div>
+                                        <input type="file" id="birth_cert" name="birth_cert" 
+                                               accept=".pdf,.jpg,.jpeg,.png" 
+                                               data-max-size="{{ config('fileupload.max_file_sizes.document') }}"
+                                               style="display: none;">
+                                    </div>
                                 </div>
-                                <input type="file" id="birth_cert" name="birth_cert" class="d-none" 
-                                       accept=".pdf,.jpg,.jpeg,.png" onchange="updateFileName(this, 'birth_cert_name')">
-                                <div id="birth_cert_name" class="success-message mt-2" style="display: none;"></div>
+                                <div class="file-preview mt-3" id="birth-cert-preview"></div>
+                                <small class="form-text text-muted">
+                                    Supported formats: PDF, JPG, PNG. Maximum size: {{ number_format(config('fileupload.max_file_sizes.document') / 1024, 0) }}MB
+                                </small>
                                 @error('birth_cert')
                                     <div class="error-message">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Aadhaar Card</label>
-                                <div class="file-upload-area" onclick="document.getElementById('aadhaar_file').click()">
-                                    <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
-                                    <p class="mb-0">Click to upload Aadhaar card</p>
-                                    <small class="text-muted">PDF, JPG, PNG (Max: 2MB)</small>
+                                <div class="drop-zone" id="aadhaar-drop-zone">
+                                    <div class="drop-zone-content">
+                                        <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
+                                        <div class="drop-zone-text">Drag & Drop Aadhaar card here</div>
+                                        <div class="drop-zone-subtext">or click to browse files</div>
+                                        <input type="file" id="aadhaar_file" name="aadhaar_file" 
+                                               accept=".pdf,.jpg,.jpeg,.png" 
+                                               data-max-size="{{ config('fileupload.max_file_sizes.document') }}"
+                                               style="display: none;">
+                                    </div>
                                 </div>
-                                <input type="file" id="aadhaar_file" name="aadhaar_file" class="d-none" 
-                                       accept=".pdf,.jpg,.jpeg,.png" onchange="updateFileName(this, 'aadhaar_file_name')">
-                                <div id="aadhaar_file_name" class="success-message mt-2" style="display: none;"></div>
+                                <div class="file-preview mt-3" id="aadhaar-preview"></div>
+                                <small class="form-text text-muted">
+                                    Supported formats: PDF, JPG, PNG. Maximum size: {{ number_format(config('fileupload.max_file_sizes.document') / 1024, 0) }}MB
+                                </small>
                                 @error('aadhaar_file')
                                     <div class="error-message">{{ $message }}</div>
                                 @enderror
@@ -314,14 +338,21 @@
 
                         <div class="mb-3">
                             <label class="form-label">Other Documents</label>
-                            <div class="file-upload-area" onclick="document.getElementById('other_docs').click()">
-                                <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
-                                <p class="mb-0">Click to upload additional documents</p>
-                                <small class="text-muted">Multiple files allowed - PDF, JPG, PNG (Max: 2MB each)</small>
+                            <div class="drop-zone" id="other-docs-drop-zone">
+                                <div class="drop-zone-content">
+                                    <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
+                                    <div class="drop-zone-text">Drag & Drop additional documents here</div>
+                                    <div class="drop-zone-subtext">or click to browse files (multiple files allowed)</div>
+                                    <input type="file" id="other_docs" name="other_docs[]" 
+                                           accept=".pdf,.jpg,.jpeg,.png" 
+                                           data-max-size="{{ config('fileupload.max_file_sizes.document') }}"
+                                           multiple style="display: none;">
+                                </div>
                             </div>
-                            <input type="file" id="other_docs" name="other_docs[]" class="d-none" 
-                                   accept=".pdf,.jpg,.jpeg,.png" multiple onchange="updateFileNames(this, 'other_docs_names')">
-                            <div id="other_docs_names" class="success-message mt-2" style="display: none;"></div>
+                            <div class="file-preview mt-3" id="other-docs-preview"></div>
+                            <small class="form-text text-muted">
+                                Multiple files allowed - PDF, JPG, PNG. Maximum size: {{ number_format(config('fileupload.max_file_sizes.document') / 1024, 0) }}MB each
+                            </small>
                             @error('other_docs')
                                 <div class="error-message">{{ $message }}</div>
                             @enderror
@@ -372,64 +403,41 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/file-upload-enhanced.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // File upload handling with enhanced security
-    const fileInputs = document.querySelectorAll('input[type="file"]');
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
-    const maxSize = 2 * 1024 * 1024; // 2MB
-
-    fileInputs.forEach(input => {
-        const dropZone = input.closest('.file-upload-area');
-        
-        // Drag and drop functionality
-        dropZone.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            this.classList.add('dragover');
-        });
-
-        dropZone.addEventListener('dragleave', function(e) {
-            e.preventDefault();
-            this.classList.remove('dragover');
-        });
-
-        dropZone.addEventListener('drop', function(e) {
-            e.preventDefault();
-            this.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFileSelection(files[0], input);
-            }
-        });
-
-        // File input change
-        input.addEventListener('change', function(e) {
-            if (e.target.files.length > 0) {
-                handleFileSelection(e.target.files[0], input);
-            }
-        });
+    // Initialize enhanced file upload for birth certificate
+    const birthCertUploader = new EnhancedFileUpload({
+        maxFileSize: {{ config('fileupload.max_file_sizes.document') }},
+        allowedTypes: {!! json_encode(explode(',', config('fileupload.allowed_file_types.document.extensions'))) !!},
+        dropZone: '#birth-cert-drop-zone',
+        fileInput: '#birth_cert',
+        previewContainer: '#birth-cert-preview',
+        autoUpload: false
     });
 
-    function handleFileSelection(file, input) {
-        // Validate file type
-        if (!allowedTypes.includes(file.type)) {
-            showAlert('Invalid file type. Only PDF, JPG, JPEG, and PNG files are allowed.', 'error');
-            input.value = '';
-            return;
-        }
+    // Initialize enhanced file upload for Aadhaar
+    const aadhaarUploader = new EnhancedFileUpload({
+        maxFileSize: {{ config('fileupload.max_file_sizes.document') }},
+        allowedTypes: {!! json_encode(explode(',', config('fileupload.allowed_file_types.document.extensions'))) !!},
+        dropZone: '#aadhaar-drop-zone',
+        fileInput: '#aadhaar_file',
+        previewContainer: '#aadhaar-preview',
+        autoUpload: false
+    });
 
-        // Validate file size
-        if (file.size > maxSize) {
-            showAlert('File size exceeds 2MB limit. Please choose a smaller file.', 'error');
-            input.value = '';
-            return;
-        }
+    // Initialize enhanced file upload for other documents (multiple files)
+    const otherDocsUploader = new EnhancedFileUpload({
+        maxFileSize: {{ config('fileupload.max_file_sizes.document') }},
+        allowedTypes: {!! json_encode(explode(',', config('fileupload.allowed_file_types.document.extensions'))) !!},
+        dropZone: '#other-docs-drop-zone',
+        fileInput: '#other_docs',
+        previewContainer: '#other-docs-preview',
+        autoUpload: false,
+        multiple: true
+    });
 
-        // Update file name display
-        const displayId = input.id + '_name';
-        updateFileName(input, displayId);
-    }
+    // Original form validation and submission logic
 
     // Form validation and submission
     const form = document.getElementById('studentForm');
@@ -471,6 +479,17 @@ document.addEventListener('DOMContentLoaded', function() {
             contact.classList.add('is-invalid');
             showAlert('Please enter a valid 10-digit contact number.', 'error');
             return;
+        }
+
+        // Validate Aadhaar number if provided
+        const aadhaar = document.querySelector('[name="aadhaar"]');
+        if (aadhaar.value.trim()) {
+            const aadhaarValidation = isValidAadhaar(aadhaar.value);
+            if (!aadhaarValidation.valid) {
+                aadhaar.classList.add('is-invalid');
+                showAlert(`Aadhaar validation failed: ${aadhaarValidation.message}`, 'error');
+                return;
+            }
         }
 
         // Show loading modal
@@ -540,6 +559,65 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Enhanced Aadhaar validation with real-time feedback
+    const aadhaarInput = document.getElementById('aadhaar');
+    const aadhaarError = document.getElementById('aadhaar-error');
+    const aadhaarSuccess = document.getElementById('aadhaar-success');
+
+    if (aadhaarInput) {
+        // Format input as user types
+        aadhaarInput.addEventListener('input', function(e) {
+            const cursorPosition = e.target.selectionStart;
+            const oldValue = e.target.value;
+            const newValue = formatAadhaar(e.target.value);
+            
+            e.target.value = newValue;
+            
+            // Adjust cursor position after formatting
+            const diff = newValue.length - oldValue.length;
+            e.target.setSelectionRange(cursorPosition + diff, cursorPosition + diff);
+            
+            // Real-time validation
+            validateAadhaarField();
+        });
+
+        // Validate on blur
+        aadhaarInput.addEventListener('blur', function() {
+            validateAadhaarField();
+        });
+
+        // Prevent non-numeric input (except hyphens and spaces)
+        aadhaarInput.addEventListener('keypress', function(e) {
+            const char = String.fromCharCode(e.which);
+            if (!/[0-9\-\s]/.test(char) && e.which !== 8 && e.which !== 0) {
+                e.preventDefault();
+            }
+        });
+
+        function validateAadhaarField() {
+            const value = aadhaarInput.value.trim();
+            
+            // Clear previous states
+            aadhaarInput.classList.remove('is-valid', 'is-invalid');
+            aadhaarError.textContent = '';
+            aadhaarSuccess.style.display = 'none';
+            
+            if (value === '') {
+                return; // Empty is allowed (not required field)
+            }
+            
+            const validation = isValidAadhaar(value);
+            
+            if (validation.valid) {
+                aadhaarInput.classList.add('is-valid');
+                aadhaarSuccess.style.display = 'block';
+            } else {
+                aadhaarInput.classList.add('is-invalid');
+                aadhaarError.textContent = validation.message;
+            }
+        }
+    }
 });
 
 // Utility functions
@@ -551,6 +629,82 @@ function isValidEmail(email) {
 function isValidPhone(phone) {
     const phoneRegex = /^[6-9]\d{9}$/;
     return phoneRegex.test(phone.replace(/\D/g, ''));
+}
+
+function isValidAadhaar(aadhaar) {
+    // Remove spaces and hyphens
+    const cleanAadhaar = aadhaar.replace(/[\s-]/g, '');
+    
+    // Check if it's exactly 12 digits
+    if (!/^\d{12}$/.test(cleanAadhaar)) {
+        return { valid: false, message: 'Aadhaar must be exactly 12 digits' };
+    }
+    
+    // Check for invalid patterns (all same digits, sequential numbers)
+    if (/^(\d)\1{11}$/.test(cleanAadhaar)) {
+        return { valid: false, message: 'Aadhaar cannot have all same digits' };
+    }
+    
+    if (/^(0123456789|1234567890|9876543210|0987654321)/.test(cleanAadhaar)) {
+        return { valid: false, message: 'Invalid Aadhaar pattern detected' };
+    }
+    
+    // Verhoeff algorithm validation for Aadhaar
+    if (!verhoeffCheck(cleanAadhaar)) {
+        return { valid: false, message: 'Invalid Aadhaar number (checksum failed)' };
+    }
+    
+    return { valid: true, message: 'Valid Aadhaar number' };
+}
+
+function verhoeffCheck(aadhaar) {
+    // Verhoeff algorithm implementation for Aadhaar validation
+    const d = [
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
+        [2, 3, 4, 0, 1, 7, 8, 9, 5, 6],
+        [3, 4, 0, 1, 2, 8, 9, 5, 6, 7],
+        [4, 0, 1, 2, 3, 9, 5, 6, 7, 8],
+        [5, 9, 8, 7, 6, 0, 4, 3, 2, 1],
+        [6, 5, 9, 8, 7, 1, 0, 4, 3, 2],
+        [7, 6, 5, 9, 8, 2, 1, 0, 4, 3],
+        [8, 7, 6, 5, 9, 3, 2, 1, 0, 4],
+        [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+    ];
+    
+    const p = [
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        [1, 5, 7, 6, 2, 8, 3, 0, 9, 4],
+        [5, 8, 0, 3, 7, 9, 6, 1, 4, 2],
+        [8, 9, 1, 6, 0, 4, 3, 5, 2, 7],
+        [9, 4, 5, 3, 1, 2, 6, 8, 7, 0],
+        [4, 2, 8, 6, 5, 7, 3, 9, 0, 1],
+        [2, 7, 9, 3, 8, 0, 6, 4, 1, 5],
+        [7, 0, 4, 6, 9, 1, 3, 2, 5, 8]
+    ];
+    
+    let c = 0;
+    const myArray = aadhaar.split('').reverse();
+    
+    for (let i = 0; i < myArray.length; i++) {
+        c = d[c][p[((i + 1) % 8)][parseInt(myArray[i])]];
+    }
+    
+    return c === 0;
+}
+
+function formatAadhaar(value) {
+    // Remove all non-digits
+    const digits = value.replace(/\D/g, '');
+    
+    // Format as XXXX-XXXX-XXXX
+    if (digits.length <= 4) {
+        return digits;
+    } else if (digits.length <= 8) {
+        return digits.slice(0, 4) + '-' + digits.slice(4);
+    } else {
+        return digits.slice(0, 4) + '-' + digits.slice(4, 8) + '-' + digits.slice(8, 12);
+    }
 }
 
 function updateFileName(input, displayId) {

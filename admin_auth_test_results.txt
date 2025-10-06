@@ -1,0 +1,21 @@
+=== Admin Authentication and External Routes Test ===
+Timestamp: 2025-10-05 10:14:27
+
+1. Testing basic API endpoint...
+Status: 200
+Response: {"message":"API is working!"}
+
+2. Attempting admin login...
+Status: 200
+Login successful! Token obtained.
+Token: 37|hW0tp51M4A5kwOYEP...
+
+3. Testing external biometric devices route with authentication...
+Status: 0
+Error: Recv failure: Connection was reset
+
+4. Testing external test-connection route with authentication...
+Status: 0
+Error: Failed to connect to 127.0.0.1 port 8080: Connection refused
+
+=== Test Complete ===

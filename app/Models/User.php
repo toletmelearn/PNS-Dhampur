@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\Role;
+use App\Models\PasswordHistory;
 
 class User extends Authenticatable
 {
@@ -15,6 +17,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'employee_id',
         'password',
         'role'
     ];
@@ -215,5 +218,143 @@ class User extends Authenticatable
     public function scopeStudents($query)
     {
         return $query->where('role', Role::STUDENT);
+    }
+
+    /**
+     * Get the password histories for the user.
+     */
+    public function passwordHistories()
+    {
+        return $this->hasMany(PasswordHistory::class);
+    }
+
+    /**
+     * Check if the user's password has expired.
+     */
+    public function isPasswordExpired(): bool
+    {
+        if (!$this->password_expires_at) {
+            return false;
+        }
+
+        return now()->isAfter($this->password_expires_at);
+    }
+
+    /**
+     * Check if the user's password will expire soon.
+     */
+    public function isPasswordExpiringSoon(): bool
+    {
+        if (!$this->password_expires_at) {
+            return false;
+        }
+
+        $warningDays = config('password_policy.expiration.warning_days', 7);
+        $warningDate = now()->addDays($warningDays);
+
+        return $warningDate->isAfter($this->password_expires_at) && !$this->isPasswordExpired();
+    }
+
+    /**
+     * Get days until password expires.
+     */
+    public function getDaysUntilPasswordExpires(): ?int
+    {
+        if (!$this->password_expires_at) {
+            return null;
+        }
+
+        return now()->diffInDays($this->password_expires_at, false);
+    }
+
+    /**
+     * Check if the user account is locked.
+     */
+    public function isLocked(): bool
+    {
+        return $this->locked_until && now()->isBefore($this->locked_until);
+    }
+
+    /**
+     * Lock the user account.
+     */
+    public function lockAccount(): void
+    {
+        $lockoutDuration = config('password_policy.lockout.lockout_duration', 30);
+        $this->update([
+            'locked_until' => now()->addMinutes($lockoutDuration),
+        ]);
+    }
+
+    /**
+     * Unlock the user account.
+     */
+    public function unlockAccount(): void
+    {
+        $this->update([
+            'failed_login_attempts' => 0,
+            'locked_until' => null,
+        ]);
+    }
+
+    /**
+     * Increment failed login attempts.
+     */
+    public function incrementFailedAttempts(): void
+    {
+        $this->increment('failed_login_attempts');
+        
+        $maxAttempts = config('password_policy.lockout.max_attempts', 5);
+        if ($this->failed_login_attempts >= $maxAttempts) {
+            $this->lockAccount();
+        }
+    }
+
+    /**
+     * Reset failed login attempts.
+     */
+    public function resetFailedAttempts(): void
+    {
+        if ($this->failed_login_attempts > 0) {
+            $this->update(['failed_login_attempts' => 0]);
+        }
+    }
+
+    /**
+     * Update password with history tracking and expiration.
+     */
+    public function updatePassword(string $newPassword): void
+    {
+        $policy = config('password_policy');
+        
+        // Add current password to history if it exists
+        if ($this->password) {
+            PasswordHistory::addPassword($this->id, $this->password);
+        }
+
+        // Calculate expiration date
+        $rolePolicy = $policy['roles'][$this->role] ?? [];
+        $expirationDays = $rolePolicy['expiration_days'] ?? $policy['expiration']['days'];
+        $expiresAt = $policy['expiration']['enabled'] ? now()->addDays($expirationDays) : null;
+
+        // Update password and related fields
+        $this->update([
+            'password' => bcrypt($newPassword),
+            'password_changed_at' => now(),
+            'password_expires_at' => $expiresAt,
+            'password_reset_required' => false,
+            'failed_login_attempts' => 0,
+            'locked_until' => null,
+        ]);
+    }
+
+    /**
+     * Force password reset on next login.
+     */
+    public function forcePasswordReset(): void
+    {
+        $this->update([
+            'password_reset_required' => true,
+        ]);
     }
 }

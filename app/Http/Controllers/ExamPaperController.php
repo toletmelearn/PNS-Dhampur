@@ -12,6 +12,7 @@ use App\Models\ClassModel;
 use App\Models\Exam;
 use App\Models\Teacher;
 use App\Models\User;
+use App\Services\UserFriendlyErrorService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
@@ -20,7 +21,9 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
+use Exception;
 
 class ExamPaperController extends Controller
 {
@@ -167,8 +170,13 @@ class ExamPaperController extends Controller
                 ->with('success', 'Exam paper created successfully!');
 
         } catch (\Exception $e) {
+            Log::error('Failed to create exam paper', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Failed to create exam paper: ' . $e->getMessage())
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'))
                 ->withInput();
         }
     }
@@ -285,8 +293,14 @@ class ExamPaperController extends Controller
                 ->with('success', 'Exam paper updated successfully!');
 
         } catch (\Exception $e) {
+            Log::error('Failed to update exam paper', [
+                'exam_paper_id' => $examPaper->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Failed to update exam paper: ' . $e->getMessage())
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'))
                 ->withInput();
         }
     }
@@ -312,8 +326,14 @@ class ExamPaperController extends Controller
                 ->with('success', 'Exam paper deleted successfully!');
                 
         } catch (\Exception $e) {
+            Log::error('Failed to delete exam paper', [
+                'exam_paper_id' => $examPaper->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->route('exam-papers.index')
-                ->with('error', 'Failed to delete exam paper: ' . $e->getMessage());
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'));
         }
     }
 
@@ -347,8 +367,14 @@ class ExamPaperController extends Controller
                 ->with('success', 'Exam paper published successfully!');
                 
         } catch (\Exception $e) {
+            Log::error('Failed to publish exam paper', [
+                'exam_paper_id' => $examPaper->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Failed to publish exam paper: ' . $e->getMessage());
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'));
         }
     }
 
@@ -375,8 +401,14 @@ class ExamPaperController extends Controller
                 ->with('success', 'Exam paper submitted for review successfully!');
                 
         } catch (\Exception $e) {
+            Log::error('Failed to submit exam paper', [
+                'exam_paper_id' => $examPaper->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Failed to submit exam paper: ' . $e->getMessage());
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'));
         }
     }
 
@@ -398,8 +430,14 @@ class ExamPaperController extends Controller
                 ->with('success', 'Exam paper approved successfully!');
                 
         } catch (\Exception $e) {
+            Log::error('Failed to approve exam paper', [
+                'exam_paper_id' => $examPaper->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Failed to approve exam paper: ' . $e->getMessage());
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'));
         }
     }
 
@@ -431,8 +469,14 @@ class ExamPaperController extends Controller
                 ->with('success', 'Exam paper rejected successfully!');
                 
         } catch (\Exception $e) {
+            Log::error('Failed to reject exam paper', [
+                'exam_paper_id' => $examPaper->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Failed to reject exam paper: ' . $e->getMessage());
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'));
         }
     }
 
@@ -471,8 +515,14 @@ class ExamPaperController extends Controller
                 ->with('success', 'Exam paper duplicated successfully!');
                 
         } catch (\Exception $e) {
+            Log::error('Failed to duplicate exam paper', [
+                'exam_paper_id' => $examPaper->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return redirect()->back()
-                ->with('error', 'Failed to duplicate exam paper: ' . $e->getMessage());
+                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'general'));
         }
     }
 
@@ -586,7 +636,13 @@ class ExamPaperController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => 'Failed to submit for approval: ' . $e->getMessage()], 500);
+            Log::error('Failed to submit exam paper for approval', [
+                'exam_paper_id' => $examPaper->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => UserFriendlyErrorService::getErrorMessage($e, 'general')], 500);
         }
     }
 
@@ -629,7 +685,14 @@ class ExamPaperController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => 'Failed to approve: ' . $e->getMessage()], 500);
+            Log::error('Failed to approve exam paper version', [
+                'exam_paper_id' => $examPaper->id,
+                'version_id' => $version->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => UserFriendlyErrorService::getErrorMessage($e, 'general')], 500);
         }
     }
 
@@ -672,7 +735,14 @@ class ExamPaperController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => 'Failed to reject: ' . $e->getMessage()], 500);
+            Log::error('Failed to reject exam paper version', [
+                'exam_paper_id' => $examPaper->id,
+                'version_id' => $version->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => UserFriendlyErrorService::getErrorMessage($e, 'general')], 500);
         }
     }
 
@@ -706,7 +776,13 @@ class ExamPaperController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to fetch version history: ' . $e->getMessage()], 500);
+            Log::error('Failed to fetch exam paper version history', [
+                'exam_paper_id' => $examPaper->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => UserFriendlyErrorService::getErrorMessage($e, 'general')], 500);
         }
     }
 
@@ -742,7 +818,14 @@ class ExamPaperController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to download: ' . $e->getMessage()], 500);
+            Log::error('Failed to download exam paper version', [
+                'exam_paper_id' => $examPaper->id,
+                'version_id' => $version->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => UserFriendlyErrorService::getErrorMessage($e, 'general')], 500);
         }
     }
 
@@ -778,7 +861,13 @@ class ExamPaperController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to fetch approval status: ' . $e->getMessage()], 500);
+            Log::error('Failed to fetch exam paper approval status', [
+                'exam_paper_id' => $examPaper->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => UserFriendlyErrorService::getErrorMessage($e, 'general')], 500);
         }
     }
 
@@ -821,7 +910,13 @@ class ExamPaperController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to fetch security logs: ' . $e->getMessage()], 500);
+            Log::error('Failed to fetch exam paper security logs', [
+                'exam_paper_id' => $examPaper->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json(['error' => UserFriendlyErrorService::getErrorMessage($e, 'general')], 500);
         }
     }
 

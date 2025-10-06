@@ -115,6 +115,7 @@
 @endsection
 
 @push('styles')
+<link rel="stylesheet" href="{{ asset('css/file-upload-enhanced.css') }}">
 <style>
 .document-row {
     background-color: #f8f9fa;
@@ -140,10 +141,15 @@
 @endpush
 
 @push('scripts')
+<script src="{{ asset('js/file-upload-enhanced.js') }}"></script>
 <script>
 $(document).ready(function() {
     let documentCount = 1;
     const maxDocuments = 10;
+    const fileUploaders = [];
+
+    // Initialize first document uploader
+    initializeFileUploader(1);
 
     // Add new document row
     $('#addDocument').on('click', function() {
@@ -160,6 +166,9 @@ $(document).ready(function() {
         const newRow = createDocumentRow(documentCount);
         $('#documentContainer').append(newRow);
         
+        // Initialize file uploader for new row
+        initializeFileUploader(documentCount);
+        
         // Show remove buttons if more than one document
         if (documentCount > 1) {
             $('.remove-document').show();
@@ -173,7 +182,14 @@ $(document).ready(function() {
 
     // Remove document row
     $(document).on('click', '.remove-document', function() {
+        const rowIndex = $(this).closest('.document-row').data('index');
         $(this).closest('.document-row').remove();
+        
+        // Remove corresponding file uploader
+        if (fileUploaders[rowIndex]) {
+            delete fileUploaders[rowIndex];
+        }
+        
         documentCount--;
         
         // Update document numbers
@@ -189,6 +205,24 @@ $(document).ready(function() {
             $('#addDocument').show();
         }
     });
+
+    function initializeFileUploader(index) {
+        const dropZone = $(`.document-row[data-index="${index - 1}"] .drop-zone`)[0];
+        const fileInput = $(`.document-row[data-index="${index - 1}"] .drop-zone-input`)[0];
+        const previewContainer = $(`#document-preview-${index}`)[0];
+        
+        if (dropZone && fileInput && previewContainer) {
+            fileUploaders[index - 1] = new EnhancedFileUpload({
+                maxFileSize: {{ config('fileupload.max_file_size') }},
+                allowedTypes: {!! json_encode(config('fileupload.allowed_types.documents')) !!},
+                dropZone: dropZone,
+                fileInput: fileInput,
+                previewContainer: previewContainer,
+                autoUpload: false,
+                multiple: false
+            });
+        }
+    }
 
     // Form submission with progress
     $('#bulkUploadForm').on('submit', function(e) {
@@ -264,9 +298,22 @@ $(document).ready(function() {
                 <div class="row">
                     <div class="col-md-4">
                         <label class="form-label">Document File <span class="text-danger">*</span></label>
-                        <input type="file" class="form-control" name="documents[]" 
-                               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" required>
-                        <div class="form-text">Max size: 10MB</div>
+                        <div class="drop-zone" 
+                             data-max-size="{{ config('fileupload.max_file_size') }}"
+                             data-accept="{{ implode(',', config('fileupload.allowed_types.documents')) }}">
+                            <div class="drop-zone-content">
+                                <i class="fas fa-cloud-upload-alt drop-zone-icon"></i>
+                                <p class="drop-zone-text">Drop file here or click to browse</p>
+                                <p class="drop-zone-hint">
+                                    Supported: {{ implode(', ', array_map('strtoupper', config('fileupload.allowed_types.documents'))) }}<br>
+                                    Max size: {{ config('fileupload.max_file_size_mb') }}MB
+                                </p>
+                            </div>
+                            <input type="file" class="drop-zone-input" name="documents[]" 
+                                   accept="{{ implode(',', array_map(function($ext) { return '.' . $ext; }, config('fileupload.allowed_types.documents'))) }}" 
+                                   required>
+                        </div>
+                        <div class="file-preview mt-2" id="document-preview-${index}"></div>
                     </div>
                     
                     <div class="col-md-4">
@@ -303,7 +350,7 @@ $(document).ready(function() {
         let isValid = true;
         
         // Check if at least one document is selected
-        const fileInputs = $('input[type="file"]');
+        const fileInputs = $('.drop-zone-input');
         let hasFile = false;
         
         fileInputs.each(function() {
@@ -321,24 +368,6 @@ $(document).ready(function() {
             });
             return false;
         }
-        
-        // Validate file sizes
-        fileInputs.each(function() {
-            if (this.files.length > 0) {
-                const file = this.files[0];
-                const maxSize = 10 * 1024 * 1024; // 10MB
-                
-                if (file.size > maxSize) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'File Too Large',
-                        text: `File "${file.name}" is larger than 10MB. Please choose a smaller file.`
-                    });
-                    isValid = false;
-                    return false; // break
-                }
-            }
-        });
         
         return isValid;
     }

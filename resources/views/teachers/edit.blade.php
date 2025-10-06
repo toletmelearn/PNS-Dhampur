@@ -3,6 +3,7 @@
 @section('title', 'Edit Teacher - ' . $teacher->user->name)
 
 @push('styles')
+<link href="{{ asset('css/file-upload-enhanced.css') }}" rel="stylesheet">
 <style>
     .form-card {
         background: white;
@@ -59,25 +60,6 @@
     .btn-primary-custom:hover {
         transform: translateY(-2px);
         box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-    }
-
-    .file-upload-area {
-        border: 2px dashed #e2e8f0;
-        border-radius: 10px;
-        padding: 2rem;
-        text-align: center;
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-
-    .file-upload-area:hover {
-        border-color: #667eea;
-        background: rgba(102, 126, 234, 0.05);
-    }
-
-    .file-upload-area.has-file {
-        border-color: #28a745;
-        background: rgba(40, 167, 69, 0.1);
     }
 
     .subject-checkbox {
@@ -295,26 +277,29 @@
                                 </div>
                                 @endif
 
-                                <div class="file-upload-area {{ isset($teacher->documents[$docType]) ? 'has-file' : '' }}" 
-                                     onclick="document.getElementById('{{ $docType }}').click()">
-                                    @if(isset($teacher->documents[$docType]))
-                                        <i class="fas fa-sync-alt fa-2x mb-2 text-primary"></i>
-                                        <p class="mb-0">Click to replace {{ $docType }}</p>
-                                    @else
-                                        <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
-                                        <p class="mb-0">Click to upload {{ $docType }}</p>
-                                    @endif
-                                    <small class="text-muted">
-                                        @if($docType == 'photo')
-                                            JPG, PNG (Max: 2MB)
+                                <div class="drop-zone" id="dropZone{{ ucfirst($docType) }}"
+                                     data-max-size="{{ $docType == 'photo' ? config('fileupload.max_size_photo', 2097152) : config('fileupload.max_size', 5242880) }}"
+                                     data-accept="{{ $docType == 'photo' ? config('fileupload.allowed_types.photo', '.jpg,.jpeg,.png') : config('fileupload.allowed_types.documents', '.pdf,.doc,.docx,.jpg,.jpeg,.png') }}">
+                                    <div class="drop-zone-content">
+                                        @if(isset($teacher->documents[$docType]))
+                                            <i class="fas fa-sync-alt fa-2x mb-2 text-primary"></i>
+                                            <p class="mb-0">Click to replace {{ $docType }}</p>
                                         @else
-                                            PDF, DOC, DOCX, JPG, PNG (Max: 5MB)
+                                            <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-muted"></i>
+                                            <p class="mb-0">Click to upload {{ $docType }}</p>
                                         @endif
-                                    </small>
+                                        <small class="text-muted">
+                                            @if($docType == 'photo')
+                                                JPG, PNG (Max: {{ number_format(config('fileupload.max_size_photo', 2097152) / 1024 / 1024, 0) }}MB)
+                                            @else
+                                                PDF, DOC, DOCX, JPG, PNG (Max: {{ number_format(config('fileupload.max_size', 5242880) / 1024 / 1024, 0) }}MB)
+                                            @endif
+                                        </small>
+                                    </div>
+                                    <input type="file" class="drop-zone-input" name="documents[{{ $docType }}]" 
+                                           accept="{{ $docType == 'photo' ? config('fileupload.allowed_types.photo', '.jpg,.jpeg,.png') : config('fileupload.allowed_types.documents', '.pdf,.doc,.docx,.jpg,.jpeg,.png') }}">
                                 </div>
-                                <input type="file" id="{{ $docType }}" name="documents[{{ $docType }}]" 
-                                       class="d-none @error('documents.'.$docType) is-invalid @enderror"
-                                       accept="{{ $docType == 'photo' ? '.jpg,.jpeg,.png' : '.pdf,.doc,.docx,.jpg,.jpeg,.png' }}">
+                                <div class="file-preview" id="preview{{ ucfirst($docType) }}"></div>
                                 @error('documents.'.$docType)
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
@@ -347,30 +332,28 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/file-upload-enhanced.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // File upload preview
-    const fileInputs = document.querySelectorAll('input[type="file"]');
+    // Initialize enhanced file upload for each document type
+    const documentTypes = ['resume', 'certificates', 'photo', 'id_proof'];
+    const uploaders = {};
     
-    fileInputs.forEach(input => {
-        input.addEventListener('change', function() {
-            const uploadArea = this.parentElement.querySelector('.file-upload-area') || 
-                              this.parentElement.previousElementSibling;
-            
-            if (this.files.length > 0) {
-                const fileName = this.files[0].name;
-                const fileSize = (this.files[0].size / 1024 / 1024).toFixed(2);
-                
-                uploadArea.innerHTML = `
-                    <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
-                    <p class="mb-0 text-success">${fileName}</p>
-                    <small class="text-muted">${fileSize} MB - Ready to upload</small>
-                `;
-                uploadArea.classList.add('has-file');
-                uploadArea.style.borderColor = '#28a745';
-                uploadArea.style.backgroundColor = 'rgba(40, 167, 69, 0.1)';
-            }
-        });
+    documentTypes.forEach(docType => {
+        const dropZone = document.getElementById('dropZone' + docType.charAt(0).toUpperCase() + docType.slice(1));
+        const fileInput = dropZone.querySelector('.drop-zone-input');
+        const previewContainer = document.getElementById('preview' + docType.charAt(0).toUpperCase() + docType.slice(1));
+        
+        if (dropZone && fileInput && previewContainer) {
+            uploaders[docType] = new EnhancedFileUpload({
+                maxFileSize: docType === 'photo' ? 2 * 1024 * 1024 : 5 * 1024 * 1024, // 2MB for photo, 5MB for others
+                allowedTypes: docType === 'photo' ? ['image/jpeg', 'image/png'] : ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'],
+                dropZone: dropZone,
+                fileInput: fileInput,
+                previewContainer: previewContainer,
+                autoUpload: false
+            });
+        }
     });
 
     // Form validation

@@ -108,10 +108,13 @@ class StudentVerificationController extends Controller
      */
     public function upload(Request $request)
     {
+        $maxVerificationSize = config('fileupload.max_file_sizes.document');
+        $verificationMimes = config('fileupload.allowed_file_types.verification.mimes');
+        
         $request->validate([
             'student_id' => 'required|exists:students,id',
             'document_type' => ['required', Rule::in(array_keys(StudentVerification::DOCUMENT_TYPES))],
-            'document' => 'required|file|mimes:pdf,jpg,jpeg,png,gif|max:5120', // 5MB max
+            'document' => "required|file|mimes:{$verificationMimes}|max:{$maxVerificationSize}", // Updated with config values
         ]);
 
         try {
