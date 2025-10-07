@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\InventoryCategory;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Helpers\SecurityHelper;
 
 class CategoryController extends Controller
 {
@@ -35,9 +36,9 @@ class CategoryController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                $q->where('name', 'like', SecurityHelper::buildLikePattern($search))
+                  ->orWhere('code', 'like', SecurityHelper::buildLikePattern($search))
+                  ->orWhere('description', 'like', SecurityHelper::buildLikePattern($search));
             });
         }
 

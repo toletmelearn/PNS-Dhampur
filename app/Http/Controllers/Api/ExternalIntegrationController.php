@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\FileUploadValidationTrait;
 use App\Services\AadhaarVerificationService;
 use App\Services\BiometricDeviceService;
 use App\Services\NotificationService;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class ExternalIntegrationController extends Controller
 {
+    use FileUploadValidationTrait;
     protected $aadhaarService;
     protected $biometricService;
     protected $notificationService;
@@ -139,12 +141,12 @@ class ExternalIntegrationController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'file' => 'required|file|mimes:csv,xlsx,xls|max:10240', // 10MB max
+                ...$this->getBiometricFileValidationRules(),
                 'device_type' => 'required|string|in:fingerprint,face_recognition,iris,card_reader',
                 'import_type' => 'required|string|in:attendance,enrollment',
                 'date_format' => 'nullable|string|in:Y-m-d H:i:s,d/m/Y H:i:s,m/d/Y H:i:s',
                 'mapping' => 'nullable|array'
-            ]);
+            ], $this->getFileUploadValidationMessages());
 
             if ($validator->fails()) {
                 return response()->json([

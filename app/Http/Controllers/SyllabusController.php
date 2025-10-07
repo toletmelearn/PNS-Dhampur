@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\FileUploadValidationTrait;
 use App\Models\Syllabus;
 use App\Models\Subject;
 use App\Models\ClassModel;
@@ -14,6 +15,7 @@ use Illuminate\Support\Str;
 
 class SyllabusController extends Controller
 {
+    use FileUploadValidationTrait;
     /**
      * Display the syllabus management dashboard
      */
@@ -96,15 +98,15 @@ class SyllabusController extends Controller
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'subject_id' => 'nullable|exists:subjects,id',
+            'subject_id' => 'required|exists:subjects,id',
             'class_id' => 'required|exists:class_models,id',
             'teacher_id' => 'required|exists:teachers,id',
             'academic_year' => 'required|string|max:20',
             'semester' => 'nullable|string|max:20',
             'visibility' => 'required|in:public,class_only,private',
             'tags' => 'nullable|string',
-            'file' => 'required|file|mimes:pdf,doc,docx,mp4,avi,mov,wmv,jpg,jpeg,png,gif|max:51200', // 50MB max
-        ]);
+            ...$this->getMediaFileValidationRules(),
+        ], $this->getFileUploadValidationMessages());
 
         if ($validator->fails()) {
             return response()->json([
@@ -224,8 +226,8 @@ class SyllabusController extends Controller
             'semester' => 'nullable|string|max:20',
             'visibility' => 'required|in:public,class_only,private',
             'tags' => 'nullable|string',
-            'file' => 'nullable|file|mimes:pdf,doc,docx,mp4,avi,mov,wmv,jpg,jpeg,png,gif|max:51200',
-        ]);
+            ...$this->getOptionalMediaFileValidationRules(),
+        ], $this->getFileUploadValidationMessages());
 
         if ($validator->fails()) {
             return response()->json([

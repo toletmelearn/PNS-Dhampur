@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\FileUploadValidationTrait;
 use App\Models\BiometricAttendance;
 use App\Models\BiometricDevice;
 use App\Models\Teacher;
@@ -17,6 +18,8 @@ use Carbon\Carbon;
 
 class BiometricController extends Controller
 {
+    use FileUploadValidationTrait;
+    
     protected $deviceService;
     protected $realTimeProcessor;
 
@@ -73,13 +76,13 @@ class BiometricController extends Controller
     private function importCsvData(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'csv_file' => 'required|file|mimes:csv,txt|max:51200', // 50MB max
+            ...$this->getBiometricFileValidationRules(),
             'date_format' => 'nullable|string|in:Y-m-d,d/m/Y,m/d/Y,Y/m/d',
             'time_format' => 'nullable|string|in:H:i:s,H:i,g:i A,G:i',
             'device_id' => 'nullable|string',
             'auto_create_teachers' => 'nullable|boolean',
             'validate_duplicates' => 'nullable|boolean'
-        ]);
+        ], $this->getFileUploadValidationMessages());
 
         if ($validator->fails()) {
             return response()->json([

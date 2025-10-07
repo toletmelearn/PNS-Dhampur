@@ -4,9 +4,11 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use App\Http\Traits\DateRangeValidationTrait;
 
 class StoreTeacherRequest extends FormRequest
 {
+    use DateRangeValidationTrait;
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -258,19 +260,20 @@ class StoreTeacherRequest extends FormRequest
                     $calculatedExperience += (float) $experience['duration_years'];
                 }
                 
-                // Check for overlapping experience periods
+                // Check for overlapping experience periods using DateRangeValidationTrait
                 if (isset($experience['start_date']) && isset($experience['end_date'])) {
                     foreach ($experiences as $otherIndex => $otherExperience) {
                         if ($index !== $otherIndex && 
                             isset($otherExperience['start_date']) && 
                             isset($otherExperience['end_date'])) {
                             
-                            $start1 = strtotime($experience['start_date']);
-                            $end1 = strtotime($experience['end_date']);
-                            $start2 = strtotime($otherExperience['start_date']);
-                            $end2 = strtotime($otherExperience['end_date']);
-                            
-                            if (($start1 <= $end2) && ($end1 >= $start2)) {
+                            // Use trait method to check for date range overlap
+                            if ($this->datesOverlap(
+                                $experience['start_date'], 
+                                $experience['end_date'],
+                                $otherExperience['start_date'], 
+                                $otherExperience['end_date']
+                            )) {
                                 $validator->errors()->add("experience.{$index}.start_date", 'Experience periods cannot overlap.');
                                 break;
                             }

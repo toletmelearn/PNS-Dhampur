@@ -11,9 +11,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+use App\Http\Traits\DateRangeValidationTrait;
 
 class ConfigurationController extends Controller
 {
+    use DateRangeValidationTrait;
     public function __construct()
     {
         $this->middleware('auth');
@@ -79,16 +81,11 @@ class ConfigurationController extends Controller
 
     public function storeAcademicYear(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255|unique:academic_years',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
-            'description' => 'nullable|string'
-        ]);
-
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
+        $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:academic_years'],
+            ...$this->getAcademicYearDateRangeValidationRules(),
+            'description' => ['nullable', 'string']
+        ], $this->getDateRangeValidationMessages());
 
         // Check for overlapping academic years
         $overlapping = AcademicYear::where(function ($query) use ($request) {
@@ -124,16 +121,11 @@ class ConfigurationController extends Controller
 
     public function updateAcademicYear(Request $request, AcademicYear $academicYear)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255|unique:academic_years,name,' . $academicYear->id,
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
-            'description' => 'nullable|string'
-        ]);
-
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
+        $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:academic_years,name,' . $academicYear->id],
+            ...$this->getAcademicYearDateRangeValidationRules(),
+            'description' => ['nullable', 'string']
+        ], $this->getDateRangeValidationMessages());
 
         // Check for overlapping academic years (excluding current one)
         $overlapping = AcademicYear::where('id', '!=', $academicYear->id)
@@ -194,22 +186,12 @@ class ConfigurationController extends Controller
 
     public function storeHoliday(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'type' => 'required|in:' . implode(',', array_keys(Holiday::TYPES)),
-            'category' => 'required|in:' . implode(',', array_keys(Holiday::CATEGORIES)),
-            'academic_year_id' => 'required|exists:academic_years,id',
-            'description' => 'nullable|string',
-            'color' => 'nullable|string|max:7',
-            'is_recurring' => 'boolean',
-            'recurrence_pattern' => 'nullable|in:' . implode(',', array_keys(Holiday::RECURRENCE_PATTERNS))
-        ]);
-
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
+        $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            ...$this->getDateRangeValidationRules(),
+            'type' => ['required', 'in:national,regional,school'],
+            'description' => ['nullable', 'string']
+        ], $this->getDateRangeValidationMessages());
 
         Holiday::create($request->all());
 

@@ -14,8 +14,11 @@ return new class extends Migration
     public function up()
     {
         Schema::table('students', function (Blueprint $table) {
-            // Drop existing foreign key constraint
-            $table->dropForeign(['class_id']);
+            // Skip dropForeign for SQLite as it's not supported
+            if (DB::getDriverName() !== 'sqlite') {
+                // Drop existing foreign key constraint
+                $table->dropForeign(['class_id']);
+            }
             
             // Make admission_no not nullable (if there are existing null values, they need to be handled first)
             $table->string('admission_no')->nullable(false)->change();
@@ -33,8 +36,11 @@ return new class extends Migration
     public function down()
     {
         Schema::table('students', function (Blueprint $table) {
-            // Drop the cascade foreign key constraint
-            $table->dropForeign(['class_id']);
+            // Skip dropForeign for SQLite as it's not supported
+            if (DB::getDriverName() !== 'sqlite') {
+                // Drop the cascade foreign key constraint
+                $table->dropForeign(['class_id']);
+            }
             
             // Make admission_no nullable again
             $table->string('admission_no')->nullable()->change();

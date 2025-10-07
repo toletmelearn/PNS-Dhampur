@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Helpers\SecurityHelper;
 
 class FeeController extends Controller
 {
@@ -27,8 +28,8 @@ class FeeController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->whereHas('student.user', function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                $q->where('name', 'like', SecurityHelper::buildLikePattern($search))
+                  ->orWhere('email', 'like', SecurityHelper::buildLikePattern($search));
             });
         }
 
@@ -78,7 +79,8 @@ class FeeController extends Controller
 
     public function create()
     {
-        $students = Student::with(['user', 'classModel'])->get();
+        // Use pagination for students to avoid memory issues
+        $students = Student::with(['user', 'classModel'])->paginate(100);
         $classes = ClassModel::all();
         
         return view('finance.fees.create', compact('students', 'classes'));
@@ -158,7 +160,8 @@ class FeeController extends Controller
     public function edit($id)
     {
         $fee = Fee::with(['student.user', 'student.classModel'])->findOrFail($id);
-        $students = Student::with(['user', 'classModel'])->get();
+        // Use pagination for students to avoid memory issues
+        $students = Student::with(['user', 'classModel'])->paginate(100);
         $classes = ClassModel::all();
         
         return view('finance.fees.edit', compact('fee', 'students', 'classes'));

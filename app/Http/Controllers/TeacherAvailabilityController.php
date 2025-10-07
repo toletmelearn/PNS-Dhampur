@@ -7,9 +7,11 @@ use App\Models\Teacher;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Carbon\Carbon;
+use App\Http\Traits\DateRangeValidationTrait;
 
 class TeacherAvailabilityController extends Controller
 {
+    use DateRangeValidationTrait;
     /**
      * Display a listing of teacher availability
      */
@@ -198,15 +200,14 @@ class TeacherAvailabilityController extends Controller
      */
     public function getTeacherAvailability(Request $request, Teacher $teacher): JsonResponse
     {
-        $validated = $request->validate([
-            'start_date' => 'date',
-            'end_date' => 'date|after_or_equal:start_date',
-        ]);
+        $request->validate([
+            ...$this->getAvailabilityDateRangeValidationRules(),
+        ], $this->getDateRangeValidationMessages());
 
         $query = $teacher->availability();
 
-        if (isset($validated['start_date']) && isset($validated['end_date'])) {
-            $query->whereBetween('date', [$validated['start_date'], $validated['end_date']]);
+        if ($request->has('start_date') && $request->has('end_date')) {
+            $query->whereBetween('date', [$request->start_date, $request->end_date]);
         } else {
             // Default to current week
             $startOfWeek = Carbon::now()->startOfWeek();
@@ -229,24 +230,24 @@ class TeacherAvailabilityController extends Controller
      */
     public function createWeeklyAvailability(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'teacher_id' => 'required|exists:teachers,id',
-            'start_date' => 'required|date|after_or_equal:today',
-            'schedule' => 'required|array',
-            'schedule.*.day' => 'required|in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
-            'schedule.*.start_time' => 'required|date_format:H:i',
-            'schedule.*.end_time' => 'required|date_format:H:i|after:schedule.*.start_time',
-            'schedule.*.status' => 'in:available,busy,leave',
-            'schedule.*.can_substitute' => 'boolean',
-            'schedule.*.max_substitutions_per_day' => 'integer|min:0|max:10',
-            'schedule.*.subject_expertise' => 'nullable|array',
-            'schedule.*.subject_expertise.*' => 'string|max:255',
-        ]);
+        $request->validate([
+            'teacher_id' => ['required', 'exists:teachers,id'],
+            ...$this->getAvailabilityDateRangeValidationRules(),
+            'schedule' => ['required', 'array'],
+            'schedule.*.day' => ['required', 'in:monday,tuesday,wednesday,thursday,friday,saturday,sunday'],
+            'schedule.*.start_time' => ['required', 'date_format:H:i'],
+            'schedule.*.end_time' => ['required', 'date_format:H:i', 'after:schedule.*.start_time'],
+            'schedule.*.status' => ['in:available,busy,leave'],
+            'schedule.*.can_substitute' => ['boolean'],
+            'schedule.*.max_substitutions_per_day' => ['integer', 'min:0', 'max:10'],
+            'schedule.*.subject_expertise' => ['nullable', 'array'],
+            'schedule.*.subject_expertise.*' => ['string', 'max:255'],
+        ], $this->getDateRangeValidationMessages());
 
-        $startDate = Carbon::parse($validated['start_date']);
+        $startDate = Carbon::parse($request->start_date);
         $createdAvailability = [];
 
-        foreach ($validated['schedule'] as $daySchedule) {
+        foreach ($request->schedule as $daySchedule) {
             // Find the date for this day of the week
             $dayOfWeek = ucfirst($daySchedule['day']);
             $date = $startDate->copy()->next($dayOfWeek);
@@ -260,7 +261,7 @@ class TeacherAvailabilityController extends Controller
             }
 
             // Check if availability already exists for this date and time
-            $exists = TeacherAvailability::where('teacher_id', $validated['teacher_id'])
+            $exists = TeacherAvailability::where('teacher_id', $request->teacher_id)
                                         ->where('date', $date->format('Y-m-d'))
                                         ->where('start_time', $daySchedule['start_time'])
                                         ->where('end_time', $daySchedule['end_time'])
@@ -268,7 +269,7 @@ class TeacherAvailabilityController extends Controller
 
             if (!$exists) {
                 $availability = TeacherAvailability::create([
-                    'teacher_id' => $validated['teacher_id'],
+                    'teacher_id' => $request->teacher_id,
                     'date' => $date->format('Y-m-d'),
                     'start_time' => $daySchedule['start_time'],
                     'end_time' => $daySchedule['end_time'],

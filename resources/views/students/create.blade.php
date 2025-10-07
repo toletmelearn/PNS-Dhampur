@@ -87,16 +87,169 @@
         color: #e53e3e;
         font-size: 0.875rem;
         margin-top: 0.25rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .error-message::before {
+        content: "⚠";
+        margin-right: 0.5rem;
+        font-weight: bold;
     }
 
     .success-message {
         color: #38a169;
         font-size: 0.875rem;
         margin-top: 0.25rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .success-message::before {
+        content: "✓";
+        margin-right: 0.5rem;
+        font-weight: bold;
+    }
+
+    /* Enhanced validation feedback styles */
+    .form-control.is-valid {
+        border-color: #38a169;
+        box-shadow: 0 0 0 0.2rem rgba(56, 161, 105, 0.25);
+    }
+
+    .form-control.is-invalid {
+        border-color: #e53e3e;
+        box-shadow: 0 0 0 0.2rem rgba(229, 62, 62, 0.25);
+        animation: shake 0.5s ease-in-out;
+    }
+
+    .form-select.is-valid {
+        border-color: #38a169;
+        box-shadow: 0 0 0 0.2rem rgba(56, 161, 105, 0.25);
+    }
+
+    .form-select.is-invalid {
+        border-color: #e53e3e;
+        box-shadow: 0 0 0 0.2rem rgba(229, 62, 62, 0.25);
+        animation: shake 0.5s ease-in-out;
+    }
+
+    .valid-feedback {
+        display: none;
+        color: #38a169;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .invalid-feedback {
+        display: none;
+        color: #e53e3e;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+
+    .form-control.is-valid ~ .valid-feedback,
+    .form-select.is-valid ~ .valid-feedback {
+        display: block;
+    }
+
+    .form-control.is-invalid ~ .invalid-feedback,
+    .form-select.is-invalid ~ .invalid-feedback {
+        display: block;
+    }
+
+    /* Shake animation for invalid fields */
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+        20%, 40%, 60%, 80% { transform: translateX(5px); }
+    }
+
+    /* Loading state for form submission */
+    .form-submitting .form-control,
+    .form-submitting .form-select {
+        opacity: 0.7;
+        pointer-events: none;
+    }
+
+    .form-submitting .btn {
+        opacity: 0.7;
+        pointer-events: none;
     }
 
     .progress-bar-custom {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    /* Loading states for buttons */
+    .loading-state {
+        position: relative;
+        pointer-events: none;
+        opacity: 0.8;
+    }
+    
+    .loading-state .fas.fa-spinner {
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Form submitting state */
+    .form-submitting {
+        opacity: 0.9;
+        pointer-events: none;
+    }
+    
+    .form-submitting .form-control:not(:focus) {
+        background-color: #f8f9fa;
+    }
+    
+    /* Button state transitions */
+    .btn {
+        transition: all 0.3s ease;
+    }
+    
+    .btn-success {
+        background-color: #28a745;
+        border-color: #28a745;
+        color: white;
+    }
+    
+    .btn-success:hover {
+        background-color: #218838;
+        border-color: #1e7e34;
+    }
+    
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: white;
+    }
+    
+    .btn-danger:hover {
+        background-color: #c82333;
+        border-color: #bd2130;
+    }
+    
+    /* Disabled button styling */
+    .btn:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+    }
+    
+    /* Success/Error feedback animation */
+    .btn.btn-success,
+    .btn.btn-danger {
+        animation: pulse 0.5s ease-in-out;
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
     }
 </style>
 @endpush
@@ -173,14 +326,16 @@
                                 @enderror
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">Aadhaar Number</label>
+                                <label class="form-label required-field">Aadhaar Number</label>
                                 <input type="text" class="form-control @error('aadhaar') is-invalid @enderror" 
                                        name="aadhaar" id="aadhaar" value="{{ old('aadhaar') }}" 
                                        placeholder="XXXX-XXXX-XXXX" 
+                                       required
                                        minlength="12" maxlength="14" 
                                        pattern="[0-9]{4}[-\s]?[0-9]{4}[-\s]?[0-9]{4}"
                                        data-validation="aadhaar"
-                                       autocomplete="off">
+                                       autocomplete="off"
+                                       title="Please enter a valid 12-digit Aadhaar number">
                                 <div class="invalid-feedback" id="aadhaar-error"></div>
                                 <div class="valid-feedback" id="aadhaar-success">
                                     <i class="fas fa-check-circle me-1"></i>Valid Aadhaar number
@@ -270,7 +425,15 @@
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Email Address</label>
                                 <input type="email" class="form-control @error('email') is-invalid @enderror" 
-                                       name="email" value="{{ old('email') }}">
+                                       name="email" id="email" value="{{ old('email') }}"
+                                       placeholder="student@example.com"
+                                       pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+                                       title="Please enter a valid email address"
+                                       data-validation="email">
+                                <div class="invalid-feedback" id="email-error"></div>
+                                <div class="valid-feedback" id="email-success">
+                                    <i class="fas fa-check-circle me-1"></i>Valid email address
+                                </div>
                                 @error('email')
                                     <div class="error-message">{{ $message }}</div>
                                 @enderror
@@ -492,6 +655,26 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
+        // Get submit button
+        const submitButton = document.querySelector('button[type="submit"]');
+        const resetButton = document.querySelector('button[type="reset"]');
+        
+        // Show loading state on submit button
+        if (submitButton) {
+            submitButton.dataset.originalText = submitButton.innerHTML;
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving Student...';
+            submitButton.classList.add('loading-state');
+        }
+        
+        // Disable reset button during submission
+        if (resetButton) {
+            resetButton.disabled = true;
+        }
+        
+        // Add form submitting class for additional styling
+        this.classList.add('form-submitting');
+        
         // Show loading modal
         showLoadingModal();
 
@@ -508,21 +691,63 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             hideLoadingModal();
+            this.classList.remove('form-submitting');
             
             if (data.success) {
-                showAlert('Student registered successfully!', 'success');
-                // Reset form
-                this.reset();
-                // Clear file displays
-                document.querySelectorAll('[id$="_name"]').forEach(display => {
-                    display.style.display = 'none';
-                });
+                // Show success state on button
+                if (submitButton) {
+                    submitButton.innerHTML = '<i class="fas fa-check me-2"></i>Student Saved!';
+                    submitButton.classList.remove('btn-primary', 'loading-state');
+                    submitButton.classList.add('btn-success');
+                }
                 
-                // Redirect after 2 seconds
+                showAlert('Student registered successfully!', 'success');
+                
+                // Reset form after showing success
+                setTimeout(() => {
+                    this.reset();
+                    // Clear file displays
+                    document.querySelectorAll('[id$="_name"]').forEach(display => {
+                        display.style.display = 'none';
+                    });
+                    
+                    // Reset button states
+                    if (submitButton) {
+                        submitButton.innerHTML = submitButton.dataset.originalText;
+                        submitButton.className = 'btn btn-primary btn-primary-custom';
+                        submitButton.disabled = false;
+                        delete submitButton.dataset.originalText;
+                    }
+                    
+                    if (resetButton) {
+                        resetButton.disabled = false;
+                    }
+                }, 1500);
+                
+                // Redirect after 3 seconds
                 setTimeout(() => {
                     window.location.href = '/students';
-                }, 2000);
+                }, 3000);
             } else {
+                // Show error state on button
+                if (submitButton) {
+                    submitButton.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Error - Try Again';
+                    submitButton.classList.remove('btn-primary', 'loading-state');
+                    submitButton.classList.add('btn-danger');
+                    
+                    // Reset button after 3 seconds
+                    setTimeout(() => {
+                        submitButton.innerHTML = submitButton.dataset.originalText;
+                        submitButton.className = 'btn btn-primary btn-primary-custom';
+                        submitButton.disabled = false;
+                        delete submitButton.dataset.originalText;
+                    }, 3000);
+                }
+                
+                if (resetButton) {
+                    resetButton.disabled = false;
+                }
+                
                 showAlert(data.message || 'An error occurred while registering the student.', 'error');
                 
                 // Show validation errors
@@ -531,6 +756,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         const fieldElement = document.querySelector(`[name="${field}"]`);
                         if (fieldElement) {
                             fieldElement.classList.add('is-invalid');
+                            
+                            // Find or create error message element
+                            const errorElement = fieldElement.parentNode.querySelector('.invalid-feedback') || 
+                                                fieldElement.parentNode.querySelector('.error-message');
+                            if (errorElement) {
+                                errorElement.textContent = data.errors[field][0];
+                                errorElement.style.display = 'block';
+                            }
                         }
                     });
                 }
@@ -538,8 +771,29 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             hideLoadingModal();
+            this.classList.remove('form-submitting');
             console.error('Error:', error);
-            showAlert('An unexpected error occurred. Please try again.', 'error');
+            
+            // Show error state on button
+            if (submitButton) {
+                submitButton.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>Network Error';
+                submitButton.classList.remove('btn-primary', 'loading-state');
+                submitButton.classList.add('btn-danger');
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    submitButton.innerHTML = submitButton.dataset.originalText;
+                    submitButton.className = 'btn btn-primary btn-primary-custom';
+                    submitButton.disabled = false;
+                    delete submitButton.dataset.originalText;
+                }, 3000);
+            }
+            
+            if (resetButton) {
+                resetButton.disabled = false;
+            }
+            
+            showAlert('Network error occurred. Please check your connection and try again.', 'error');
         });
     });
 
@@ -604,7 +858,9 @@ document.addEventListener('DOMContentLoaded', function() {
             aadhaarSuccess.style.display = 'none';
             
             if (value === '') {
-                return; // Empty is allowed (not required field)
+                aadhaarInput.classList.add('is-invalid');
+                aadhaarError.textContent = 'Aadhaar number is required';
+                return;
             }
             
             const validation = isValidAadhaar(value);
@@ -615,6 +871,44 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 aadhaarInput.classList.add('is-invalid');
                 aadhaarError.textContent = validation.message;
+            }
+        }
+    }
+
+    // Enhanced Email validation with real-time feedback
+    const emailInput = document.getElementById('email');
+    const emailError = document.getElementById('email-error');
+    const emailSuccess = document.getElementById('email-success');
+
+    if (emailInput) {
+        // Real-time validation on input
+        emailInput.addEventListener('input', function() {
+            validateEmailField();
+        });
+
+        // Validate on blur
+        emailInput.addEventListener('blur', function() {
+            validateEmailField();
+        });
+
+        function validateEmailField() {
+            const value = emailInput.value.trim();
+            
+            // Clear previous states
+            emailInput.classList.remove('is-valid', 'is-invalid');
+            emailError.textContent = '';
+            emailSuccess.style.display = 'none';
+            
+            if (value === '') {
+                return; // Email is optional, so empty is valid
+            }
+            
+            if (isValidEmail(value)) {
+                emailInput.classList.add('is-valid');
+                emailSuccess.style.display = 'block';
+            } else {
+                emailInput.classList.add('is-invalid');
+                emailError.textContent = 'Please enter a valid email address (e.g., user@example.com)';
             }
         }
     }

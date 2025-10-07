@@ -6,14 +6,18 @@ use App\Models\Attendance;
 use App\Models\Student;
 use App\Models\ClassModel;
 use App\Services\UserFriendlyErrorService;
+use App\Traits\HandlesApiResponses;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+use App\Http\Traits\DateRangeValidationTrait;
 
 class AttendanceController extends Controller
 {
+    use HandlesApiResponses, DateRangeValidationTrait;
     /**
      * Display attendance overview with filters
      */
@@ -117,7 +121,7 @@ class AttendanceController extends Controller
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        try {
+        return $this->handleBulkOperation($request, function () use ($request) {
             $date = $request->date;
             $classId = $request->class_id;
             $attendanceData = $request->attendances;
@@ -162,34 +166,16 @@ class AttendanceController extends Controller
                 'marked_by' => $markedBy
             ]);
             
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => $message,
-                    'data' => [
-                        'success_count' => $successCount,
-                        'errors' => $errors
-                    ]
-                ]);
-            }
-            
-            return redirect()->route('attendance.index', ['date' => $date, 'class_id' => $classId])
-                ->with('success', $message);
-                
-        } catch (\Exception $e) {
-            Log::error('Attendance storage error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            if ($request->expectsJson()) {
-                return UserFriendlyErrorService::jsonErrorResponse($e, 'attendance_mark');
-            }
-            
-            return redirect()->back()
-                ->with('error', UserFriendlyErrorService::getErrorMessage($e, 'attendance_mark'))
-                ->withInput();
-        }
+            return [
+                'success' => true,
+                'message' => $message,
+                'data' => [
+                    'success_count' => $successCount,
+                    'errors' => $errors
+                ],
+                'redirect' => route('attendance.index', ['date' => $date, 'class_id' => $classId])
+            ];
+        });
     }
 
     /**
@@ -204,13 +190,10 @@ class AttendanceController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
+            return $this->jsonValidationErrorResponse($validator);
         }
 
-        try {
+        return $this->handleWithTransaction($request, function () use ($request) {
             $date = $request->date;
             $classId = $request->class_id;
             $status = $request->status;
@@ -219,6 +202,10 @@ class AttendanceController extends Controller
             $students = Student::where('class_id', $classId)
                 ->where('status', 'active')
                 ->get();
+
+            if ($students->isEmpty()) {
+                return $this->jsonErrorResponse('No active students found in the selected class.', 404);
+            }
                 
             $successCount = 0;
             
@@ -245,22 +232,14 @@ class AttendanceController extends Controller
                 'marked_by' => $markedBy
             ]);
             
-            return response()->json([
+            return [
                 'success' => true,
                 'message' => "Successfully marked {$successCount} students as {$status}.",
                 'data' => [
                     'count' => $successCount
                 ]
-            ]);
-            
-        } catch (\Exception $e) {
-            Log::error('Bulk attendance error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return UserFriendlyErrorService::jsonErrorResponse($e, 'attendance_mark');
-        }
+            ];
+        });
     }
 
     /**
@@ -322,11 +301,10 @@ class AttendanceController extends Controller
     public function exportReport(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
+            ...$this->getFilterDateRangeValidationRules(),
             'class_id' => 'nullable|exists:class_models,id',
             'format' => 'required|in:pdf,excel,csv'
-        ]);
+        ], $this->getDateRangeValidationMessages());
 
         if ($validator->fails()) {
             return response()->json([
@@ -336,8 +314,8 @@ class AttendanceController extends Controller
         }
 
         try {
-            $startDate = $request->start_date;
-            $endDate = $request->end_date;
+            $startDate = $request->date_from;
+            $endDate = $request->date_to;
             $classId = $request->class_id;
             $format = $request->format;
 
@@ -386,8 +364,8 @@ class AttendanceController extends Controller
     {
         try {
             $classId = $request->get('class_id');
-            $startDate = $request->get('start_date', now()->startOfMonth()->format('Y-m-d'));
-            $endDate = $request->get('end_date', now()->format('Y-m-d'));
+            $startDate = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
+            $endDate = $request->get('date_to', now()->format('Y-m-d'));
 
             // Overall statistics
             $totalRecords = Attendance::whereBetween('date', [$startDate, $endDate])
@@ -641,16 +619,14 @@ class AttendanceController extends Controller
         } catch (\Exception $e) {
             Log::error('Bulk update attendance status error', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $e->getTraceAsString(),
+                'request_data' => $request->all()
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update attendance records'
             ], 500);
-        } catch (Exception $e) {
-            Log::error('Bulk update attendance error: ' . $e->getTraceAsString());
-            return UserFriendlyErrorService::jsonErrorResponse($e, 'attendance_mark');
         }
     }
 

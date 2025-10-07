@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Role;
+use App\Traits\HandlesApiResponses;
+use App\Http\Traits\EmailValidationTrait;
+use App\Http\Traits\FileUploadValidationTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Rules\PasswordComplexity;
@@ -13,11 +16,13 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use App\Helpers\SecurityHelper;
 use League\Csv\Reader;
 use League\Csv\Statement;
 
 class UserController extends Controller
 {
+    use HandlesApiResponses, EmailValidationTrait, FileUploadValidationTrait;
     /**
      * Display a listing of the resource.
      *
@@ -36,8 +41,8 @@ class UserController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                $q->where('name', 'like', SecurityHelper::buildLikePattern($search))
+                  ->orWhere('email', 'like', SecurityHelper::buildLikePattern($search));
             });
         }
 
@@ -67,7 +72,7 @@ class UserController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            ...$this->getCreateEmailValidationRules(),
             'password' => [
                 'required',
                 'string',
@@ -75,7 +80,7 @@ class UserController extends Controller
                 new PasswordComplexity(null, $request->role)
             ],
             'role' => 'required|in:admin,teacher,student'
-        ]);
+        ], $this->getEmailValidationMessages());
 
         $user = User::create([
             'name' => $data['name'],
@@ -130,7 +135,7 @@ class UserController extends Controller
 
         $data = $request->validate([
             'name' => 'sometimes|required|string|max:255',
-            'email' => ['sometimes', 'required', 'email', Rule::unique('users')->ignore($user->id)],
+            ...$this->getUpdateEmailValidationRules($user->id),
             'password' => [
                 'sometimes',
                 'nullable',
@@ -140,7 +145,7 @@ class UserController extends Controller
                 new PasswordHistory($user)
             ],
             'role' => 'sometimes|required|in:admin,teacher,student'
-        ]);
+        ], $this->getEmailValidationMessages());
 
         if (isset($data['password']) && $data['password']) {
             // Use the new updatePassword method which handles history and expiration
@@ -189,110 +194,97 @@ class UserController extends Controller
      */
     public function bulkImportUsers(Request $request)
     {
-        $request->validate([
-            'csv_file' => 'required|file|mimes:csv,txt|max:10240', // 10MB max
+        return $this->validateAndHandle($request, [
+            ...$this->getCsvFileValidationRules(),
             'update_existing' => 'boolean',
             'send_welcome_email' => 'boolean'
-        ]);
-
-        try {
-            $file = $request->file('csv_file');
-            $updateExisting = $request->boolean('update_existing', false);
-            $sendWelcomeEmail = $request->boolean('send_welcome_email', true);
-            
-            // Read CSV file
-            $csv = Reader::createFromPath($file->getPathname(), 'r');
-            $csv->setHeaderOffset(0);
-            
-            $records = Statement::create()->process($csv);
-            
-            $imported = 0;
-            $updated = 0;
-            $errors = [];
-            $duplicates = [];
-            
-            DB::beginTransaction();
-            
-            foreach ($records as $offset => $record) {
-                try {
-                    // Validate required fields
-                    if (empty($record['name']) || empty($record['email'])) {
-                        $errors[] = "Row " . ($offset + 2) . ": Name and email are required";
-                        continue;
-                    }
-                    
-                    // Check if user exists
-                    $existingUser = User::where('email', $record['email'])->first();
-                    
-                    if ($existingUser && !$updateExisting) {
-                        $duplicates[] = $record['email'];
-                        continue;
-                    }
-                    
-                    // Prepare user data
-                    $userData = [
-                        'name' => $record['name'],
-                        'email' => $record['email'],
-                        'role' => $record['role'] ?? 'student',
-                        'phone' => $record['phone'] ?? null,
-                        'address' => $record['address'] ?? null,
-                        'status' => $record['status'] ?? 'active'
-                    ];
-                    
-                    // Generate password if not provided
-                    if (empty($record['password'])) {
-                        $userData['password'] = Hash::make(Str::random(12));
-                        $userData['password_reset_required'] = true;
-                    } else {
-                        $userData['password'] = Hash::make($record['password']);
-                        $userData['password_reset_required'] = false;
-                    }
-                    
-                    if ($existingUser && $updateExisting) {
-                        // Update existing user
-                        $existingUser->update($userData);
-                        $updated++;
-                        
-                        // Send notification email if requested
-                        if ($sendWelcomeEmail) {
-                            // Mail::to($existingUser->email)->send(new UserUpdatedMail($existingUser));
+        ], function () use ($request) {
+            return $this->handleWithTransaction($request, function () use ($request) {
+                $file = $request->file('csv_file');
+                $updateExisting = $request->boolean('update_existing', false);
+                $sendWelcomeEmail = $request->boolean('send_welcome_email', true);
+                
+                // Read CSV file
+                $csv = Reader::createFromPath($file->getPathname(), 'r');
+                $csv->setHeaderOffset(0);
+                
+                $records = Statement::create()->process($csv);
+                
+                $imported = 0;
+                $updated = 0;
+                $errors = [];
+                $duplicates = [];
+                
+                foreach ($records as $offset => $record) {
+                    try {
+                        // Validate required fields
+                        if (empty($record['name']) || empty($record['email'])) {
+                            $errors[] = "Row " . ($offset + 2) . ": Name and email are required";
+                            continue;
                         }
-                    } else {
-                        // Create new user
-                        $user = User::create($userData);
-                        $imported++;
                         
-                        // Send welcome email if requested
-                        if ($sendWelcomeEmail) {
-                            // Mail::to($user->email)->send(new WelcomeMail($user));
+                        // Check if user exists
+                        $existingUser = User::where('email', $record['email'])->first();
+                        
+                        if ($existingUser && !$updateExisting) {
+                            $duplicates[] = $record['email'];
+                            continue;
                         }
+                        
+                        // Prepare user data
+                        $userData = [
+                            'name' => $record['name'],
+                            'email' => $record['email'],
+                            'role' => $record['role'] ?? 'student',
+                            'phone' => $record['phone'] ?? null,
+                            'address' => $record['address'] ?? null,
+                            'status' => $record['status'] ?? 'active'
+                        ];
+                        
+                        // Generate password if not provided
+                        if (empty($record['password'])) {
+                            $userData['password'] = Hash::make(Str::random(12));
+                            $userData['password_reset_required'] = true;
+                        } else {
+                            $userData['password'] = Hash::make($record['password']);
+                            $userData['password_reset_required'] = false;
+                        }
+                        
+                        if ($existingUser && $updateExisting) {
+                            // Update existing user
+                            $existingUser->update($userData);
+                            $updated++;
+                            
+                            // Send notification email if requested
+                            if ($sendWelcomeEmail) {
+                                // Mail::to($existingUser->email)->send(new UserUpdatedMail($existingUser));
+                            }
+                        } else {
+                            // Create new user
+                            $user = User::create($userData);
+                            $imported++;
+                            
+                            // Send welcome email if requested
+                            if ($sendWelcomeEmail) {
+                                // Mail::to($user->email)->send(new WelcomeMail($user));
+                            }
+                        }
+                        
+                    } catch (\Exception $e) {
+                        $errors[] = "Row " . ($offset + 2) . ": " . $e->getMessage();
                     }
-                    
-                } catch (\Exception $e) {
-                    $errors[] = "Row " . ($offset + 2) . ": " . $e->getMessage();
                 }
-            }
-            
-            DB::commit();
-            
-            return response()->json([
-                'message' => 'Bulk import completed',
-                'imported' => $imported,
-                'updated' => $updated,
-                'errors' => $errors,
-                'duplicates' => $duplicates,
-                'total_processed' => $imported + $updated + count($errors) + count($duplicates)
-            ]);
-            
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Bulk import failed: ' . $e->getMessage());
-            
-            return response()->json([
-                'message' => 'Bulk import failed',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+                
+                return [
+                    'message' => 'Bulk import completed',
+                    'imported' => $imported,
+                    'updated' => $updated,
+                    'errors' => $errors,
+                    'duplicates' => $duplicates,
+                    'total_processed' => $imported + $updated + count($errors) + count($duplicates)
+                ];
+            });
+        });
     }
 
     /**

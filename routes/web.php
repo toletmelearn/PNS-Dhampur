@@ -43,7 +43,7 @@ Route::post('/password/change', [PasswordController::class, 'changePassword'])->
 
 // Home Routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/home', [HomeController::class, 'index'])->name('home');
+Route::get('/home', [HomeController::class, 'index'])->name('home.redirect');
 
 // Protected Routes (require authentication)
 Route::middleware(['auth'])->group(function () {

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
+use App\Helpers\SecurityHelper;
 use Carbon\Carbon;
 
 class TeacherAvailability extends Model
@@ -68,7 +70,7 @@ class TeacherAvailability extends Model
 
     public function scopeForSubject($query, $subject)
     {
-        return $query->where('subject_expertise', 'like', '%' . $subject . '%');
+        return $query->where('subject_expertise', 'like', SecurityHelper::buildLikePattern($subject));
     }
 
     // Helper methods

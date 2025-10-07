@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Exam;
 use App\Models\ClassModel;
 use Illuminate\Http\Request;
+use App\Helpers\SecurityHelper;
 
 class ExamController extends Controller
 {
@@ -32,7 +33,7 @@ class ExamController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $query->where('name', 'like', SecurityHelper::buildLikePattern($request->search));
         }
 
         $exams = $query->orderBy('date', 'desc')->get();

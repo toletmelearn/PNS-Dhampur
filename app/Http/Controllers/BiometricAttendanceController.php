@@ -7,16 +7,19 @@ use App\Models\Teacher;
 use App\Models\AttendanceAnalytics;
 use App\Models\AttendanceRegularization;
 use App\Services\UserFriendlyErrorService;
+use App\Http\Traits\DateRangeValidationTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 use Exception;
 
 class BiometricAttendanceController extends Controller
 {
+    use DateRangeValidationTrait;
     public function index(Request $request)
     {
         $date = $request->get('date', now()->format('Y-m-d'));
@@ -663,7 +666,7 @@ class BiometricAttendanceController extends Controller
             'requested_check_out' => 'nullable|date_format:H:i:s',
             'reason' => 'required|string|max:500',
             'supporting_documents' => 'nullable|array',
-            'supporting_documents.*' => 'file|max:5120'
+            'supporting_documents.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120'
         ]);
 
         if ($validator->fails()) {
@@ -677,11 +680,18 @@ class BiometricAttendanceController extends Controller
             $documents = [];
             if ($request->hasFile('supporting_documents')) {
                 foreach ($request->file('supporting_documents') as $file) {
-                    $path = $file->store('regularization_documents', 'public');
+                    // Generate secure filename to prevent directory traversal and overwrite attacks
+                    $extension = strtolower($file->getClientOriginalExtension());
+                    $secureFilename = 'regularization_' . $request->teacher_id . '_' . time() . '_' . Str::random(10) . '.' . $extension;
+                    
+                    // Store with secure filename
+                    $path = $file->storeAs('regularization_documents', $secureFilename, 'public');
                     $documents[] = [
                         'filename' => $file->getClientOriginalName(),
                         'path' => $path,
-                        'size' => $file->getSize()
+                        'size' => $file->getSize(),
+                        'mime_type' => $file->getMimeType(),
+                        'uploaded_at' => now()
                     ];
                 }
             }
@@ -753,8 +763,21 @@ class BiometricAttendanceController extends Controller
      */
     public function getDetailedReport(Request $request)
     {
-        $startDate = $request->get('start_date', now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+        $validator = Validator::make($request->all(), [
+            ...$this->getFilterDateRangeValidationRules(),
+            'teacher_id' => 'nullable|exists:teachers,id',
+            'include_analytics' => 'nullable|boolean'
+        ], $this->getDateRangeValidationMessages());
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $startDate = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
+        $endDate = $request->get('date_to', now()->format('Y-m-d'));
         $teacherId = $request->get('teacher_id');
         $includeAnalytics = $request->get('include_analytics', true);
         
@@ -770,8 +793,8 @@ class BiometricAttendanceController extends Controller
             
             $report = [
                 'period' => [
-                    'start_date' => $startDate,
-                    'end_date' => $endDate
+                    'date_from' => $startDate,
+                    'date_to' => $endDate
                 ],
                 'attendances' => $attendances,
                 'summary' => [

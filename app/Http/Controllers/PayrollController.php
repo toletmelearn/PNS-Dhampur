@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Helpers\SecurityHelper;
 
 class PayrollController extends Controller
 {
@@ -316,8 +317,8 @@ class PayrollController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->whereHas('user', function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                $q->where('name', 'like', SecurityHelper::buildLikePattern($search))
+                  ->orWhere('email', 'like', SecurityHelper::buildLikePattern($search));
             });
         }
 
@@ -413,8 +414,8 @@ class PayrollController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->whereHas('user', function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                $q->where('name', 'like', SecurityHelper::buildLikePattern($search))
+                  ->orWhere('email', 'like', SecurityHelper::buildLikePattern($search));
             });
         }
 

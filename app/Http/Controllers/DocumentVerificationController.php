@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\FileUploadValidationTrait;
 use App\Models\DocumentVerification;
 use App\Models\Student;
 use App\Services\UserFriendlyErrorService;
@@ -14,6 +15,7 @@ use Exception;
 
 class DocumentVerificationController extends Controller
 {
+    use FileUploadValidationTrait;
     /**
      * Display a listing of the resource.
      */
@@ -84,11 +86,11 @@ class DocumentVerificationController extends Controller
             'student_id' => 'required|exists:students,id',
             'document_type' => 'required|string',
             'document_name' => 'required|string|max:255',
-            'document_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120', // 5MB max
+            ...$this->getDocumentFileValidationRules('document_file'),
             'expiry_date' => 'nullable|date|after:today',
             'is_mandatory' => 'boolean',
             'metadata' => 'nullable|array'
-        ]);
+        ], $this->getFileUploadValidationMessages());
 
         if ($validator->fails()) {
             return redirect()->back()
@@ -149,7 +151,8 @@ class DocumentVerificationController extends Controller
      */
     public function edit(DocumentVerification $documentVerification)
     {
-        $students = Student::all();
+        // Use pagination for students to avoid memory issues
+        $students = Student::paginate(100);
         $documentTypes = [
             'birth_certificate' => 'Birth Certificate',
             'transfer_certificate' => 'Transfer Certificate',
@@ -174,8 +177,8 @@ class DocumentVerificationController extends Controller
             'expiry_date' => 'nullable|date|after:today',
             'is_mandatory' => 'boolean',
             'metadata' => 'nullable|array',
-            'document_file' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120'
-        ]);
+            ...$this->getOptionalDocumentFileValidationRules('document_file')
+        ], $this->getFileUploadValidationMessages());
 
         if ($validator->fails()) {
             return redirect()->back()

@@ -8,10 +8,13 @@ use App\Models\InventoryItem;
 use App\Services\AssetDepreciationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Http\Traits\DateRangeValidationTrait;
 use Carbon\Carbon;
 
 class AssetDepreciationController extends Controller
 {
+    use DateRangeValidationTrait;
+    
     protected $depreciationService;
 
     public function __construct(AssetDepreciationService $depreciationService)
@@ -109,9 +112,8 @@ class AssetDepreciationController extends Controller
         $validator = Validator::make($request->all(), [
             'method' => 'nullable|string|in:straight_line,declining_balance,double_declining_balance,sum_of_years_digits',
             'status' => 'nullable|string|in:active,fully_depreciated',
-            'date_from' => 'nullable|date',
-            'date_to' => 'nullable|date'
-        ]);
+            ...$this->getFilterDateRangeValidationRules()
+        ], $this->getDateRangeValidationMessages());
 
         if ($validator->fails()) {
             return response()->json([
@@ -443,9 +445,8 @@ class AssetDepreciationController extends Controller
             'format' => 'required|string|in:pdf,excel,csv',
             'method' => 'nullable|string',
             'status' => 'nullable|string',
-            'date_from' => 'nullable|date',
-            'date_to' => 'nullable|date'
-        ]);
+            ...$this->getFilterDateRangeValidationRules()
+        ], $this->getDateRangeValidationMessages());
 
         if ($validator->fails()) {
             return response()->json([

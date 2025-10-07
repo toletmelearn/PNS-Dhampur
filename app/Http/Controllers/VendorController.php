@@ -6,9 +6,12 @@ use App\Models\Vendor;
 use App\Models\PurchaseOrder;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Helpers\SecurityHelper;
+use App\Http\Traits\EmailValidationTrait;
 
 class VendorController extends Controller
 {
+    use EmailValidationTrait;
     /**
      * Display a listing of vendors
      */
@@ -40,11 +43,11 @@ class VendorController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('contact_person', 'like', "%{$search}%");
+                $q->where('name', 'like', SecurityHelper::buildLikePattern($search))
+                  ->orWhere('code', 'like', SecurityHelper::buildLikePattern($search))
+                  ->orWhere('email', 'like', SecurityHelper::buildLikePattern($search))
+                  ->orWhere('phone', 'like', SecurityHelper::buildLikePattern($search))
+                  ->orWhere('contact_person', 'like', SecurityHelper::buildLikePattern($search));
             });
         }
 
@@ -75,7 +78,7 @@ class VendorController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:vendors,email',
+            ...$this->getEmailValidationRules('vendors'),
             'phone' => 'required|string|max:20',
             'address' => 'required|string',
             'city' => 'required|string|max:100',
@@ -95,7 +98,7 @@ class VendorController extends Controller
             'bank_account' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'is_active' => 'boolean',
-        ]);
+        ], $this->getEmailValidationMessages());
 
         $vendor = Vendor::create($validated);
 
@@ -143,11 +146,7 @@ class VendorController extends Controller
 
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
-            'email' => [
-                'sometimes',
-                'email',
-                Rule::unique('vendors', 'email')->ignore($vendor->id)
-            ],
+            ...$this->getEmailValidationRulesForUpdate($vendor->id, 'vendors'),
             'phone' => 'sometimes|string|max:20',
             'address' => 'sometimes|string',
             'city' => 'sometimes|string|max:100',
@@ -168,7 +167,7 @@ class VendorController extends Controller
             'notes' => 'nullable|string',
             'is_active' => 'boolean',
             'rating' => 'nullable|numeric|min:0|max:5',
-        ]);
+        ], $this->getEmailValidationMessages());
 
         $vendor->update($validated);
 

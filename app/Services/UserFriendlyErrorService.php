@@ -14,6 +14,14 @@ use Illuminate\Support\Facades\Log;
 class UserFriendlyErrorService
 {
     /**
+     * Determine if technical error details should be shown
+     */
+    private static function shouldShowTechnicalError(): bool
+    {
+        return config('app.debug') || (auth()->check() && auth()->user()->hasRole('super_admin'));
+    }
+
+    /**
      * Convert technical exceptions to user-friendly messages
      */
     public static function getErrorMessage(Exception $exception, string $context = 'general'): string
@@ -173,30 +181,83 @@ class UserFriendlyErrorService
     /**
      * Format error response for JSON APIs
      */
-    public static function jsonErrorResponse(Exception $exception, string $context = 'general', int $statusCode = 500): array
+    public static function jsonErrorResponse(Exception $exception, string $context = 'general', int $statusCode = 500): \Illuminate\Http\JsonResponse
     {
-        return [
+        $response = [
             'success' => false,
             'message' => self::getErrorMessage($exception, $context),
-            'error_code' => $statusCode
+            'error_code' => $statusCode,
+            'timestamp' => now()->toISOString()
         ];
+
+        // Add technical details for debugging in development or for super admins
+        if (self::shouldShowTechnicalError()) {
+            $response['technical_error'] = $exception->getMessage();
+            $response['file'] = $exception->getFile();
+            $response['line'] = $exception->getLine();
+            $response['exception_type'] = get_class($exception);
+        }
+
+        return response()->json($response, $statusCode);
     }
 
     /**
      * Format success response for JSON APIs
      */
-    public static function jsonSuccessResponse(string $context = 'general', $data = null): array
+    public static function jsonSuccessResponse(string $context = 'general', $data = null, int $statusCode = 200): \Illuminate\Http\JsonResponse
     {
         $response = [
             'success' => true,
-            'message' => self::getSuccessMessage($context)
+            'message' => self::getSuccessMessage($context),
+            'timestamp' => now()->toISOString()
         ];
 
         if ($data !== null) {
             $response['data'] = $data;
         }
 
-        return $response;
+        return response()->json($response, $statusCode);
+    }
+
+    /**
+     * Format validation error response for JSON APIs
+     */
+    public static function jsonValidationErrorResponse(\Illuminate\Validation\ValidationException $exception): \Illuminate\Http\JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation failed',
+            'errors' => $exception->errors(),
+            'error_code' => 422,
+            'timestamp' => now()->toISOString()
+        ], 422);
+    }
+
+    /**
+     * Format bulk operation response for JSON APIs
+     */
+    public static function jsonBulkOperationResponse(int $successCount, int $errorCount, array $errors = [], $data = null): \Illuminate\Http\JsonResponse
+    {
+        $response = [
+            'success' => $errorCount === 0,
+            'message' => "Bulk operation completed. {$successCount} successful" . ($errorCount > 0 ? ", {$errorCount} failed" : ""),
+            'summary' => [
+                'success_count' => $successCount,
+                'error_count' => $errorCount,
+                'total_processed' => $successCount + $errorCount
+            ],
+            'timestamp' => now()->toISOString()
+        ];
+
+        if (!empty($errors)) {
+            $response['errors'] = $errors;
+        }
+
+        if ($data !== null) {
+            $response['data'] = $data;
+        }
+
+        return response()->json($response, $errorCount > 0 ? 207 : 200); // 207 Multi-Status for partial success
     }
 
     /**

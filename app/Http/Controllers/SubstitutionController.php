@@ -9,12 +9,15 @@ use App\Models\Teacher;
 use App\Models\ClassModel;
 use App\Models\Subject;
 use App\Services\SubstituteNotificationService;
+use App\Http\Traits\DateRangeValidationTrait;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class SubstitutionController extends Controller
 {
+    use DateRangeValidationTrait;
+    
     protected $notificationService;
 
     public function __construct(SubstituteNotificationService $notificationService)
@@ -45,6 +48,17 @@ class SubstitutionController extends Controller
      */
     public function substitutions(Request $request)
     {
+        // Validate date range parameters
+        $request->validate(array_merge(
+            $this->getFilterDateRangeValidationRules(),
+            [
+                'status' => 'nullable|string|in:pending,assigned,confirmed,completed,cancelled',
+                'teacher_id' => 'nullable|exists:teachers,id',
+                'class_id' => 'nullable|exists:classes,id',
+                'emergency' => 'nullable|boolean',
+            ]
+        ), $this->getDateRangeValidationMessages());
+
         $query = TeacherSubstitution::with(['originalTeacher', 'substituteTeacher', 'class', 'subject', 'absence']);
 
         // Apply filters
@@ -440,6 +454,14 @@ class SubstitutionController extends Controller
      */
     public function mySubstitutions(Request $request)
     {
+        // Validate date range parameters
+        $request->validate(array_merge(
+            $this->getFilterDateRangeValidationRules(),
+            [
+                'status' => 'nullable|string|in:pending,assigned,confirmed,completed,cancelled',
+            ]
+        ), $this->getDateRangeValidationMessages());
+
         $teacherId = Auth::user()->teacher->id ?? null;
         
         if (!$teacherId) {

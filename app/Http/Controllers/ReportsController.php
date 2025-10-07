@@ -17,9 +17,12 @@ use App\Models\ClassModel;
 use App\Models\Subject;
 use App\Models\Salary;
 use Illuminate\Support\Facades\DB;
+use App\Http\Traits\DateRangeValidationTrait;
+use App\Services\OptimizedReportService;
 
 class ReportsController extends Controller
 {
+    use DateRangeValidationTrait;
     public function index(Request $request)
     {
         // Return view for web requests
@@ -462,24 +465,32 @@ class ReportsController extends Controller
 
     private function getClassWiseCollection()
     {
-        return Fee::join('students', 'fees.student_id', '=', 'students.id')
-            ->join('class_models', 'students.class_id', '=', 'class_models.id')
-            ->select('class_models.name as class_name', DB::raw('SUM(fees.paid_amount) as total_collected'))
-            ->groupBy('class_models.id', 'class_models.name')
-            ->get();
+        $reportService = app(\App\Services\OptimizedReportService::class);
+        return $reportService->getOptimizedClassWiseCollection();
     }
 
     private function getClassWiseAttendance()
     {
-        // Mock data - replace with actual attendance model
-        return ClassModel::get()->map(function ($class) {
-            return [
-                'class' => $class->name,
-                'attendance_rate' => rand(75, 95),
-                'present' => rand(20, 35),
-                'total' => rand(25, 40)
-            ];
-        });
+        // Optimized query to calculate class-wise attendance without N+1 problem
+        return ClassModel::select([
+                'classes.id',
+                'classes.name',
+                DB::raw('COUNT(attendances.id) as total_records'),
+                DB::raw('SUM(CASE WHEN attendances.status = "present" THEN 1 ELSE 0 END) as present_count'),
+                DB::raw('CASE WHEN COUNT(attendances.id) > 0 THEN ROUND((SUM(CASE WHEN attendances.status = "present" THEN 1 ELSE 0 END) * 100.0) / COUNT(attendances.id), 2) ELSE 0 END as attendance_rate')
+            ])
+            ->leftJoin('students', 'classes.id', '=', 'students.class_id')
+            ->leftJoin('attendances', 'students.id', '=', 'attendances.student_id')
+            ->groupBy('classes.id', 'classes.name')
+            ->get()
+            ->map(function ($class) {
+                return [
+                    'class' => $class->name,
+                    'attendance_rate' => $class->attendance_rate,
+                    'present' => $class->present_count,
+                    'total' => $class->total_records
+                ];
+            });
     }
 
     private function getAttendanceTrends()
@@ -496,14 +507,29 @@ class ReportsController extends Controller
 
     private function getLowAttendanceStudents()
     {
-        // Mock data - replace with actual attendance tracking
-        return Student::with('class')->limit(10)->get()->map(function ($student) {
-            return [
-                'name' => $student->name,
-                'class' => $student->class->name ?? 'N/A',
-                'attendance_rate' => rand(40, 74)
-            ];
-        });
+        // Optimized query to calculate attendance rates without N+1 problem
+        return Student::select([
+                'students.id',
+                'students.name',
+                'students.class_id',
+                DB::raw('COUNT(attendances.id) as total_records'),
+                DB::raw('SUM(CASE WHEN attendances.status = "present" THEN 1 ELSE 0 END) as present_count'),
+                DB::raw('CASE WHEN COUNT(attendances.id) > 0 THEN ROUND((SUM(CASE WHEN attendances.status = "present" THEN 1 ELSE 0 END) * 100.0) / COUNT(attendances.id), 2) ELSE 0 END as attendance_rate')
+            ])
+            ->leftJoin('attendances', 'students.id', '=', 'attendances.student_id')
+            ->with('class:id,name')
+            ->groupBy('students.id', 'students.name', 'students.class_id')
+            ->having('attendance_rate', '<', 75)
+            ->orderBy('attendance_rate', 'asc')
+            ->limit(10)
+            ->get()
+            ->map(function ($student) {
+                return [
+                    'name' => $student->name,
+                    'class' => $student->class->name ?? 'N/A',
+                    'attendance_rate' => $student->attendance_rate
+                ];
+            });
     }
 
     private function getTopPerformers()
@@ -776,37 +802,46 @@ class ReportsController extends Controller
 
     private function getAttendanceRiskAssessment()
     {
-        $riskFactors = [];
+        $dateFrom = Carbon::now()->subMonth();
         
-        // Identify students at risk
-        $studentsAtRisk = Student::whereHas('attendances', function ($query) {
-            $query->where('date', '>=', Carbon::now()->subMonth())
-                  ->where('status', 'absent');
-        }, '>=', 5)->with(['attendances' => function ($query) {
-            $query->where('date', '>=', Carbon::now()->subMonth());
-        }])->get();
+        // Use optimized query to avoid N+1 problem
+        $studentsAtRisk = Student::select([
+                'students.id',
+                'students.name',
+                'students.class_id',
+                DB::raw('COUNT(attendances.id) as total_records'),
+                DB::raw('SUM(CASE WHEN attendances.status = "absent" THEN 1 ELSE 0 END) as recent_absences'),
+                DB::raw('CASE WHEN COUNT(attendances.id) > 0 THEN ROUND((SUM(CASE WHEN attendances.status = "absent" THEN 1 ELSE 0 END) / COUNT(attendances.id)) * 100, 2) ELSE 0 END as absenteeism_rate')
+            ])
+            ->leftJoin('attendances', function ($join) use ($dateFrom) {
+                $join->on('students.id', '=', 'attendances.student_id')
+                     ->where('attendances.date', '>=', $dateFrom);
+            })
+            ->with('class:id,name')
+            ->groupBy('students.id', 'students.name', 'students.class_id')
+            ->having('recent_absences', '>=', 5)
+            ->get();
 
-        foreach ($studentsAtRisk as $student) {
-            $recentAbsences = $student->attendances->where('status', 'absent')->count();
-            $totalRecords = $student->attendances->count();
-            $absenteeismRate = $totalRecords > 0 ? ($recentAbsences / $totalRecords) * 100 : 0;
-
-            $riskFactors[] = [
+        $riskFactors = $studentsAtRisk->map(function ($student) {
+            $riskScore = $this->calculateRiskScore($student->absenteeism_rate, $student->recent_absences);
+            $riskCategory = $this->categorizeRisk($student->absenteeism_rate);
+            
+            return [
                 'student_id' => $student->id,
                 'student_name' => $student->name,
                 'class' => $student->class->name ?? 'N/A',
-                'absenteeism_rate' => round($absenteeismRate, 2),
-                'recent_absences' => $recentAbsences,
-                'risk_score' => $this->calculateRiskScore($absenteeismRate, $recentAbsences),
-                'risk_category' => $this->categorizeRisk($absenteeismRate)
+                'absenteeism_rate' => $student->absenteeism_rate,
+                'recent_absences' => $student->recent_absences,
+                'risk_score' => $riskScore,
+                'risk_category' => $riskCategory
             ];
-        }
+        });
 
         return [
-            'high_risk_students' => collect($riskFactors)->where('risk_category', 'high')->values(),
-            'medium_risk_students' => collect($riskFactors)->where('risk_category', 'medium')->values(),
-            'total_at_risk' => count($riskFactors),
-            'intervention_priority' => collect($riskFactors)->sortByDesc('risk_score')->take(10)->values()
+            'high_risk_students' => $riskFactors->where('risk_category', 'high')->values(),
+            'medium_risk_students' => $riskFactors->where('risk_category', 'medium')->values(),
+            'total_at_risk' => $riskFactors->count(),
+            'intervention_priority' => $riskFactors->sortByDesc('risk_score')->take(10)->values()
         ];
     }
 
@@ -869,24 +904,8 @@ class ReportsController extends Controller
 
     private function getAttendanceCohortAnalysis()
     {
-        $cohorts = ClassModel::with(['students.attendances' => function ($query) {
-            $query->where('date', '>=', Carbon::now()->subMonths(3));
-        }])->get();
-
-        return $cohorts->map(function ($class) {
-            $allAttendances = $class->students->flatMap->attendances;
-            $total = $allAttendances->count();
-            $present = $allAttendances->where('status', 'present')->count();
-            $rate = $total > 0 ? ($present / $total) * 100 : 0;
-
-            return [
-                'class_name' => $class->name,
-                'student_count' => $class->students->count(),
-                'attendance_rate' => round($rate, 2),
-                'total_records' => $total,
-                'performance_category' => $this->categorizeClassPerformance($rate)
-            ];
-        });
+        $reportService = app(\App\Services\OptimizedReportService::class);
+        return $reportService->getOptimizedAttendanceCohortAnalysis();
     }
 
     private function getAttendanceCorrelations()

@@ -120,8 +120,8 @@ Route::middleware(['auth:sanctum', 'api.rate.limit'])->group(function () {
     // Inventory
     Route::apiResource('inventory', InventoryController::class);
 
-    // Budget
-    Route::apiResource('budgets', BudgetController::class);
+    // Budget (Admin only)
+    Route::apiResource('budgets', BudgetController::class)->middleware('role:admin,principal');
 
     // Bell Timings
     // Bell Timing Routes

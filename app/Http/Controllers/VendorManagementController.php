@@ -14,9 +14,12 @@ use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Http\Traits\EmailValidationTrait;
 
 class VendorManagementController extends Controller
 {
+    use EmailValidationTrait;
+    
     protected $vendorService;
 
     public function __construct(VendorManagementService $vendorService)
@@ -114,7 +117,7 @@ class VendorManagementController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:vendors,email',
+            ...$this->getEmailValidationRules('vendors'),
             'phone' => 'required|string|max:20',
             'contact_person' => 'required|string|max:255',
             'address' => 'required|string',
@@ -126,7 +129,7 @@ class VendorManagementController extends Controller
             'payment_terms' => 'nullable|string|max:255',
             'bank_details' => 'nullable|array',
             'notes' => 'nullable|string'
-        ]);
+        ], $this->getEmailValidationMessages());
 
         if ($validator->fails()) {
             return redirect()->back()
@@ -170,7 +173,7 @@ class VendorManagementController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:vendors,email,' . $id,
+            ...$this->getEmailValidationRulesForUpdate($id, 'vendors'),
             'phone' => 'required|string|max:20',
             'contact_person' => 'required|string|max:255',
             'address' => 'required|string',
@@ -182,7 +185,7 @@ class VendorManagementController extends Controller
             'payment_terms' => 'nullable|string|max:255',
             'bank_details' => 'nullable|array',
             'notes' => 'nullable|string'
-        ]);
+        ], $this->getEmailValidationMessages());
 
         if ($validator->fails()) {
             return redirect()->back()

@@ -6,21 +6,25 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
+use Carbon\Carbon;
 use App\Models\User;
 use App\Models\UserSession;
 use App\Models\AuditTrail;
+use App\Http\Traits\EmailValidationTrait;
 
 class AuthController extends Controller
 {
+    use EmailValidationTrait;
     // -----------------------------
     // LOGIN
     // -----------------------------
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string'
-        ]);
+        $request->validate(array_merge(
+            $this->getSimpleEmailValidationRules(),
+            ['password' => 'required|string']
+        ), $this->getEmailValidationMessages());
 
         $user = User::where('email', $request->email)->first();
 
@@ -60,6 +64,10 @@ class AuthController extends Controller
 
         // Reset failed attempts on successful login
         $user->resetFailedAttempts();
+
+        // Set session security markers for RoleMiddleware validation
+        Session::put('login_time', Carbon::now()->toDateTimeString());
+        Session::put('user_agent_hash', hash('sha256', $request->userAgent() ?? ''));
 
         // End any existing active sessions for this user
         UserSession::endUserSessions($user->id, 'new_login');

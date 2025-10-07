@@ -12,6 +12,18 @@ use Illuminate\Support\Facades\Storage;
 
 class SalaryCalculator
 {
+    // Constants for magic numbers
+    const HEALTH_EDUCATION_CESS_RATE = 1.04; // 4% Health and Education Cess
+    const SUNDAY_DAY_OF_WEEK = 0; // Sunday identifier in Carbon
+    const PROFESSIONAL_TAX_LOWER_THRESHOLD = 15000; // Professional tax exemption limit
+    const PROFESSIONAL_TAX_UPPER_THRESHOLD = 25000; // Professional tax upper threshold
+    const PROFESSIONAL_TAX_LOWER_AMOUNT = 175; // Professional tax for middle slab
+    const PROFESSIONAL_TAX_UPPER_AMOUNT = 200; // Professional tax for upper slab
+    const STANDARD_DEDUCTION_AMOUNT = 50000; // Annual standard deduction
+    const MONTHS_IN_YEAR = 12; // Number of months in a year
+    const PERCENTAGE_DIVISOR = 100; // For percentage calculations
+    const CALCULATION_TOLERANCE = 0.01; // Tolerance for validation calculations
+
     // Tax slabs for FY 2024-25 (New Tax Regime)
     protected $taxSlabs = [
         ['min' => 0, 'max' => 300000, 'rate' => 0],
@@ -77,11 +89,11 @@ class SalaryCalculator
 
         // Provident Fund calculation (12% of basic salary, max on 15k)
         $pfBasic = min($basicSalary, $this->pfSalaryLimit);
-        $deductions['pf'] = round($pfBasic * $this->pfRate / 100, 2);
+        $deductions['pf'] = round($pfBasic * $this->pfRate / self::PERCENTAGE_DIVISOR, 2);
 
         // ESI calculation (0.75% of gross salary, applicable up to 25k)
         if ($grossSalary <= $this->esiSalaryLimit) {
-            $deductions['esi'] = round($grossSalary * $this->esiEmployeeRate / 100, 2);
+            $deductions['esi'] = round($grossSalary * $this->esiEmployeeRate / self::PERCENTAGE_DIVISOR, 2);
         } else {
             $deductions['esi'] = 0;
         }
@@ -90,7 +102,7 @@ class SalaryCalculator
         $deductions['professional_tax'] = $this->calculateProfessionalTax($grossSalary);
 
         // TDS calculation (monthly)
-        $annualGross = $grossSalary * 12;
+        $annualGross = $grossSalary * self::MONTHS_IN_YEAR;
         $deductions['tds'] = $this->calculateTDS($annualGross);
 
         return $deductions;
@@ -105,11 +117,11 @@ class SalaryCalculator
 
         // Employer PF contribution (12% of basic salary, max on 15k)
         $pfBasic = min($basicSalary, $this->pfSalaryLimit);
-        $contributions['pf'] = round($pfBasic * $this->pfRate / 100, 2);
+        $contributions['pf'] = round($pfBasic * $this->pfRate / self::PERCENTAGE_DIVISOR, 2);
 
         // Employer ESI contribution (3.25% of gross salary, applicable up to 25k)
         if ($grossSalary <= $this->esiSalaryLimit) {
-            $contributions['esi'] = round($grossSalary * $this->esiEmployerRate / 100, 2);
+            $contributions['esi'] = round($grossSalary * $this->esiEmployerRate / self::PERCENTAGE_DIVISOR, 2);
         } else {
             $contributions['esi'] = 0;
         }
@@ -123,12 +135,12 @@ class SalaryCalculator
     protected function calculateProfessionalTax($grossSalary)
     {
         // Maharashtra Professional Tax rates
-        if ($grossSalary <= 15000) {
+        if ($grossSalary <= self::PROFESSIONAL_TAX_LOWER_THRESHOLD) {
             return 0;
-        } elseif ($grossSalary <= 25000) {
-            return 175;
+        } elseif ($grossSalary <= self::PROFESSIONAL_TAX_UPPER_THRESHOLD) {
+            return self::PROFESSIONAL_TAX_LOWER_AMOUNT;
         } else {
-            return 200;
+            return self::PROFESSIONAL_TAX_UPPER_AMOUNT;
         }
     }
 
@@ -138,22 +150,22 @@ class SalaryCalculator
     protected function calculateTDS($annualSalary)
     {
         // Standard deduction
-        $standardDeduction = 50000;
+        $standardDeduction = self::STANDARD_DEDUCTION_AMOUNT;
         $taxableIncome = max(0, $annualSalary - $standardDeduction);
 
         $tax = 0;
         foreach ($this->taxSlabs as $slab) {
             if ($taxableIncome > $slab['min']) {
                 $taxableAmount = min($taxableIncome, $slab['max']) - $slab['min'] + 1;
-                $tax += $taxableAmount * $slab['rate'] / 100;
+                $tax += $taxableAmount * $slab['rate'] / self::PERCENTAGE_DIVISOR;
             }
         }
 
         // Add 4% Health and Education Cess
-        $tax = $tax * 1.04;
+        $tax = $tax * self::HEALTH_EDUCATION_CESS_RATE;
 
         // Return monthly TDS
-        return round($tax / 12, 2);
+        return round($tax / self::MONTHS_IN_YEAR, 2);
     }
 
     /**
@@ -199,7 +211,7 @@ class SalaryCalculator
 
         while ($startDate->lte($endDate)) {
             // Exclude Sundays (0 = Sunday)
-            if ($startDate->dayOfWeek !== 0) {
+            if ($startDate->dayOfWeek !== self::SUNDAY_DAY_OF_WEEK) {
                 $workingDays++;
             }
             $startDate->addDay();
@@ -280,7 +292,7 @@ class SalaryCalculator
         $totalTDS = 0;
 
         // Calculate for each month
-        for ($month = 1; $month <= 12; $month++) {
+        for ($month = 1; $month <= self::MONTHS_IN_YEAR; $month++) {
             try {
                 // Get salary structure for employee
                 $salaryStructure = SalaryStructure::where('user_id', $employee->id)
@@ -306,19 +318,19 @@ class SalaryCalculator
         }
 
         // Calculate actual tax liability
-        $standardDeduction = 50000;
+        $standardDeduction = self::STANDARD_DEDUCTION_AMOUNT;
         $taxableIncome = max(0, $totalGross - $standardDeduction);
         $actualTax = 0;
 
         foreach ($this->taxSlabs as $slab) {
             if ($taxableIncome > $slab['min']) {
                 $taxableAmount = min($taxableIncome, $slab['max']) - $slab['min'] + 1;
-                $actualTax += $taxableAmount * $slab['rate'] / 100;
+                $actualTax += $taxableAmount * $slab['rate'] / self::PERCENTAGE_DIVISOR;
             }
         }
 
         // Add cess
-        $actualTax = $actualTax * 1.04;
+        $actualTax = $actualTax * self::HEALTH_EDUCATION_CESS_RATE;
 
         return [
             'employee' => $employee,
@@ -352,8 +364,8 @@ class SalaryCalculator
         }
 
         // PF validation
-        $expectedPF = min($salaryData['basic_salary'], $this->pfSalaryLimit) * $this->pfRate / 100;
-        if (abs($salaryData['statutory_deductions']['pf'] - $expectedPF) > 0.01) {
+        $expectedPF = min($salaryData['basic_salary'], $this->pfSalaryLimit) * $this->pfRate / self::PERCENTAGE_DIVISOR;
+        if (abs($salaryData['statutory_deductions']['pf'] - $expectedPF) > self::CALCULATION_TOLERANCE) {
             $warnings[] = 'PF calculation may be incorrect';
         }
 

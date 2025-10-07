@@ -10,15 +10,25 @@ use App\Models\AuditTrail;
 use App\Models\UserSession;
 use App\Models\User;
 use Carbon\Carbon;
+use App\Http\Traits\DateRangeValidationTrait;
 
 class AuditController extends Controller
 {
+    use DateRangeValidationTrait;
     /**
      * Display audit logs dashboard
      */
     public function index(Request $request)
     {
         $this->authorize('view_audit_trails');
+
+        $request->validate([
+            ...$this->getFilterDateRangeValidationRules(),
+            'user_id' => ['nullable', 'exists:users,id'],
+            'event' => ['nullable', 'string'],
+            'model_type' => ['nullable', 'string'],
+            'search' => ['nullable', 'string', 'max:255']
+        ], $this->getDateRangeValidationMessages());
 
         $filters = $request->only(['user_id', 'event', 'model_type', 'date_from', 'date_to', 'search']);
         
@@ -77,6 +87,10 @@ class AuditController extends Controller
     {
         $this->authorize('view_audit_logs');
 
+        $request->validate([
+            ...$this->getFilterDateRangeValidationRules()
+        ], $this->getDateRangeValidationMessages());
+
         $dateFrom = $request->input('date_from', now()->subDays(30));
         $dateTo = $request->input('date_to', now());
 
@@ -130,6 +144,12 @@ class AuditController extends Controller
     {
         $this->authorize('view_audit_logs');
 
+        $request->validate([
+            ...$this->getFilterDateRangeValidationRules(),
+            'user_id' => ['nullable', 'exists:users,id'],
+            'is_active' => ['nullable', 'boolean']
+        ], $this->getDateRangeValidationMessages());
+
         $filters = $request->only(['user_id', 'is_active', 'date_from', 'date_to']);
 
         $sessions = UserSession::with('user:id,name,email')
@@ -159,6 +179,10 @@ class AuditController extends Controller
     public function sessionStatistics(Request $request): JsonResponse
     {
         $this->authorize('view_audit_logs');
+
+        $request->validate([
+            ...$this->getFilterDateRangeValidationRules()
+        ], $this->getDateRangeValidationMessages());
 
         $dateFrom = $request->input('date_from', now()->subDays(30));
         $dateTo = $request->input('date_to', now());
@@ -215,6 +239,13 @@ class AuditController extends Controller
      */
     public function export(Request $request)
     {
+        $request->validate([
+            ...$this->getFilterDateRangeValidationRules(),
+            'user_id' => ['nullable', 'exists:users,id'],
+            'event' => ['nullable', 'string'],
+            'model_type' => ['nullable', 'string']
+        ], $this->getDateRangeValidationMessages());
+
         $filters = $request->only(['user_id', 'event', 'model_type', 'date_from', 'date_to']);
         
         $auditLogs = AuditTrail::with(['user'])

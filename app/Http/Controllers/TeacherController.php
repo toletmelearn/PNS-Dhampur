@@ -10,15 +10,19 @@ use App\Models\Subject;
 use App\Services\UserFriendlyErrorService;
 use App\Rules\PasswordComplexity;
 use App\Rules\PasswordHistory;
+use App\Http\Traits\EmailValidationTrait;
+use App\Http\Traits\FileUploadValidationTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use App\Helpers\SecurityHelper;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class TeacherController extends Controller
 {
+    use EmailValidationTrait, FileUploadValidationTrait;
     public function __construct()
     {
         $this->middleware('auth');
@@ -35,13 +39,13 @@ class TeacherController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->whereHas('user', function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
-            })->orWhere('qualification', 'like', "%{$search}%");
+                $q->where('name', 'like', SecurityHelper::buildLikePattern($search))
+                  ->orWhere('email', 'like', SecurityHelper::buildLikePattern($search));
+            })->orWhere('qualification', 'like', SecurityHelper::buildLikePattern($search));
         }
 
         if ($request->filled('qualification')) {
-            $query->where('qualification', 'like', "%{$request->qualification}%");
+            $query->where('qualification', 'like', SecurityHelper::buildLikePattern($request->qualification));
         }
 
         if ($request->filled('experience_min')) {
@@ -74,8 +78,10 @@ class TeacherController extends Controller
 
         // Get filter options
         $qualifications = Teacher::distinct()->pluck('qualification')->filter();
-        $classes = ClassModel::all();
-        $subjects = Subject::all();
+        // Use pagination for classes to avoid memory issues
+        $classes = ClassModel::paginate(50);
+        // Use pagination for subjects to avoid memory issues
+        $subjects = Subject::paginate(50);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -93,8 +99,9 @@ class TeacherController extends Controller
      */
     public function create()
     {
-        $classes = ClassModel::all();
-        $subjects = Subject::all();
+        // Use pagination for classes and subjects to avoid memory issues
+        $classes = ClassModel::paginate(50);
+        $subjects = Subject::paginate(50);
         
         return view('teachers.create', compact('classes', 'subjects'));
     }
@@ -104,12 +111,9 @@ class TeacherController extends Controller
      */
     public function store(Request $request)
     {
-        $maxDocumentSize = config('fileupload.max_file_sizes.teacher_documents', config('fileupload.max_file_sizes.document'));
-        $documentMimes = config('fileupload.allowed_file_types.teacher_documents.mimes');
-        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
+            ...$this->getCreateEmailValidationRules(),
             'phone' => 'nullable|string|max:20',
             'password' => [
                 'required',
@@ -124,10 +128,13 @@ class TeacherController extends Controller
             'address' => 'nullable|string|max:1000',
             'emergency_contact' => 'nullable|string|max:20',
             'blood_group' => 'nullable|string|max:5',
-            'documents.*' => "nullable|file|mimes:{$documentMimes}|max:{$maxDocumentSize}",
+            ...$this->getDocumentFileValidationRules('documents.*'),
             'subjects' => 'nullable|array',
             'subjects.*' => 'exists:subjects,id',
-        ]);
+        ], array_merge(
+            $this->getEmailValidationMessages(),
+            $this->getFileUploadValidationMessages()
+        ));
 
         try {
             DB::beginTransaction();
@@ -147,12 +154,23 @@ class TeacherController extends Controller
             // Assign teacher role
             $user->assignRole('teacher');
 
-            // Handle document uploads
+            // Handle document uploads with security measures
             $documents = [];
             if ($request->hasFile('documents')) {
                 foreach ($request->file('documents') as $key => $file) {
-                    $path = $file->store('teachers/documents', 'public');
-                    $documents[$key] = $path;
+                    // Generate secure filename to prevent directory traversal and overwrite attacks
+                    $extension = strtolower($file->getClientOriginalExtension());
+                    $secureFilename = 'teacher_' . $user->id . '_' . time() . '_' . Str::random(10) . '.' . $extension;
+                    
+                    // Store with secure filename
+                    $path = $file->storeAs('teachers/documents', $secureFilename, 'public');
+                    $documents[$key] = [
+                        'path' => $path,
+                        'original_name' => $file->getClientOriginalName(),
+                        'size' => $file->getSize(),
+                        'mime_type' => $file->getMimeType(),
+                        'uploaded_at' => now()
+                    ];
                 }
             }
 
@@ -223,8 +241,9 @@ class TeacherController extends Controller
     public function edit($id)
     {
         $teacher = Teacher::with(['user', 'classes'])->findOrFail($id);
-        $classes = ClassModel::all();
-        $subjects = Subject::all();
+        // Use pagination for classes and subjects to avoid memory issues
+        $classes = ClassModel::paginate(50);
+        $subjects = Subject::paginate(50);
         
         return view('teachers.edit', compact('teacher', 'classes', 'subjects'));
     }
@@ -236,12 +255,9 @@ class TeacherController extends Controller
     {
         $teacher = Teacher::findOrFail($id);
         
-        $maxDocumentSize = config('fileupload.max_file_sizes.teacher_documents', config('fileupload.max_file_sizes.document'));
-        $documentMimes = config('fileupload.allowed_file_types.teacher_documents.mimes');
-        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($teacher->user_id)],
+            ...$this->getUpdateEmailValidationRules($teacher->user_id),
             'phone' => 'nullable|string|max:20',
             'qualification' => 'required|string|max:500',
             'experience_years' => 'required|integer|min:0|max:50',
@@ -250,11 +266,14 @@ class TeacherController extends Controller
             'address' => 'nullable|string|max:1000',
             'emergency_contact' => 'nullable|string|max:20',
             'blood_group' => 'nullable|string|max:5',
-            'documents.*' => "nullable|file|mimes:{$documentMimes}|max:{$maxDocumentSize}",
+            ...$this->getDocumentFileValidationRules('documents.*'),
             'subjects' => 'nullable|array',
             'subjects.*' => 'exists:subjects,id',
             'status' => 'required|in:active,inactive,suspended',
-        ]);
+        ], array_merge(
+            $this->getEmailValidationMessages(),
+            $this->getFileUploadValidationMessages()
+        ));
 
         try {
             DB::beginTransaction();
@@ -267,17 +286,30 @@ class TeacherController extends Controller
                 'status' => $validated['status'] ?? 'active',
             ]);
 
-            // Handle document uploads
+            // Handle document uploads with security measures
             $documents = $teacher->documents ?? [];
             if ($request->hasFile('documents')) {
                 foreach ($request->file('documents') as $key => $file) {
                     // Delete old document if exists
                     if (isset($documents[$key])) {
-                        Storage::disk('public')->delete($documents[$key]);
+                        // Handle both old string format and new array format
+                        $oldPath = is_array($documents[$key]) ? $documents[$key]['path'] : $documents[$key];
+                        Storage::disk('public')->delete($oldPath);
                     }
                     
-                    $path = $file->store('teachers/documents', 'public');
-                    $documents[$key] = $path;
+                    // Generate secure filename to prevent directory traversal and overwrite attacks
+                    $extension = strtolower($file->getClientOriginalExtension());
+                    $secureFilename = 'teacher_' . $teacher->id . '_' . time() . '_' . Str::random(10) . '.' . $extension;
+                    
+                    // Store with secure filename
+                    $path = $file->storeAs('teachers/documents', $secureFilename, 'public');
+                    $documents[$key] = [
+                        'path' => $path,
+                        'original_name' => $file->getClientOriginalName(),
+                        'size' => $file->getSize(),
+                        'mime_type' => $file->getMimeType(),
+                        'uploaded_at' => now()
+                    ];
                 }
             }
 
@@ -383,7 +415,7 @@ class TeacherController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->whereHas('user', function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
+                $q->where('name', 'like', SecurityHelper::buildLikePattern($search));
             });
         }
 

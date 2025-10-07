@@ -123,12 +123,12 @@ button {
     color: #2d3748;
 }
 
-/* Button Components */
+/* Button Components - Mobile-First with Touch Targets */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.5rem 1rem;
+    padding: 0.75rem 1.25rem; /* Increased from 0.5rem 1rem for better touch targets */
     border-radius: 6px;
     font-weight: 500;
     text-decoration: none;
@@ -137,6 +137,8 @@ button {
     border: 1px solid transparent;
     font-size: 0.875rem;
     line-height: 1.25rem;
+    min-height: 44px; /* Apple's recommended minimum touch target size */
+    min-width: 44px;
 }
 
 .btn:disabled {
@@ -199,14 +201,18 @@ button {
     color: #fff;
 }
 
+/* Improved button sizes for mobile accessibility */
 .btn-sm {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
+    padding: 0.5rem 1rem; /* Increased from 0.25rem 0.75rem for better touch targets */
+    font-size: 0.8rem;
+    min-height: 40px; /* Minimum touch target for small buttons */
+    min-width: 40px;
 }
 
 .btn-lg {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
+    padding: 1rem 2rem; /* Increased from 0.75rem 1.5rem */
+    font-size: 1.1rem;
+    min-height: 48px;
 }
 
 /* Form Components */
@@ -252,24 +258,34 @@ button {
     padding-right: 2.5rem;
 }
 
-/* Table Components */
+/* Table Components - Mobile Responsive */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 .table {
     width: 100%;
-    border-collapse: collapse;
     margin-bottom: 1rem;
+    background-color: transparent;
+    border-collapse: collapse;
 }
 
 .table th,
 .table td {
     padding: 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid #e5e7eb;
+    vertical-align: top;
+    border-top: 1px solid #e2e8f0;
 }
 
-.table th {
+.table thead th {
+    vertical-align: bottom;
+    border-bottom: 2px solid #e2e8f0;
     font-weight: 600;
     color: #374151;
-    background-color: #f9fafb;
 }
 
 .table-striped tbody tr:nth-child(odd) {
@@ -512,7 +528,117 @@ button {
 .shadow-md { box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
 .shadow-lg { box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1); }
 
-/* Responsive Design */
+/* Attendance Table - Enhanced Mobile Responsiveness */
+.attendance-table {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: white;
+}
+
+.attendance-table table {
+    width: 100%;
+    min-width: 800px; /* Prevent table from becoming too cramped */
+}
+
+.attendance-table th,
+.attendance-table td {
+    padding: 12px 8px;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.attendance-table .btn {
+    min-height: 36px;
+    min-width: 70px;
+    padding: 8px 12px;
+    font-size: 0.8rem;
+}
+
+/* Responsive Design - Mobile First Approach */
+@media (max-width: 575.98px) {
+    /* Extra small devices (phones) */
+    .container {
+        padding: 0 0.75rem;
+    }
+    
+    .card {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+        padding: 0.875rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .btn-group .btn {
+        width: auto;
+        margin-bottom: 0.25rem;
+        margin-right: 0.25rem;
+    }
+    
+    .table-responsive {
+        margin-left: -0.75rem;
+        margin-right: -0.75rem;
+        border-radius: 0;
+    }
+    
+    .attendance-table table {
+        min-width: 600px;
+    }
+    
+    .attendance-table th,
+    .attendance-table td {
+        padding: 8px 6px;
+        font-size: 0.85rem;
+    }
+    
+    .attendance-table .btn {
+        min-height: 32px;
+        min-width: 60px;
+        padding: 6px 8px;
+        font-size: 0.75rem;
+    }
+}
+
+@media (min-width: 576px) and (max-width: 767.98px) {
+    /* Small devices (landscape phones) */
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .btn {
+        width: auto;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .attendance-table table {
+        min-width: 700px;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+    /* Medium devices (tablets) */
+    .grid-3,
+    .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .attendance-table table {
+        min-width: 800px;
+    }
+}
+
 @media (max-width: 768px) {
     .container {
         padding: 0 0.5rem;
@@ -529,11 +655,6 @@ button {
         max-width: calc(100% - 1rem);
     }
     
-    .btn {
-        width: 100%;
-        margin-bottom: 0.5rem;
-    }
-    
     .table {
         font-size: 0.875rem;
     }
@@ -541,6 +662,24 @@ button {
     .table th,
     .table td {
         padding: 0.5rem;
+    }
+    
+    /* Stack form elements vertically on mobile */
+    .form-row {
+        flex-direction: column;
+    }
+    
+    .form-row .form-group {
+        width: 100%;
+        margin-right: 0;
+    }
+}
+
+@media (min-width: 992px) {
+    /* Large devices (desktops) */
+    .attendance-table {
+        max-width: 1200px;
+        margin: 0 auto;
     }
 }
 
@@ -557,6 +696,44 @@ button {
     .modal-body,
     .modal-footer {
         padding: 1rem;
+    }
+    
+    .btn {
+        font-size: 0.85rem;
+        padding: 0.75rem 1rem;
+    }
+    
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.75rem;
+        min-height: 36px;
+    }
+}
+
+/* Touch-friendly improvements for mobile devices */
+@media (hover: none) and (pointer: coarse) {
+    .btn,
+    .form-control,
+    .form-select {
+        min-height: 44px; /* Apple's recommended touch target size */
+    }
+    
+    .btn-sm {
+        min-height: 40px;
+    }
+    
+    .table th,
+    .table td {
+        padding: 12px 8px;
+    }
+    
+    /* Increase spacing between interactive elements */
+    .btn + .btn {
+        margin-left: 8px;
+    }
+    
+    .form-group {
+        margin-bottom: 1.25rem;
     }
 }
 

@@ -964,17 +964,17 @@ function initializeCharts() {
         attendanceTrendChart = new Chart(trendCtx, {
             type: 'line',
             data: {
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                labels: [], // Will be populated dynamically
                 datasets: [{
                     label: 'Present',
-                    data: [85, 88, 92, 87, 83, 90],
+                    data: [], // Will be populated dynamically
                     borderColor: '#4facfe',
                     backgroundColor: 'rgba(79, 172, 254, 0.1)',
                     tension: 0.4,
                     fill: true
                 }, {
                     label: 'Absent',
-                    data: [15, 12, 8, 13, 17, 10],
+                    data: [], // Will be populated dynamically
                     borderColor: '#fa709a',
                     backgroundColor: 'rgba(250, 112, 154, 0.1)',
                     tension: 0.4,
@@ -1003,15 +1003,20 @@ function initializeCharts() {
         classWiseChart = new Chart(classCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Class 1', 'Class 2', 'Class 3', 'Class 4', 'Class 5'],
+                labels: [], // Will be populated dynamically
                 datasets: [{
-                    data: [92, 88, 85, 90, 87],
+                    data: [], // Will be populated dynamically
                     backgroundColor: [
                         '#4facfe',
                         '#43e97b',
                         '#fa709a',
                         '#fee140',
-                        '#a8edea'
+                        '#a8edea',
+                        '#fd7e14',
+                        '#20c997',
+                        '#e83e8c',
+                        '#6c757d',
+                        '#17a2b8'
                     ],
                     borderWidth: 0
                 }]
@@ -1032,10 +1037,10 @@ function initializeCharts() {
         weeklyPatternChart = new Chart(weeklyCtx, {
             type: 'bar',
             data: {
-                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                labels: [], // Will be populated dynamically
                 datasets: [{
                     label: 'Attendance %',
-                    data: [82, 88, 92, 89, 78, 85],
+                    data: [], // Will be populated dynamically
                     backgroundColor: [
                         '#4facfe',
                         '#43e97b',
@@ -1085,13 +1090,13 @@ function updateAnalytics() {
     }
 
     isLoading = true;
-    const updateBtn = document.getElementById('updateBtn');
-    const btnText = updateBtn.querySelector('.btn-text');
+    const updateBtn = document.querySelector('button[onclick="updateAnalytics()"]');
+    const btnText = updateBtn.querySelector('i').nextSibling;
     const originalText = btnText.textContent;
     
     // Update button state
     updateBtn.disabled = true;
-    btnText.textContent = 'Updating...';
+    btnText.textContent = ' Updating...';
     updateBtn.querySelector('i').className = 'fas fa-spinner fa-spin me-1';
     
     // Show loading states
@@ -1115,7 +1120,7 @@ function updateAnalytics() {
         } finally {
             // Reset button state
             updateBtn.disabled = false;
-            btnText.textContent = originalText;
+            btnText.textContent = ' Update Analytics';
             updateBtn.querySelector('i').className = 'fas fa-sync-alt me-1';
             
             // Hide loading states
@@ -1134,14 +1139,81 @@ function updateAnalytics() {
 }
 
 function loadAnalyticsData() {
-    // Simulate loading analytics data
-    // In a real application, this would make AJAX calls to fetch data
+    // Get current filter values
+    const formData = new FormData(document.getElementById('analyticsFilters'));
+    const params = new URLSearchParams();
     
-    // Update metrics with animation
-    animateValue('avg_attendance', 87.5, 89.2, '%');
-    animateValue('total_present', 2847, 2903, '');
-    animateValue('total_absent', 412, 389, '');
-    animateValue('total_late', 89, 76, '');
+    // Add form data to params
+    for (let [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
+    }
+    
+    // Make AJAX call to fetch real attendance data
+    fetch(`{{ route('attendance.analytics') }}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const analyticsData = data.data;
+            
+            // Update metrics with real data
+            const overallStats = analyticsData.overall_stats;
+            animateValue('avg_attendance', 0, overallStats.attendance_percentage, '%');
+            animateValue('total_present', 0, overallStats.present_count, '');
+            animateValue('total_absent', 0, overallStats.absent_count, '');
+            animateValue('total_late', 0, overallStats.late_count, '');
+            
+            // Update charts with real data
+            updateChartsWithRealData(analyticsData);
+        } else {
+            console.error('Failed to load analytics data:', data.message);
+            showToast('Failed to load analytics data. Please try again.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error loading analytics data:', error);
+        showToast('Failed to load analytics data. Please try again.', 'error');
+        
+        // Fallback to sample data if API fails
+        const fallbackData = {
+            overall_stats: {
+                attendance_percentage: 87.5,
+                present_count: 2847,
+                absent_count: 412,
+                late_count: 89
+            },
+            daily_trends: [
+                {date: 'Mon', present_percentage: 85, absent_percentage: 15},
+                {date: 'Tue', present_percentage: 88, absent_percentage: 12},
+                {date: 'Wed', present_percentage: 92, absent_percentage: 8},
+                {date: 'Thu', present_percentage: 87, absent_percentage: 13},
+                {date: 'Fri', present_percentage: 83, absent_percentage: 17},
+                {date: 'Sat', present_percentage: 90, absent_percentage: 10}
+            ],
+            class_stats: [
+                {class_name: 'Class 1', attendance_percentage: 92},
+                {class_name: 'Class 2', attendance_percentage: 88},
+                {class_name: 'Class 3', attendance_percentage: 85},
+                {class_name: 'Class 4', attendance_percentage: 90},
+                {class_name: 'Class 5', attendance_percentage: 87}
+            ]
+        };
+        
+        // Update with fallback data
+        const overallStats = fallbackData.overall_stats;
+        animateValue('avg_attendance', 0, overallStats.attendance_percentage, '%');
+        animateValue('total_present', 0, overallStats.present_count, '');
+        animateValue('total_absent', 0, overallStats.absent_count, '');
+        animateValue('total_late', 0, overallStats.late_count, '');
+        
+        updateChartsWithRealData(fallbackData);
+    });
 }
 
 function animateValue(elementId, start, end, suffix) {
@@ -1169,30 +1241,67 @@ function animateValue(elementId, start, end, suffix) {
 function updateTrendChart(period) {
     if (!attendanceTrendChart) return;
     
-    let labels, data1, data2;
+    // Get current filter values and add period
+    const formData = new FormData(document.getElementById('analyticsFilters'));
+    const params = new URLSearchParams();
     
-    switch(period) {
-        case 'daily':
-            labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            data1 = [85, 88, 92, 87, 83, 90];
-            data2 = [15, 12, 8, 13, 17, 10];
-            break;
-        case 'weekly':
-            labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
-            data1 = [87, 89, 85, 91];
-            data2 = [13, 11, 15, 9];
-            break;
-        case 'monthly':
-            labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-            data1 = [88, 85, 90, 87, 89, 92];
-            data2 = [12, 15, 10, 13, 11, 8];
-            break;
+    // Add form data to params
+    for (let [key, value] of formData.entries()) {
+        if (value) params.append(key, value);
     }
+    params.append('trend_period', period);
     
-    attendanceTrendChart.data.labels = labels;
-    attendanceTrendChart.data.datasets[0].data = data1;
-    attendanceTrendChart.data.datasets[1].data = data2;
-    attendanceTrendChart.update('active');
+    // Fetch data for the specific period
+    fetch(`{{ route('attendance.analytics') }}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.data.daily_trends) {
+            const trends = data.data.daily_trends;
+            const labels = trends.map(item => item.date);
+            const presentData = trends.map(item => item.present_percentage);
+            const absentData = trends.map(item => item.absent_percentage);
+            
+            attendanceTrendChart.data.labels = labels;
+            attendanceTrendChart.data.datasets[0].data = presentData;
+            attendanceTrendChart.data.datasets[1].data = absentData;
+            attendanceTrendChart.update('active');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating trend chart:', error);
+        // Fallback to sample data if API fails
+        let labels, data1, data2;
+        
+        switch(period) {
+            case 'daily':
+                labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                data1 = [85, 88, 92, 87, 83, 90];
+                data2 = [15, 12, 8, 13, 17, 10];
+                break;
+            case 'weekly':
+                labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+                data1 = [87, 89, 85, 91];
+                data2 = [13, 11, 15, 9];
+                break;
+            case 'monthly':
+                labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+                data1 = [88, 85, 90, 87, 89, 92];
+                data2 = [12, 15, 10, 13, 11, 8];
+                break;
+        }
+        
+        attendanceTrendChart.data.labels = labels;
+        attendanceTrendChart.data.datasets[0].data = data1;
+        attendanceTrendChart.data.datasets[1].data = data2;
+        attendanceTrendChart.update('active');
+    });
 }
 
 function resetFilters() {
@@ -1303,6 +1412,43 @@ window.addEventListener('resize', function() {
     if (classWiseChart) classWiseChart.resize();
     if (weeklyPatternChart) weeklyPatternChart.resize();
 });
+
+function updateChartsWithRealData(analyticsData) {
+    // Update Attendance Trend Chart
+    if (attendanceTrendChart && analyticsData.daily_trends) {
+        const trends = analyticsData.daily_trends;
+        const labels = trends.map(item => item.date);
+        const presentData = trends.map(item => item.present_percentage);
+        const absentData = trends.map(item => item.absent_percentage);
+        
+        attendanceTrendChart.data.labels = labels;
+        attendanceTrendChart.data.datasets[0].data = presentData;
+        attendanceTrendChart.data.datasets[1].data = absentData;
+        attendanceTrendChart.update('active');
+    }
+    
+    // Update Class-wise Chart
+    if (classWiseChart && analyticsData.class_stats) {
+        const classStats = analyticsData.class_stats;
+        const labels = classStats.map(item => item.class_name);
+        const data = classStats.map(item => item.attendance_percentage);
+        
+        classWiseChart.data.labels = labels;
+        classWiseChart.data.datasets[0].data = data;
+        classWiseChart.update('active');
+    }
+    
+    // Update Weekly Pattern Chart (use daily trends for weekly pattern)
+    if (weeklyPatternChart && analyticsData.daily_trends) {
+        const trends = analyticsData.daily_trends;
+        const labels = trends.map(item => item.date);
+        const data = trends.map(item => item.present_percentage);
+        
+        weeklyPatternChart.data.labels = labels;
+        weeklyPatternChart.data.datasets[0].data = data;
+        weeklyPatternChart.update('active');
+    }
+}
 
 // Keyboard accessibility
 document.addEventListener('keydown', function(e) {

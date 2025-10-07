@@ -15,6 +15,7 @@ use App\Services\AadhaarVerificationService;
 use App\Services\BirthCertificateOCRService;
 use App\Services\UserFriendlyErrorService;
 use App\Services\StudentSearchService;
+use App\Traits\HandlesApiResponses;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
@@ -26,6 +27,8 @@ use Illuminate\Support\Facades\Auth;
 
 class StudentController extends Controller
 {
+    use HandlesApiResponses;
+
     protected $searchService;
 
     public function __construct(StudentSearchService $searchService)
@@ -95,7 +98,7 @@ class StudentController extends Controller
                 ], 500);
             }
 
-            return back()->with('error', 'Search failed. Please try again.');
+            return back()->with('error', 'An error occurred while searching students.');
         }
     }
 
@@ -292,7 +295,7 @@ class StudentController extends Controller
     // POST /api/students
     public function store(StoreStudentRequest $request)
     {
-        try {
+        return $this->handleWithTransaction(function() use ($request) {
             // Get validated data from the request
             $data = $request->validated();
 
@@ -358,6 +361,9 @@ class StudentController extends Controller
 
             // If there are upload errors, return with errors
             if (!empty($uploadErrors)) {
+                if ($request->expectsJson() || $request->is('api/*')) {
+                    return $this->jsonErrorResponse(new \Exception('File upload failed'), 'document_upload', 422);
+                }
                 return back()->withErrors($uploadErrors)->withInput();
             }
 
@@ -376,57 +382,12 @@ class StudentController extends Controller
             ]);
 
             if ($request->expectsJson() || $request->is('api/*')) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Student created successfully',
-                    'student' => $student
-                ], 201);
+                return $this->jsonSuccessResponse('student_create', $student, 201);
             }
             
             return redirect()->route('students.index')->with('success', 'Student "' . $student->name . '" has been successfully registered with admission number: ' . $student->admission_no);
 
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            // Handle validation errors
-            if ($request->expectsJson() || $request->is('api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $e->errors()
-                ], 422);
-            }
-            
-            return back()->withErrors($e->errors())->withInput();
-
-        } catch (\Exception $e) {
-            // Log the error
-            \Log::error('Student creation failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->except(['birth_cert', 'aadhaar_file', 'other_docs'])
-            ]);
-
-            // Clean up any uploaded files if student creation failed
-            if (!empty($documents)) {
-                foreach ($documents as $key => $value) {
-                    if (is_array($value)) {
-                        foreach ($value as $path) {
-                            Storage::delete($path);
-                        }
-                    } else {
-                        Storage::delete($value);
-                    }
-                }
-            }
-
-            if ($request->expectsJson() || $request->is('api/*')) {
-                return response()->json(
-                    UserFriendlyErrorService::jsonErrorResponse($e, 'student_create'),
-                    500
-                );
-            }
-            
-            return back()->with('error', UserFriendlyErrorService::getErrorMessage($e, 'student_create'))->withInput();
-        }
+        }, $request, 'student_create');
     }
 
     // GET /api/students/{id} or /students/{id}
@@ -676,38 +637,65 @@ class StudentController extends Controller
             $attendanceRecords = [];
             $updatedCount = 0;
 
-            foreach ($studentIds as $studentId) {
-                // Check if attendance already exists for this date
-                $existingAttendance = Attendance::where('student_id', $studentId)
+            // Use database transaction with proper locking to prevent race conditions
+            DB::transaction(function () use ($date, $status, $remarks, $studentIds, &$attendanceRecords, &$updatedCount) {
+                // Lock the attendance table for the specific date to prevent race conditions
+                $existingAttendances = Attendance::whereIn('student_id', $studentIds)
                     ->where('date', $date)
-                    ->first();
+                    ->lockForUpdate() // Database-level row locking
+                    ->get()
+                    ->keyBy('student_id');
 
-                if ($existingAttendance) {
-                    // Update existing record
-                    $existingAttendance->update([
-                        'status' => $status,
-                        'remarks' => $remarks,
-                        'marked_by' => auth()->id()
-                    ]);
-                    $updatedCount++;
-                } else {
-                    // Create new record
-                    $attendanceRecords[] = [
-                        'student_id' => $studentId,
-                        'date' => $date,
-                        'status' => $status,
-                        'remarks' => $remarks,
-                        'marked_by' => auth()->id(),
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ];
+                foreach ($studentIds as $studentId) {
+                    if ($existingAttendances->has($studentId)) {
+                        // Update existing record
+                        $existingAttendances[$studentId]->update([
+                            'status' => $status,
+                            'remarks' => $remarks,
+                            'marked_by' => auth()->id()
+                        ]);
+                        $updatedCount++;
+                    } else {
+                        // Create new record
+                        $attendanceRecords[] = [
+                            'student_id' => $studentId,
+                            'date' => $date,
+                            'status' => $status,
+                            'remarks' => $remarks,
+                            'marked_by' => auth()->id(),
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ];
+                    }
                 }
-            }
 
-            // Bulk insert new records
-            if (!empty($attendanceRecords)) {
-                Attendance::insert($attendanceRecords);
-            }
+                // Bulk insert new records with duplicate handling
+                if (!empty($attendanceRecords)) {
+                    try {
+                        Attendance::insert($attendanceRecords);
+                    } catch (\Illuminate\Database\QueryException $e) {
+                        // Handle unique constraint violations gracefully
+                        if ($e->getCode() === '23000') { // Integrity constraint violation
+                            // If duplicate entries are detected, use updateOrCreate as fallback
+                            foreach ($attendanceRecords as $attendance) {
+                                Attendance::updateOrCreate(
+                                    [
+                                        'student_id' => $attendance['student_id'],
+                                        'date' => $attendance['date']
+                                    ],
+                                    [
+                                        'status' => $attendance['status'],
+                                        'remarks' => $attendance['remarks'],
+                                        'marked_by' => $attendance['marked_by']
+                                    ]
+                                );
+                            }
+                        } else {
+                            throw $e; // Re-throw if it's not a duplicate key error
+                        }
+                    }
+                }
+            });
 
             $totalProcessed = count($attendanceRecords) + $updatedCount;
 

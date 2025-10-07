@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Student;
 use App\Models\ClassModel;
+use App\Helpers\SecurityHelper;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
@@ -15,7 +16,7 @@ class StudentSearchService
      */
     public function search(Request $request): Builder
     {
-        $query = Student::with(['classModel', 'user']);
+        $query = Student::with(['classModel', 'user', 'attendance']);
 
         // Basic text search across multiple fields
         if ($request->filled('search')) {
@@ -84,32 +85,32 @@ class StudentSearchService
 
         // Father's name search
         if ($request->filled('father_name')) {
-            $query->where('father_name', 'like', '%' . $request->father_name . '%');
+            $query->where('father_name', 'like', SecurityHelper::buildLikePattern($request->father_name));
         }
 
         // Mother's name search
         if ($request->filled('mother_name')) {
-            $query->where('mother_name', 'like', '%' . $request->mother_name . '%');
+            $query->where('mother_name', 'like', SecurityHelper::buildLikePattern($request->mother_name));
         }
 
         // Contact number search
         if ($request->filled('contact_number')) {
             $query->whereHas('user', function ($q) use ($request) {
-                $q->where('phone', 'like', '%' . $request->contact_number . '%');
+                $q->where('phone', 'like', SecurityHelper::buildLikePattern($request->contact_number));
             });
         }
 
         // Email search
         if ($request->filled('email')) {
             $query->whereHas('user', function ($q) use ($request) {
-                $q->where('email', 'like', '%' . $request->email . '%');
+                $q->where('email', 'like', SecurityHelper::buildLikePattern($request->email));
             });
         }
 
         // Address search
         if ($request->filled('address')) {
             $query->whereHas('user', function ($q) use ($request) {
-                $q->where('address', 'like', '%' . $request->address . '%');
+                $q->where('address', 'like', SecurityHelper::buildLikePattern($request->address));
             });
         }
 
@@ -135,19 +136,20 @@ class StudentSearchService
     private function applyTextSearch(Builder $query, string $search): void
     {
         $query->where(function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-              ->orWhere('admission_no', 'like', "%{$search}%")
-              ->orWhere('aadhaar', 'like', "%{$search}%")
-              ->orWhere('father_name', 'like', "%{$search}%")
-              ->orWhere('mother_name', 'like', "%{$search}%")
-              ->orWhereHas('user', function ($userQuery) use ($search) {
-                  $userQuery->where('email', 'like', "%{$search}%")
-                           ->orWhere('phone', 'like', "%{$search}%")
-                           ->orWhere('address', 'like', "%{$search}%");
+            $safeSearch = SecurityHelper::buildLikePattern($search);
+            $q->where('name', 'like', $safeSearch)
+              ->orWhere('admission_no', 'like', $safeSearch)
+              ->orWhere('aadhaar', 'like', $safeSearch)
+              ->orWhere('father_name', 'like', $safeSearch)
+              ->orWhere('mother_name', 'like', $safeSearch)
+              ->orWhereHas('user', function ($userQuery) use ($safeSearch) {
+                  $userQuery->where('email', 'like', $safeSearch)
+                           ->orWhere('phone', 'like', $safeSearch)
+                           ->orWhere('address', 'like', $safeSearch);
               })
-              ->orWhereHas('classModel', function ($classQuery) use ($search) {
-                  $classQuery->where('name', 'like', "%{$search}%")
-                            ->orWhere('section', 'like', "%{$search}%");
+              ->orWhereHas('classModel', function ($classQuery) use ($safeSearch) {
+                  $classQuery->where('name', 'like', $safeSearch)
+                            ->orWhere('section', 'like', $safeSearch);
               });
         });
     }
@@ -313,7 +315,7 @@ class StudentSearchService
      */
     public function exportResults(Builder $query, string $format = 'csv'): array
     {
-        $students = $query->with(['classModel', 'user'])->get();
+        $students = $query->with(['classModel', 'user', 'attendance'])->get();
         
         $data = $students->map(function ($student) {
             return [

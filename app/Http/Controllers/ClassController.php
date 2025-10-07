@@ -8,6 +8,7 @@ use App\Models\Subject;
 use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Helpers\SecurityHelper;
 
 class ClassController extends Controller
 {
@@ -34,9 +35,9 @@ class ClassController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('section', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+                $q->where('name', 'like', SecurityHelper::buildLikePattern($search))
+                  ->orWhere('section', 'like', SecurityHelper::buildLikePattern($search))
+                  ->orWhere('description', 'like', SecurityHelper::buildLikePattern($search));
             });
         }
 
