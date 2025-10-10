@@ -252,6 +252,9 @@ class StudentController extends Controller
     /**
  * Get search suggestions based on partial input - SECURE VERSION
  */
+/**
+ * Get search suggestions based on partial input - SECURE VERSION
+ */
 public function getSearchSuggestions(Request $request)
 {
     $request->validate([
