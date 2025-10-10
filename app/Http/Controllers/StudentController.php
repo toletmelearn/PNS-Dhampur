@@ -268,6 +268,22 @@ public function getSearchSuggestions(Request $request)
     $query = $request->query;
 
     // Use parameter binding to prevent SQL injection
+    /**
+ * Get search suggestions based on partial input - SECURE VERSION
+ */
+public function getSearchSuggestions(Request $request)
+{
+    $request->validate([
+        'query' => 'required|string|min:2|max:100',
+        'field' => 'required|string|in:name,admission_no,father_name,mother_name,contact_number,email,aadhaar,address'
+    ]);
+
+    // Field whitelist for extra security
+    $allowedFields = ['name', 'admission_no', 'father_name', 'mother_name', 'contact_number', 'email', 'aadhaar', 'address'];
+    $field = in_array($request->field, $allowedFields) ? $request->field : 'name';
+    $query = $request->query;
+
+    // Use parameter binding to prevent SQL injection
     $suggestions = Student::select($field)
                          ->where($field, 'LIKE', DB::raw('?'))
                          ->setBindings(["%{$query}%"])
