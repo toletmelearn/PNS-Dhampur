@@ -277,7 +277,10 @@
                         </div>
                     @endif
 
-                    <form action="{{ route('students.store') }}" method="POST" enctype="multipart/form-data" id="studentForm">
+                    <!-- Notification Area for AJAX responses -->
+                    <div id="notification-area"></div>
+
+                    <form action="{{ route('students.store') }}" method="POST" enctype="multipart/form-data" id="studentForm" data-ajax="true">
                         @csrf
                         
                         <!-- Personal Information Section -->
@@ -336,10 +339,15 @@
                                        pattern="[0-9]{12}"
                                        data-validation="aadhaar"
                                        autocomplete="off"
-                                       title="12-digit Aadhaar number">
+                                       title="12-digit Aadhaar number"
+                                       onblur="validateAadhaar(this)"
+                                       oninput="formatAadhaarInput(this)">
                                 <div class="invalid-feedback" id="aadhaar-error"></div>
-                                <div class="valid-feedback" id="aadhaar-success">
-                                    <i class="fas fa-check-circle me-1"></i>Valid Aadhaar number
+                                <div class="valid-feedback" id="aadhaar-success" style="display: none;">
+                                    <i class="fas fa-check-circle me-1"></i>Valid Aadhaar format
+                                </div>
+                                <div class="form-text">
+                                    <small class="text-muted">Enter 12-digit Aadhaar number (will be formatted automatically)</small>
                                 </div>
                                 @error('aadhaar')
                                     <div class="error-message">{{ $message }}</div>
@@ -431,10 +439,15 @@
                                        required
                                        pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
                                        title="Please enter a valid email address"
-                                       data-validation="email">
+                                       data-validation="email"
+                                       onblur="checkEmailAvailability(this)"
+                                       oninput="validateEmailFormat(this)">
                                 <div class="invalid-feedback" id="email-error"></div>
-                                <div class="valid-feedback" id="email-success">
-                                    <i class="fas fa-check-circle me-1"></i>Valid email address
+                                <div class="valid-feedback" id="email-success" style="display: none;">
+                                    <i class="fas fa-check-circle me-1"></i>Email available
+                                </div>
+                                <div class="form-text">
+                                    <small class="text-muted">We'll check if this email is already registered</small>
                                 </div>
                                 @error('email')
                                     <div class="error-message">{{ $message }}</div>
@@ -535,7 +548,12 @@
                                             <i class="fas fa-undo me-2"></i>Reset Form
                                         </button>
                                         <button type="submit" class="btn btn-primary-custom">
-                                            <i class="fas fa-save me-2"></i>Save Student
+                                            <span class="loading-spinner" style="display: none;">
+                                                <i class="fas fa-spinner fa-spin me-2"></i>
+                                            </span>
+                                            <span class="btn-text">
+                                                <i class="fas fa-save me-2"></i>Save Student
+                                            </span>
                                         </button>
                                     </div>
                                 </div>
