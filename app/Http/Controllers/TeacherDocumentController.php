@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\TeacherDocument;
 use App\Models\Teacher;
 use App\Services\DocumentExpiryAlertService;
+use App\Rules\SafeFileValidation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -16,6 +17,26 @@ class TeacherDocumentController extends Controller
 {
     use FileUploadValidationTrait;
     protected $documentExpiryAlertService;
+
+    // Allowed file types with their MIME types
+    private $allowedTypes = [
+        'pdf'  => ['application/pdf'],
+        'doc'  => ['application/msword'],
+        'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        'jpg'  => ['image/jpeg', 'image/jpg'],
+        'jpeg' => ['image/jpeg', 'image/jpg'],
+        'png'  => ['image/png'],
+    ];
+
+    // Maximum file sizes (in KB)
+    private $maxSizes = [
+        'pdf'  => 5120,  // 5MB
+        'doc'  => 5120,  // 5MB
+        'docx' => 5120,  // 5MB
+        'jpg'  => 2048,  // 2MB
+        'jpeg' => 2048,  // 2MB
+        'png'  => 2048,  // 2MB
+    ];
 
     public function __construct(DocumentExpiryAlertService $documentExpiryAlertService)
     {
@@ -110,7 +131,7 @@ class TeacherDocumentController extends Controller
     }
 
     /**
-     * Store uploaded documents
+     * Store uploaded documents with enhanced security
      */
     public function store(Request $request)
     {
@@ -122,53 +143,33 @@ class TeacherDocumentController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'documents' => 'required|array|max:10',
+            'documents' => 'required|array|max:5', // Reduced from 10 to 5 for security
             'documents.*' => [
                 'required',
                 'file',
                 'mimes:pdf,doc,docx,jpg,jpeg,png',
-                'max:10240', // 10MB
+                'max:5120', // 5MB
+                new SafeFileValidation(),
                 function ($attribute, $value, $fail) {
-                    // Additional file validation
-                    $allowedMimeTypes = [
-                        'application/pdf',
-                        'application/msword',
-                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'image/jpeg',
-                        'image/jpg',
-                        'image/png'
-                    ];
-                    
-                    if (!in_array($value->getMimeType(), $allowedMimeTypes)) {
-                        $fail('The file must be a valid PDF, DOC, DOCX, JPG, JPEG, or PNG file.');
+                    // Enhanced security checks
+                    if (!$this->isFileSafe($value)) {
+                        $fail('The file appears to be unsafe or malicious.');
                     }
                     
-                    // Check file signature (magic bytes) for additional security
-                    $fileContent = file_get_contents($value->getPathname());
-                    $fileSignature = bin2hex(substr($fileContent, 0, 4));
-                    
-                    $validSignatures = [
-                        '25504446', // PDF
-                        'd0cf11e0', // DOC/DOCX (OLE2)
-                        '504b0304', // DOCX (ZIP-based)
-                        'ffd8ffe0', // JPEG
-                        'ffd8ffe1', // JPEG
-                        'ffd8ffe2', // JPEG
-                        'ffd8ffe3', // JPEG
-                        'ffd8ffe8', // JPEG
-                        'ffd8ffdb', // JPEG
-                        '89504e47', // PNG
-                    ];
-                    
-                    if (!in_array($fileSignature, $validSignatures)) {
-                        $fail('The file appears to be corrupted or is not a valid document/image file.');
+                    // Check file signature
+                    if (!$this->validateFileSignature($value)) {
+                        $fail('The file type does not match its content.');
                     }
                 }
             ],
             'document_types' => 'required|array',
             'document_types.*' => 'required|in:' . implode(',', array_keys(TeacherDocument::DOCUMENT_TYPES)),
             'expiry_dates' => 'array',
-            'expiry_dates.*' => 'nullable|date|after:today',
+            'expiry_dates.*' => 'nullable|date|after:today|before:+10 years',
+        ], [
+            'documents.max' => 'Maximum 5 documents allowed per upload.',
+            'documents.*.max' => 'Each document must not exceed 5MB.',
+            'expiry_dates.*.before' => 'Expiry date cannot be more than 10 years in the future.'
         ]);
 
         if ($validator->fails()) {
@@ -194,52 +195,32 @@ class TeacherDocumentController extends Controller
                     continue;
                 }
 
-                // Additional file size validation (double-check)
-                if ($file->getSize() > 10485760) { // 10MB in bytes
-                    $errors[] = "File '{$file->getClientOriginalName()}' exceeds maximum size of 10MB.";
+                // Enhanced malicious file detection
+                if ($this->isFileMalicious($file)) {
+                    $errors[] = "File '{$file->getClientOriginalName()}' appears to be malicious and was blocked.";
                     continue;
                 }
 
-                // Validate file extension matches MIME type
-                $extension = strtolower($file->getClientOriginalExtension());
-                $mimeType = $file->getMimeType();
-                
-                $validCombinations = [
-                    'pdf' => ['application/pdf'],
-                    'doc' => ['application/msword'],
-                    'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-                    'jpg' => ['image/jpeg'],
-                    'jpeg' => ['image/jpeg'],
-                    'png' => ['image/png']
-                ];
-                
-                if (!isset($validCombinations[$extension]) || !in_array($mimeType, $validCombinations[$extension])) {
-                    $errors[] = "File '{$file->getClientOriginalName()}' has an invalid file type or extension.";
-                    continue;
-                }
-
-                // Generate unique filename
-                $originalName = $file->getClientOriginalName();
-                $filename = $teacher->id . '_' . $documentType . '_' . time() . '_' . Str::random(10) . '.' . $extension;
-                
-                // Store file
-                $path = $file->storeAs('teacher-documents', $filename, 'public');
+                // Store file securely with enhanced security
+                $filePath = $this->storeFileSecurely($file, $teacher->id, $documentType);
 
                 // Create document record
                 $document = TeacherDocument::create([
                     'teacher_id' => $teacher->id,
                     'document_type' => $documentType,
-                    'original_name' => $originalName,
-                    'file_path' => $path,
-                    'file_extension' => $extension,
+                    'original_name' => $file->getClientOriginalName(),
+                    'file_path' => $filePath,
+                    'file_extension' => $file->getClientOriginalExtension(),
                     'file_size' => $file->getSize(),
-                    'mime_type' => $mimeType,
+                    'mime_type' => $file->getMimeType(),
                     'expiry_date' => $expiryDate,
                     'uploaded_by' => $user->id,
                     'metadata' => [
                         'upload_ip' => $request->ip(),
                         'user_agent' => $request->userAgent(),
                         'file_hash' => hash_file('sha256', $file->getPathname()),
+                        'security_scan' => 'passed',
+                        'file_signature_valid' => true
                     ]
                 ]);
 
@@ -300,11 +281,11 @@ class TeacherDocumentController extends Controller
             }
         }
 
-        if (!Storage::disk('public')->exists($document->file_path)) {
+        if (!Storage::disk('private')->exists($document->file_path)) {
             return redirect()->back()->with('error', 'File not found.');
         }
 
-        return Storage::disk('public')->download($document->file_path, $document->original_name);
+        return Storage::disk('private')->download($document->file_path, $document->original_name);
     }
 
     /**
@@ -476,6 +457,11 @@ class TeacherDocumentController extends Controller
             }
         }
 
+        // Delete the physical file
+        if (Storage::disk('private')->exists($document->file_path)) {
+            Storage::disk('private')->delete($document->file_path);
+        }
+
         $document->delete();
 
         return response()->json([
@@ -538,16 +524,22 @@ class TeacherDocumentController extends Controller
             return response()->json(['error' => 'Teacher profile not found.'], 404);
         }
 
+        // Security check for bulk uploads
+        $securityCheck = $this->validateBulkUploadSecurity($request->file('documents', []));
+        if (!$securityCheck['valid']) {
+            return response()->json(['error' => $securityCheck['error']], 422);
+        }
+
         // Use enhanced validation from trait
         $validationRules = [
             'document_types' => 'required|array',
             'document_types.*' => 'required|in:' . implode(',', array_keys(TeacherDocument::DOCUMENT_TYPES)),
             'expiry_dates' => 'nullable|array',
-            'expiry_dates.*' => 'nullable|date|after:today'
+            'expiry_dates.*' => 'nullable|date|after:today|before:+10 years'
         ];
         
         // Add enhanced file validation rules from trait
-        $fileRules = $this->getMultipleFilesValidationRules(['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'], 10240, 10);
+        $fileRules = $this->getMultipleFilesValidationRules(['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'], 5120, 5);
         $validationRules = array_merge($validationRules, [
             'documents' => $fileRules['files'],
             'documents.*' => $fileRules['files.*']
@@ -571,6 +563,12 @@ class TeacherDocumentController extends Controller
                     continue;
                 }
 
+                // Enhanced malicious file detection
+                if ($this->isFileMalicious($file)) {
+                    $errors[] = "File '{$file->getClientOriginalName()}' appears to be malicious and was blocked.";
+                    continue;
+                }
+
                 $documentType = $request->document_types[$index];
                 $expiryDate = $request->expiry_dates[$index] ?? null;
 
@@ -584,29 +582,19 @@ class TeacherDocumentController extends Controller
                     $errors[] = "Document type '{$documentType}' already exists.";
                     continue;
                 }
-                ];
-                
-                if (!isset($validCombinations[$extension]) || !in_array($mimeType, $validCombinations[$extension])) {
-                    $errors[] = "File '{$file->getClientOriginalName()}' has an invalid file type or extension.";
-                    continue;
-                }
 
-                // Generate unique filename
-                $originalName = $file->getClientOriginalName();
-                $filename = $teacher->id . '_' . $documentType . '_' . time() . '_' . $index . '_' . Str::random(10) . '.' . $extension;
-                
-                // Store file
-                $path = $file->storeAs('teacher-documents', $filename, 'public');
-                
+                // Store file securely with enhanced security
+                $filePath = $this->storeFileSecurely($file, $teacher->id, $documentType);
+
                 // Create document record
                 $document = TeacherDocument::create([
                     'teacher_id' => $teacher->id,
                     'document_type' => $documentType,
-                    'original_name' => $originalName,
-                    'file_path' => $path,
-                    'file_extension' => $extension,
+                    'original_name' => $file->getClientOriginalName(),
+                    'file_path' => $filePath,
+                    'file_extension' => $file->getClientOriginalExtension(),
                     'file_size' => $file->getSize(),
-                    'mime_type' => $mimeType,
+                    'mime_type' => $file->getMimeType(),
                     'expiry_date' => $expiryDate,
                     'uploaded_by' => $user->id,
                     'metadata' => [
@@ -614,7 +602,9 @@ class TeacherDocumentController extends Controller
                         'user_agent' => $request->userAgent(),
                         'file_hash' => hash_file('sha256', $file->getPathname()),
                         'bulk_upload' => true,
-                        'batch_index' => $index
+                        'batch_index' => $index,
+                        'security_scan' => 'passed',
+                        'file_signature_valid' => true
                     ]
                 ]);
 
@@ -644,6 +634,166 @@ class TeacherDocumentController extends Controller
         }
 
         return response()->json($response);
+    }
+
+    /**
+     * Enhanced malicious file detection
+     */
+    private function isFileMalicious($file)
+    {
+        $extension = strtolower($file->getClientOriginalExtension());
+        $mimeType = $file->getMimeType();
+        
+        // Check for dangerous extensions even if disguised
+        $dangerousExtensions = ['php', 'phtml', 'php3', 'php4', 'php5', 'phar', 'html', 'htm', 'js', 'exe', 'bat', 'cmd', 'sh', 'bash', 'py', 'pl'];
+        if (in_array($extension, $dangerousExtensions)) {
+            return true;
+        }
+        
+        // Check for double extensions
+        $originalName = $file->getClientOriginalName();
+        if (preg_match('/\.(php|phtml|php3|php4|php5|phar|exe|bat|cmd|sh|bash|py|pl)/i', $originalName)) {
+            return true;
+        }
+        
+        // Check MIME type vs extension mismatch
+        $validCombinations = [
+            'pdf' => ['application/pdf'],
+            'doc' => ['application/msword'],
+            'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+            'jpg' => ['image/jpeg'],
+            'jpeg' => ['image/jpeg'],
+            'png' => ['image/png']
+        ];
+        
+        if (isset($validCombinations[$extension]) && !in_array($mimeType, $validCombinations[$extension])) {
+            return true;
+        }
+        
+        // Check file content for suspicious patterns
+        return $this->containsSuspiciousContent($file);
+    }
+
+    /**
+     * Check file content for malicious patterns
+     */
+    private function containsSuspiciousContent($file)
+    {
+        $suspiciousPatterns = [
+            '/<\?php/i',
+            '/<script/i',
+            '/eval\(/i',
+            '/base64_decode/i',
+            '/gzinflate/i',
+            '/system\(/i',
+            '/exec\(/i',
+            '/shell_exec/i',
+            '/passthru/i',
+            '/assert\(/i',
+            '/preg_replace\(.*\/e/i'
+        ];
+
+        try {
+            $content = file_get_contents($file->getPathname());
+            // Only check first 8KB for performance
+            $sample = substr($content, 0, 8192);
+            
+            foreach ($suspiciousPatterns as $pattern) {
+                if (preg_match($pattern, $sample)) {
+                    return true;
+                }
+            }
+        } catch (\Exception $e) {
+            // If we can't read the file, treat it as suspicious
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Enhanced secure file storage
+     */
+    private function storeFileSecurely($file, $teacherId, $documentType)
+    {
+        // Generate ultra-secure filename
+        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $extension = strtolower($file->getClientOriginalExtension());
+        
+        // Sanitize filename aggressively
+        $sanitizedName = preg_replace('/[^a-zA-Z0-9\-_]/', '', Str::slug($originalName));
+        $timestamp = time();
+        $randomString = Str::random(32); // Increased randomness
+        $filename = "teacher_{$teacherId}_{$documentType}_{$timestamp}_{$randomString}.{$extension}";
+        
+        // Store with private visibility
+        $path = $file->storeAs('teacher-documents', $filename, 'private');
+        
+        if (!$path) {
+            throw new \Exception('Failed to store file securely.');
+        }
+        
+        // Set proper file permissions (Unix systems)
+        $fullPath = Storage::disk('private')->path($path);
+        if (file_exists($fullPath)) {
+            chmod($fullPath, 0644); // Read-only for group/others
+        }
+        
+        return $path;
+    }
+
+    /**
+     * Validate file signature (magic bytes)
+     */
+    private function validateFileSignature($file)
+    {
+        $signatures = [
+            'pdf' => "%PDF-",
+            'jpg' => "\xFF\xD8\xFF",
+            'jpeg' => "\xFF\xD8\xFF",
+            'png' => "\x89PNG\r\n\x1a\n",
+            'doc' => "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1", // MS Office older
+            'docx' => "PK\x03\x04", // ZIP-based formats
+        ];
+        
+        $extension = strtolower($file->getClientOriginalExtension());
+        $content = file_get_contents($file->getPathname(), false, null, 0, 8);
+        
+        if (isset($signatures[$extension])) {
+            return strpos($content, $signatures[$extension]) === 0;
+        }
+        
+        return true; // If we don't have signature for this type, allow it
+    }
+
+    /**
+     * Security check for bulk uploads
+     */
+    private function validateBulkUploadSecurity($files)
+    {
+        $totalSize = 0;
+        $fileCount = count($files);
+        
+        foreach ($files as $file) {
+            $totalSize += $file->getSize();
+            
+            // Check individual file security
+            if (!$this->isFileSafe($file)) {
+                return ['valid' => false, 'error' => 'One or more files appear to be unsafe.'];
+            }
+        }
+        
+        // Limit total upload size to 25MB
+        if ($totalSize > 25 * 1024 * 1024) {
+            return ['valid' => false, 'error' => 'Total upload size exceeds 25MB limit.'];
+        }
+        
+        // Limit number of files
+        if ($fileCount > 5) {
+            return ['valid' => false, 'error' => 'Maximum 5 files allowed in bulk upload.'];
+        }
+        
+        return ['valid' => true];
     }
 
     /**
@@ -759,5 +909,13 @@ class TeacherDocumentController extends Controller
                 'message' => 'Service check failed: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Enhanced file safety check
+     */
+    private function isFileSafe($file)
+    {
+        return !$this->isFileMalicious($file) && $this->validateFileSignature($file);
     }
 }
