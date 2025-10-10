@@ -305,6 +305,12 @@ class RoleMiddleware
                     $hasRoleAccess = true;
                     break;
                 }
+                
+                // Check role inheritance (e.g., class_teacher inherits from teacher)
+                if ($this->hasRoleInheritance($userRole, $requiredRole)) {
+                    $hasRoleAccess = true;
+                    break;
+                }
             }
             
             if (!$hasRoleAccess) {
@@ -329,6 +335,26 @@ class RoleMiddleware
         }
 
         return true;
+    }
+
+    /**
+     * Check role inheritance relationships
+     */
+    protected function hasRoleInheritance(string $userRole, string $requiredRole): bool
+    {
+        $inheritanceMap = [
+            'class_teacher' => ['teacher'], // class_teacher inherits from teacher
+            'exam_incharge' => ['teacher'], // exam_incharge inherits from teacher
+            'principal' => ['admin'],       // principal inherits from admin
+            'it' => ['admin'],              // it inherits from admin
+        ];
+
+        // Check if user role inherits from required role
+        if (isset($inheritanceMap[$userRole]) && in_array($requiredRole, $inheritanceMap[$userRole])) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -360,7 +386,68 @@ class RoleMiddleware
             return false;
         }
         
+        // Additional security: Prevent admin override for critical operations
+        $criticalOperations = [
+            'user.delete',
+            'system.shutdown',
+            'database.drop',
+            'backup.restore'
+        ];
+        
+        if (in_array($currentRoute, $criticalOperations)) {
+            $this->logSecurityEvent('admin_critical_operation_blocked', [
+                'user_id' => $user->id,
+                'user_role' => $user->role,
+                'blocked_operation' => $currentRoute,
+                'timestamp' => now()->toISOString()
+            ]);
+            return false;
+        }
+        
         return true;
+    }
+
+    /**
+     * Validate role hierarchy consistency
+     */
+    protected function validateRoleHierarchy($user, array $requiredRoles): bool
+    {
+        $userLevel = $user->getRoleLevel();
+        
+        foreach ($requiredRoles as $roleRequirement) {
+            $requiredRole = $roleRequirement['name'];
+            $requiredLevel = Role::getRoleLevel($requiredRole);
+            
+            // Ensure user has sufficient level for the required role
+            if ($userLevel < $requiredLevel) {
+                return false;
+            }
+            
+            // Additional validation: Check if role is active and valid
+            if (!$this->isRoleActive($requiredRole)) {
+                $this->logSecurityEvent('inactive_role_required', [
+                    'user_id' => $user->id,
+                    'user_role' => $user->role,
+                    'required_role' => $requiredRole,
+                    'timestamp' => now()->toISOString()
+                ]);
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
+    /**
+     * Check if a role is active (placeholder for future implementation)
+     */
+    protected function isRoleActive(string $role): bool
+    {
+        // In a real implementation, this would check against a database
+        // For now, assume all roles are active
+        $inactiveRoles = []; // Roles that might be disabled
+        
+        return !in_array($role, $inactiveRoles);
     }
 
     /**

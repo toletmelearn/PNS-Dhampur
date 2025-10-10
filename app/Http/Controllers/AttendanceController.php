@@ -814,4 +814,98 @@ class AttendanceController extends Controller
         $attendance->delete();
         return response()->json(['message'=>'Attendance deleted']);
     }
+
+    /**
+     * Bulk update attendance records with atomic transaction safety
+     */
+    public function bulkUpdate(Request $request)
+    {
+        $request->validate([
+            'attendances' => 'required|array|min:1|max:500', // Limit bulk operations
+            'attendances.*.student_id' => 'required|exists:students,id',
+            'attendances.*.date' => 'required|date|before_or_equal:today',
+            'attendances.*.status' => 'required|in:present,absent,late,half_day,excused,sick'
+        ]);
+
+        return DB::transaction(function () use ($request) {
+            $successCount = 0;
+            $errors = [];
+            $processedRecords = [];
+
+            foreach ($request->attendances as $index => $attendanceData) {
+                try {
+                    // Validate student exists and is active
+                    $student = Student::where('id', $attendanceData['student_id'])
+                        ->where('status', 'active')
+                        ->first();
+                    
+                    if (!$student) {
+                        $errors[] = "Row " . ($index + 1) . ": Student not found or inactive";
+                        continue;
+                    }
+
+                    // Validate date is not in the future
+                    $attendanceDate = Carbon::parse($attendanceData['date']);
+                    if ($attendanceDate->isFuture()) {
+                        $errors[] = "Row " . ($index + 1) . ": Cannot mark attendance for future dates";
+                        continue;
+                    }
+
+                    // Use updateOrCreate to handle duplicates atomically
+                    $attendance = Attendance::updateOrCreate(
+                        [
+                            'student_id' => $attendanceData['student_id'],
+                            'date' => $attendanceData['date']
+                        ],
+                        [
+                            'status' => $attendanceData['status'],
+                            'class_id' => $student->class_id,
+                            'marked_by' => auth()->id(),
+                            'marked_at' => now(),
+                            'remarks' => $attendanceData['remarks'] ?? null
+                        ]
+                    );
+                    
+                    $processedRecords[] = [
+                        'student_id' => $attendance->student_id,
+                        'student_name' => $student->name,
+                        'date' => $attendance->date,
+                        'status' => $attendance->status,
+                        'action' => $attendance->wasRecentlyCreated ? 'created' : 'updated'
+                    ];
+                    
+                    $successCount++;
+                } catch (\Exception $e) {
+                    Log::error('Bulk attendance update error', [
+                        'row' => $index + 1,
+                        'student_id' => $attendanceData['student_id'] ?? 'unknown',
+                        'error' => $e->getMessage(),
+                        'user_id' => auth()->id()
+                    ]);
+                    
+                    $errors[] = "Row " . ($index + 1) . ": " . $e->getMessage();
+                }
+            }
+
+            // Log the bulk operation
+            Log::info('Bulk attendance update completed', [
+                'user_id' => auth()->id(),
+                'success_count' => $successCount,
+                'error_count' => count($errors),
+                'total_records' => count($request->attendances)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Processed {$successCount} attendance records successfully",
+                'data' => [
+                    'success_count' => $successCount,
+                    'error_count' => count($errors),
+                    'total_records' => count($request->attendances),
+                    'processed_records' => $processedRecords,
+                    'errors' => $errors
+                ]
+            ], $errors ? 207 : 200); // 207 Multi-Status if there are errors
+        });
+    }
 }

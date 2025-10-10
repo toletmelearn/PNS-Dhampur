@@ -24,12 +24,63 @@ class StoreStudentRequest extends FormRequest
         $documentMimes = config('fileupload.allowed_file_types.document.mimes', 'pdf,jpg,jpeg,png,doc,docx');
         
         return [
-            // Basic Information
-            'first_name' => 'required|string|max:100|regex:/^[a-zA-Z\s]+$/',
-            'last_name' => 'required|string|max:100|regex:/^[a-zA-Z\s]+$/',
-            'admission_no' => 'nullable|string|unique:students,admission_no|max:20',
-            'father_name' => 'nullable|string|max:255|regex:/^[a-zA-Z\s]+$/',
-            'mother_name' => 'nullable|string|max:255|regex:/^[a-zA-Z\s]+$/',
+            // Basic Information with XSS and SQL injection protection
+            'first_name' => [
+                'required',
+                'string',
+                'max:100',
+                'regex:/^[a-zA-Z\s]+$/',
+                function ($attribute, $value, $fail) {
+                    if ($this->containsMaliciousContent($value)) {
+                        $fail('The '.$attribute.' contains potentially malicious content.');
+                    }
+                }
+            ],
+            'last_name' => [
+                'required',
+                'string',
+                'max:100',
+                'regex:/^[a-zA-Z\s]+$/',
+                function ($attribute, $value, $fail) {
+                    if ($this->containsMaliciousContent($value)) {
+                        $fail('The '.$attribute.' contains potentially malicious content.');
+                    }
+                }
+            ],
+            'admission_no' => [
+                'nullable',
+                'string',
+                'unique:students,admission_no',
+                'max:20',
+                'regex:/^[A-Z0-9\-]+$/',
+                function ($attribute, $value, $fail) {
+                    if ($value && $this->containsMaliciousContent($value)) {
+                        $fail('The '.$attribute.' contains potentially malicious content.');
+                    }
+                }
+            ],
+            'father_name' => [
+                'nullable',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\s]+$/',
+                function ($attribute, $value, $fail) {
+                    if ($value && $this->containsMaliciousContent($value)) {
+                        $fail('The '.$attribute.' contains potentially malicious content.');
+                    }
+                }
+            ],
+            'mother_name' => [
+                'nullable',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z\s]+$/',
+                function ($attribute, $value, $fail) {
+                    if ($value && $this->containsMaliciousContent($value)) {
+                        $fail('The '.$attribute.' contains potentially malicious content.');
+                    }
+                }
+            ],
             
             // Date of Birth with Age Validation (minimum 3 years, maximum 25 years for school students)
             'date_of_birth' => [
@@ -56,12 +107,68 @@ class StoreStudentRequest extends FormRequest
             ],
             
             'class' => 'nullable|integer|exists:class_models,id',
-            'roll_number' => 'nullable|string|max:20',
-            'contact_number' => 'nullable|string|regex:/^[\+]?[0-9\s\-\(\)]{10,15}$/',
-            'email' => 'nullable|email|unique:students,email|max:255',
-            'address' => 'nullable|string|max:500',
+            'roll_number' => [
+                'nullable',
+                'string',
+                'max:20',
+                'regex:/^[A-Z0-9\-]+$/',
+                function ($attribute, $value, $fail) {
+                    if ($value && $this->containsMaliciousContent($value)) {
+                        $fail('The '.$attribute.' contains potentially malicious content.');
+                    }
+                }
+            ],
+            'contact_number' => [
+                'nullable',
+                'string',
+                'regex:/^[\+]?[0-9\s\-\(\)]{10,15}$/',
+                function ($attribute, $value, $fail) {
+                    if ($value && $this->containsMaliciousContent($value)) {
+                        $fail('The '.$attribute.' contains potentially malicious content.');
+                    }
+                }
+            ],
+            'email' => [
+                'nullable',
+                'email',
+                'unique:students,email',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    if ($value && $this->containsMaliciousContent($value)) {
+                        $fail('The '.$attribute.' contains potentially malicious content.');
+                    }
+                    
+                    // Additional email security validation
+                    if ($value && $this->isDisposableEmail($value)) {
+                        $fail('Disposable email addresses are not allowed.');
+                    }
+                }
+            ],
+            'address' => [
+                'nullable',
+                'string',
+                'max:500',
+                function ($attribute, $value, $fail) {
+                    if ($value && $this->containsMaliciousContent($value)) {
+                        $fail('The '.$attribute.' contains potentially malicious content.');
+                    }
+                    
+                    // Validate address doesn't contain suspicious patterns
+                    if ($value && $this->containsSuspiciousPatterns($value)) {
+                        $fail('The '.$attribute.' contains suspicious patterns.');
+                    }
+                }
+            ],
             'status' => ['nullable', Rule::in(['active','inactive','left','alumni'])],
-            'meta' => 'nullable|array',
+            'meta' => [
+                'nullable',
+                'array',
+                function ($attribute, $value, $fail) {
+                    if ($value && $this->containsMaliciousContent(json_encode($value))) {
+                        $fail('The '.$attribute.' contains potentially malicious content.');
+                    }
+                }
+            ],
             
             // File validation
             'birth_cert' => "nullable|file|mimes:{$documentMimes}|max:{$maxDocumentSize}",

@@ -133,13 +133,16 @@ Route::post('/logout', function () {
     // Logout logic here
 })->name('logout');
 
-Route::get('/register', function () {
-    return view('auth.register');
-})->name('register');
+// Registration should be restricted to admins only
+Route::middleware(['auth', 'role:admin,super_admin'])->group(function () {
+    Route::get('/register', function () {
+        return view('auth.register');
+    })->name('register');
 
-Route::post('/register', function () {
-    // Registration logic here
-})->name('register.post');
+    Route::post('/register', function () {
+        // Registration logic here
+    })->name('register.post');
+});
 
 // Protected routes that require authentication
 Route::middleware(['auth'])->group(function () {
@@ -198,19 +201,23 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/export', [BiometricAttendanceController::class, 'exportReport'])->name('export')->middleware('class.teacher.permission:can_export_reports');
     });
     
-    // Reports routes
-    Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
-    Route::get('/api/reports/academic', [ReportsController::class, 'academicReports'])->name('api.reports.academic');
-    Route::get('/api/reports/financial', [ReportsController::class, 'financialReports'])->name('api.reports.financial');
-    Route::get('/api/reports/attendance', [ReportsController::class, 'attendanceReports'])->name('api.reports.attendance');
-    Route::get('/api/reports/performance', [ReportsController::class, 'performanceReports'])->name('api.reports.performance');
-    Route::get('/api/reports/administrative', [ReportsController::class, 'administrativeReports'])->name('api.reports.administrative');
-    Route::post('/api/reports/export', [ReportsController::class, 'exportPdf'])->name('api.reports.export');
+    // Reports routes - require appropriate permissions
+    Route::middleware(['role:admin,principal,exam_incharge,class_teacher'])->group(function () {
+        Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
+        Route::get('/api/reports/academic', [ReportsController::class, 'academicReports'])->name('api.reports.academic');
+        Route::get('/api/reports/financial', [ReportsController::class, 'financialReports'])->name('api.reports.financial');
+        Route::get('/api/reports/attendance', [ReportsController::class, 'attendanceReports'])->name('api.reports.attendance');
+        Route::get('/api/reports/performance', [ReportsController::class, 'performanceReports'])->name('api.reports.performance');
+        Route::get('/api/reports/administrative', [ReportsController::class, 'administrativeReports'])->name('api.reports.administrative');
+        Route::post('/api/reports/export', [ReportsController::class, 'exportPdf'])->name('api.reports.export');
+    });
 
-    // Exam Management routes
-    Route::prefix('exams')->name('exams.')->group(function () {
-        Route::get('/', [ExamController::class, 'index'])->name('index');
-        Route::get('/api/classes', [ExamController::class, 'getClasses']);
+    // Exam Management routes - require exam management permissions
+    Route::middleware(['role:admin,principal,exam_incharge,teacher'])->group(function () {
+        Route::prefix('exams')->name('exams.')->group(function () {
+            Route::get('/', [ExamController::class, 'index'])->name('index');
+            Route::get('/api/classes', [ExamController::class, 'getClasses']);
+        });
     });
     
     // Exam Papers routes with permission middleware
@@ -260,6 +267,6 @@ Route::prefix('api/files')->name('api.files.')->middleware(['auth', 'sanitize'])
     Route::post('/validate', [App\Http\Controllers\FileUploadController::class, 'validateFile'])->name('validate');
 });
 
-Route::get('/test-simple', function () { return 'Hello World'; });
+// Test route removed for security - should not be in production
 
 

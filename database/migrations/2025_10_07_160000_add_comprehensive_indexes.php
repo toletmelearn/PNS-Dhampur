@@ -1,0 +1,266 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+class AddComprehensiveIndexes extends Migration
+{
+    /**
+     * Run the migrations.
+     *
+     * @return void
+     */
+    public function up()
+    {
+        // Students table indexes for performance optimization
+        Schema::table('students', function (Blueprint $table) {
+            $table->index(['class_id', 'status'], 'idx_students_class_status');
+            $table->index('admission_no', 'idx_students_admission_no');
+            $table->index('aadhaar', 'idx_students_aadhaar');
+            $table->index('email', 'idx_students_email');
+            $table->index(['created_at', 'status'], 'idx_students_created_status');
+            $table->index('date_of_birth', 'idx_students_dob');
+            $table->index('verification_status', 'idx_students_verification');
+            $table->index('verified', 'idx_students_verified');
+            $table->index(['father_name', 'mother_name'], 'idx_students_parents');
+        });
+
+        // Attendance table indexes for efficient queries
+        Schema::table('attendances', function (Blueprint $table) {
+            $table->index(['student_id', 'date'], 'idx_attendance_student_date');
+            $table->index(['class_id', 'date'], 'idx_attendance_class_date');
+            $table->index('date', 'idx_attendance_date');
+            $table->index(['date', 'status'], 'idx_attendance_date_status');
+            $table->index(['student_id', 'status'], 'idx_attendance_student_status');
+            $table->index(['created_at', 'status'], 'idx_attendance_created_status');
+        });
+
+        // Fees table indexes for financial queries
+        Schema::table('fees', function (Blueprint $table) {
+            $table->index(['student_id', 'due_date'], 'idx_fees_student_due');
+            $table->index('due_date', 'idx_fees_due_date');
+            $table->index(['due_date', 'paid_amount'], 'idx_fees_due_paid');
+            $table->index('status', 'idx_fees_status');
+            $table->index(['student_id', 'status'], 'idx_fees_student_status');
+            $table->index(['amount', 'paid_amount'], 'idx_fees_amounts');
+            $table->index('created_at', 'idx_fees_created');
+        });
+
+        // Users table indexes for authentication and search
+        Schema::table('users', function (Blueprint $table) {
+            $table->index('email', 'idx_users_email');
+            $table->index('phone', 'idx_users_phone');
+            $table->index(['name', 'email'], 'idx_users_name_email');
+            $table->index('role', 'idx_users_role');
+            $table->index(['role', 'is_active'], 'idx_users_role_active');
+            $table->index('created_at', 'idx_users_created');
+        });
+
+        // Class models table indexes
+        Schema::table('class_models', function (Blueprint $table) {
+            $table->index(['name', 'section'], 'idx_class_name_section');
+            $table->index('is_active', 'idx_class_active');
+            $table->index(['is_active', 'name'], 'idx_class_active_name');
+        });
+
+        // Teachers table indexes
+        Schema::table('teachers', function (Blueprint $table) {
+            $table->index('user_id', 'idx_teachers_user');
+            $table->index('employee_id', 'idx_teachers_employee');
+            $table->index(['subject_id', 'is_active'], 'idx_teachers_subject_active');
+            $table->index('qualification', 'idx_teachers_qualification');
+            $table->index('created_at', 'idx_teachers_created');
+        });
+
+        // Subjects table indexes
+        Schema::table('subjects', function (Blueprint $table) {
+            $table->index('name', 'idx_subjects_name');
+            $table->index('code', 'idx_subjects_code');
+            $table->index(['class_id', 'is_active'], 'idx_subjects_class_active');
+            $table->index('is_active', 'idx_subjects_active');
+        });
+
+        // Exams table indexes
+        Schema::table('exams', function (Blueprint $table) {
+            $table->index(['class_id', 'subject_id'], 'idx_exams_class_subject');
+            $table->index('exam_date', 'idx_exams_date');
+            $table->index(['exam_date', 'status'], 'idx_exams_date_status');
+            $table->index('status', 'idx_exams_status');
+            $table->index('created_at', 'idx_exams_created');
+        });
+
+        // Results table indexes
+        Schema::table('results', function (Blueprint $table) {
+            $table->index(['student_id', 'exam_id'], 'idx_results_student_exam');
+            $table->index(['exam_id', 'marks'], 'idx_results_exam_marks');
+            $table->index('student_id', 'idx_results_student');
+            $table->index('exam_id', 'idx_results_exam');
+            $table->index(['marks', 'grade'], 'idx_results_marks_grade');
+        });
+
+        // Salaries table indexes
+        Schema::table('salaries', function (Blueprint $table) {
+            $table->index(['teacher_id', 'month', 'year'], 'idx_salaries_teacher_month_year');
+            $table->index(['month', 'year'], 'idx_salaries_month_year');
+            $table->index('payment_date', 'idx_salaries_payment_date');
+            $table->index('status', 'idx_salaries_status');
+            $table->index(['teacher_id', 'status'], 'idx_salaries_teacher_status');
+        });
+
+        // Saved searches table indexes
+        Schema::table('saved_searches', function (Blueprint $table) {
+            $table->index(['user_id', 'search_type'], 'idx_saved_searches_user_type');
+            $table->index('is_public', 'idx_saved_searches_public');
+            $table->index(['search_type', 'is_public'], 'idx_saved_searches_type_public');
+            $table->index('created_at', 'idx_saved_searches_created');
+        });
+
+        // Activity logs table indexes (if exists)
+        if (Schema::hasTable('activity_logs')) {
+            Schema::table('activity_logs', function (Blueprint $table) {
+                $table->index(['user_id', 'created_at'], 'idx_activity_user_created');
+                $table->index('action', 'idx_activity_action');
+                $table->index(['model_type', 'model_id'], 'idx_activity_model');
+                $table->index('created_at', 'idx_activity_created');
+            });
+        }
+
+        // Sessions table indexes for performance
+        if (Schema::hasTable('sessions')) {
+            Schema::table('sessions', function (Blueprint $table) {
+                $table->index('user_id', 'idx_sessions_user');
+                $table->index('last_activity', 'idx_sessions_activity');
+            });
+        }
+    }
+
+    /**
+     * Reverse the migrations.
+     *
+     * @return void
+     */
+    public function down()
+    {
+        // Drop students table indexes
+        Schema::table('students', function (Blueprint $table) {
+            $table->dropIndex('idx_students_class_status');
+            $table->dropIndex('idx_students_admission_no');
+            $table->dropIndex('idx_students_aadhaar');
+            $table->dropIndex('idx_students_email');
+            $table->dropIndex('idx_students_created_status');
+            $table->dropIndex('idx_students_dob');
+            $table->dropIndex('idx_students_verification');
+            $table->dropIndex('idx_students_verified');
+            $table->dropIndex('idx_students_parents');
+        });
+
+        // Drop attendance table indexes
+        Schema::table('attendances', function (Blueprint $table) {
+            $table->dropIndex('idx_attendance_student_date');
+            $table->dropIndex('idx_attendance_class_date');
+            $table->dropIndex('idx_attendance_date');
+            $table->dropIndex('idx_attendance_date_status');
+            $table->dropIndex('idx_attendance_student_status');
+            $table->dropIndex('idx_attendance_created_status');
+        });
+
+        // Drop fees table indexes
+        Schema::table('fees', function (Blueprint $table) {
+            $table->dropIndex('idx_fees_student_due');
+            $table->dropIndex('idx_fees_due_date');
+            $table->dropIndex('idx_fees_due_paid');
+            $table->dropIndex('idx_fees_status');
+            $table->dropIndex('idx_fees_student_status');
+            $table->dropIndex('idx_fees_amounts');
+            $table->dropIndex('idx_fees_created');
+        });
+
+        // Drop users table indexes
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropIndex('idx_users_email');
+            $table->dropIndex('idx_users_phone');
+            $table->dropIndex('idx_users_name_email');
+            $table->dropIndex('idx_users_role');
+            $table->dropIndex('idx_users_role_active');
+            $table->dropIndex('idx_users_created');
+        });
+
+        // Drop class models table indexes
+        Schema::table('class_models', function (Blueprint $table) {
+            $table->dropIndex('idx_class_name_section');
+            $table->dropIndex('idx_class_active');
+            $table->dropIndex('idx_class_active_name');
+        });
+
+        // Drop teachers table indexes
+        Schema::table('teachers', function (Blueprint $table) {
+            $table->dropIndex('idx_teachers_user');
+            $table->dropIndex('idx_teachers_employee');
+            $table->dropIndex('idx_teachers_subject_active');
+            $table->dropIndex('idx_teachers_qualification');
+            $table->dropIndex('idx_teachers_created');
+        });
+
+        // Drop subjects table indexes
+        Schema::table('subjects', function (Blueprint $table) {
+            $table->dropIndex('idx_subjects_name');
+            $table->dropIndex('idx_subjects_code');
+            $table->dropIndex('idx_subjects_class_active');
+            $table->dropIndex('idx_subjects_active');
+        });
+
+        // Drop exams table indexes
+        Schema::table('exams', function (Blueprint $table) {
+            $table->dropIndex('idx_exams_class_subject');
+            $table->dropIndex('idx_exams_date');
+            $table->dropIndex('idx_exams_date_status');
+            $table->dropIndex('idx_exams_status');
+            $table->dropIndex('idx_exams_created');
+        });
+
+        // Drop results table indexes
+        Schema::table('results', function (Blueprint $table) {
+            $table->dropIndex('idx_results_student_exam');
+            $table->dropIndex('idx_results_exam_marks');
+            $table->dropIndex('idx_results_student');
+            $table->dropIndex('idx_results_exam');
+            $table->dropIndex('idx_results_marks_grade');
+        });
+
+        // Drop salaries table indexes
+        Schema::table('salaries', function (Blueprint $table) {
+            $table->dropIndex('idx_salaries_teacher_month_year');
+            $table->dropIndex('idx_salaries_month_year');
+            $table->dropIndex('idx_salaries_payment_date');
+            $table->dropIndex('idx_salaries_status');
+            $table->dropIndex('idx_salaries_teacher_status');
+        });
+
+        // Drop saved searches table indexes
+        Schema::table('saved_searches', function (Blueprint $table) {
+            $table->dropIndex('idx_saved_searches_user_type');
+            $table->dropIndex('idx_saved_searches_public');
+            $table->dropIndex('idx_saved_searches_type_public');
+            $table->dropIndex('idx_saved_searches_created');
+        });
+
+        // Drop activity logs table indexes (if exists)
+        if (Schema::hasTable('activity_logs')) {
+            Schema::table('activity_logs', function (Blueprint $table) {
+                $table->dropIndex('idx_activity_user_created');
+                $table->dropIndex('idx_activity_action');
+                $table->dropIndex('idx_activity_model');
+                $table->dropIndex('idx_activity_created');
+            });
+        }
+
+        // Drop sessions table indexes
+        if (Schema::hasTable('sessions')) {
+            Schema::table('sessions', function (Blueprint $table) {
+                $table->dropIndex('idx_sessions_user');
+                $table->dropIndex('idx_sessions_activity');
+            });
+        }
+    }
+}

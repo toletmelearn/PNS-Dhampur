@@ -1,0 +1,152 @@
+CORE APPLICATION
+PNS-Dhampur/
+├── 📂 app/                          # Application Core
+│   ├── 📂 Console/                  # Artisan Commands
+│   │   ├── 📂 Commands/            # Custom Commands (17+)
+│   │   └── Kernel.php
+│   ├── 📂 Exceptions/              # Exception Handling
+│   │   └── Handler.php
+│   ├── 📂 Http/                    # HTTP Layer
+│   │   ├── 📂 Controllers/         # 50+ Controllers
+│   │   │   ├── 📂 Admin/          # Admin-specific
+│   │   │   ├── 📂 Api/            # API Controllers
+│   │   │   └── *.php              # Feature Controllers
+│   │   ├── 📂 Middleware/         # 25+ Middleware
+│   │   ├── 📂 Requests/           # Form Requests
+│   │   └── 📂 Traits/             # Reusable Traits
+│   ├── 📂 Models/                  # 70+ Eloquent Models
+│   │   ├── Academic/              # Academic Entities
+│   │   ├── Financial/             # Financial Entities
+│   │   ├── Security/              # Security Entities
+│   │   └── System/                # System Entities
+│   ├── 📂 Services/               # Business Logic Services
+│   ├── 📂 Jobs/                   # Queueable Jobs
+│   ├── 📂 Listeners/              # Event Listeners
+│   └── 📂 Providers/              # Service Providers
+
+⚙️ CONFIGURATION & SETTINGS
+├── 📂 config/                      # Configuration Files
+│   ├── app.php                    # Application Config
+│   ├── auth.php                   # Authentication
+│   ├── database.php               # Database
+│   ├── security.php               # Security Settings
+│   ├── production.php             # Production Settings
+│   ├── backup.php                 # Backup Configuration
+│   ├── monitoring.php             # Monitoring Settings
+│   └── 15+ other config files
+
+🗄️ DATABASE & DATA MANAGEMENT
+├── 📂 database/
+│   ├── 📂 migrations/            # Database Schema
+│   ├── 📂 seeders/              # Data Seeders
+│   ├── 📂 factories/            # Model Factories
+│   └── 📂 schema/               # Database Schema Files
+
+🌐 FRONTEND & ASSETS
+├── 📂 public/                    # Web Root
+│   ├── 📂 css/                  # Stylesheets
+│   ├── 📂 js/                   # JavaScript
+│   ├── 📂 images/              # Images
+│   ├── 📂 sounds/              # Audio Assets
+│   └── index.php              # Entry Point
+│
+├── 📂 resources/
+│   ├── 📂 views/               # Blade Templates
+│   │   ├── 📂 admin/         # Admin Views
+│   │   ├── 📂 auth/          # Authentication
+│   │   ├── 📂 pdfs/          # PDF Templates
+│   │   └── 📂 [feature]/     # Feature Views
+│   ├── 📂 css/               # Source CSS
+│   └── 📂 js/                # Source JavaScript
+
+🛣️ ROUTING & API
+├── 📂 routes/
+│   ├── web.php               # Web Routes
+│   ├── api.php              # API Routes
+│   ├── console.php          # Console Routes
+│   └── channels.php         # Broadcast Channels
+
+📊 STORAGE & LOGS
+├── 📂 storage/
+│   ├── 📂 app/              # Application Storage
+│   │   ├── 📂 public/      # Public Files
+│   │   └── .gitignore
+│   ├── 📂 backups/         # System Backups
+│   ├── 📂 framework/       # Framework Files
+│   └── 📂 logs/            # Application Logs
+
+🧪 TESTING & QUALITY
+├── 📂 tests/
+│   ├── 📂 Feature/         # Feature Tests
+│   │   ├── 📂 Api/        # API Tests
+│   │   ├── 📂 Auth/       # Authentication Tests
+│   │   └── 📂 Database/   # Database Tests
+│   ├── 📂 Unit/           # Unit Tests
+│   └── TestCase.php       # Base Test Case
+
+📚 DOCUMENTATION & GUIDES
+
+├── 📂 docs/               # Documentation
+│   ├── ADMIN_GUIDE.md     # Administrator Guide
+│   └── USER_GUIDE.md      # User Guide
+│
+├── SYSTEM_HANDOVER.md     # System Handover
+├── PRODUCTION_CHECKLIST.md # Deployment Checklist
+├── SECURITY_AUDIT_REPORT.md # Security Report
+├── BACKUP_SETUP_GUIDE.md  # Backup Guide
+└── README.md             # Project Overview
+
+🚀 DEPLOYMENT & SCRIPTS
+
+├── deploy-production.bat   # Windows Deployment
+├── deploy-production.sh    # Linux Deployment
+├── deploy.ps1              # PowerShell Script
+├── deploy.sh               # Shell Script
+├── start-server.bat       # Development Server
+└── configure_apache.md     # Apache Configuration
+
+🔧 DEVELOPMENT & DEBUGGING
+
+├── 📂 debug/              # Debug Files (virtual grouping)
+│   ├── debug_*.php        # Various debug scripts
+│   ├── test_*.php         # Test scripts
+│   └── *.txt              # Test output files
+│
+├── artisan               # Laravel CLI
+├── composer.json        # PHP Dependencies
+├── composer.lock        # Lock File
+├── phpunit.xml          # PHPUnit Config
+└── vite.config.js       # Vite Configuration
+
+🔐 SECURITY & AUDITING
+├── 📂 app/Http/Middleware/   # Security Middleware
+│   ├── ApiSecurityMiddleware.php
+│   ├── EnhancedInputSanitization.php
+│   ├── SecurityHeadersMiddleware.php
+│   └── 10+ security middlewares
+│
+├── 📂 app/Helpers/
+│   └── SecurityHelper.php    # Security Utilities
+│
+├── 📂 app/Models/
+│   ├── AuditTrail.php       # Audit Logging
+│   ├── ErrorLog.php         # Error Tracking
+│   └── Security entities
+
+### Key Logical Groupings:
+1. 1.
+   Academic Management - Students, Teachers, Classes, Exams
+2. 2.
+   Financial Management - Budgets, Fees, Salaries, Purchases
+3. 3.
+   Inventory Management - Assets, Maintenance, Depreciation
+4. 4.
+   Security & Auditing - Authentication, Authorization, Logging
+5. 5.
+   API & Integration - RESTful APIs, External Services
+6. 6.
+   Reporting & Analytics - Comprehensive reporting system
+7. 7.
+   Backup & Recovery - Automated backup and restore
+8. 8.
+   Testing & Quality - Comprehensive test suite

@@ -1888,4 +1888,43 @@ class ReportsController extends Controller
              'pattern' => 'normal'
          ];
      }
+
+     /**
+      * Generate memory-efficient financial report with chunking
+      */
+     public function generateFinancialReport(Request $request)
+     {
+         return DB::transaction(function () use ($request) {
+             $reportData = [
+                 'summary' => [],
+                 'details' => []
+             ];
+
+             // Use chunking for large datasets
+             Fee::select(['id', 'student_id', 'amount', 'paid_amount', 'due_date', 'status'])
+                ->with(['student:id,name,class_id', 'student.class:id,name'])
+                ->whereBetween('due_date', [$request->start_date, $request->end_date])
+                ->chunk(1000, function ($fees) use (&$reportData) {
+                    foreach ($fees as $fee) {
+                        $reportData['details'][] = [
+                            'student' => $fee->student->name,
+                            'class' => $fee->student->class->name,
+                            'amount' => $fee->amount,
+                            'paid' => $fee->paid_amount,
+                            'due' => $fee->amount - $fee->paid_amount,
+                            'status' => $fee->status
+                        ];
+                    }
+                });
+
+             // Calculate summary from details to avoid double querying
+             $reportData['summary'] = [
+                 'total_amount' => collect($reportData['details'])->sum('amount'),
+                 'total_paid' => collect($reportData['details'])->sum('paid'),
+                 'total_due' => collect($reportData['details'])->sum('due')
+             ];
+
+             return $reportData;
+         });
+     }
  }

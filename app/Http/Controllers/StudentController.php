@@ -39,84 +39,47 @@ class StudentController extends Controller
     }
 
     // GET /api/students or /students - Enhanced with comprehensive search
+    /**
+     * Display a listing of students with comprehensive search and filters
+     */
     public function index(Request $request)
     {
         try {
-            // Apply saved search if requested
-            if ($request->filled('saved_search_id')) {
-                $savedSearch = SavedSearch::find($request->saved_search_id);
-                if ($savedSearch && ($savedSearch->user_id === Auth::id() || $savedSearch->is_public)) {
-                    $request = $savedSearch->applyToRequest($request);
-                }
-            }
-
-            // Get search results using the enhanced search service
-            $query = $this->searchService->search($request);
+            // Use the search service to get filtered students with eager loading
+            $query = $this->studentSearchService->search($request);
             
             // Apply sorting
-            $query = $this->searchService->applySorting($query, $request);
+            $query = $this->studentSearchService->applySorting($query, $request);
             
-            // Paginate results to prevent memory issues
-            $perPage = $request->get('per_page', 25);
-            $perPage = min($perPage, 100); // Maximum 100 per page
-            $results = $query->paginate($perPage);
+            // Paginate results
+            $students = $query->paginate(25);
             
-            // Get filter options for the UI
-            $filterOptions = $this->searchService->getFilterOptions();
+            // Calculate attendance percentages and derived fields to prevent N+1 queries
+            $students->getCollection()->transform(function ($student) {
+                $student->attendance_percentage = $student->total_attendance_count > 0
+                    ? round(($student->present_count / $student->total_attendance_count) * 100, 2)
+                    : 0;
+                
+                // Calculate fee balance
+                $student->fee_balance = ($student->total_fees_sum ?? 0) - ($student->paid_fees_sum ?? 0);
+                
+                return $student;
+            });
             
-            // Get search statistics
-            $searchStats = $this->searchService->getSearchStats($query->getQuery());
-
-            // Return JSON for API requests
-            if ($request->expectsJson() || $request->is('api/*')) {
-                return response()->json([
-                    'students' => $results->items(),
-                    'pagination' => [
-                        'current_page' => $results->currentPage(),
-                        'last_page' => $results->lastPage(),
-                        'per_page' => $results->perPage(),
-                        'total' => $results->total(),
-                        'from' => $results->firstItem(),
-                        'to' => $results->lastItem(),
-                    ],
-                    'filter_options' => $filterOptions,
-                    'search_stats' => $searchStats,
-                    'current_filters' => $request->only([
-                        'search', 'class_id', 'status', 'gender', 'age_min', 'age_max',
-                        'dob_from', 'dob_to', 'admission_from', 'admission_to',
-                        'verification_status', 'verified', 'has_aadhaar', 'has_documents',
-                        'father_name', 'mother_name', 'contact_number', 'email', 'address',
-                        'class_ids', 'academic_year', 'sort_by', 'sort_order'
-                    ])
-                ]);
-            }
-
-            // Get user's saved searches for the view
-            $savedSearches = SavedSearch::getUserRecentSearches(Auth::id(), 'student', 10);
-            $popularSearches = SavedSearch::getPopularSearches('student', 5);
-
-            return view('students.index', compact(
-                'results', 
-                'filterOptions', 
-                'searchStats', 
-                'savedSearches', 
-                'popularSearches'
-            ));
-
+            // Get filter options and search statistics
+            $filterOptions = $this->studentSearchService->getFilterOptions();
+            $searchStats = $this->studentSearchService->getSearchStats($query->getQuery());
+            
+            return view('students.index', compact('students', 'filterOptions', 'searchStats'));
+            
         } catch (\Exception $e) {
-            Log::error('Student search failed', [
-                'error' => $e->getMessage(),
-                'request' => $request->all()
+            Log::error('Student index error: ' . $e->getMessage(), [
+                'request' => $request->all(),
+                'trace' => $e->getTraceAsString()
             ]);
-
-            if ($request->expectsJson() || $request->is('api/*')) {
-                return response()->json([
-                    'error' => 'Search failed',
-                    'message' => 'An error occurred while searching students.'
-                ], 500);
-            }
-
-            return back()->with('error', 'An error occurred while searching students.');
+            
+            return redirect()->back()
+                           ->with('error', 'An error occurred while loading students. Please try again.');
         }
     }
 
@@ -253,22 +216,6 @@ class StudentController extends Controller
  * Get search suggestions based on partial input - SECURE VERSION
  */
 /**
- * Get search suggestions based on partial input - SECURE VERSION
- */
-public function getSearchSuggestions(Request $request)
-{
-    $request->validate([
-        'query' => 'required|string|min:2|max:100',
-        'field' => 'required|string|in:name,admission_no,father_name,mother_name,contact_number,email,aadhaar,address'
-    ]);
-
-    // Field whitelist for extra security
-    $allowedFields = ['name', 'admission_no', 'father_name', 'mother_name', 'contact_number', 'email', 'aadhaar', 'address'];
-    $field = in_array($request->field, $allowedFields) ? $request->field : 'name';
-    $query = $request->query;
-
-    // Use parameter binding to prevent SQL injection
-    /**
  * Get search suggestions based on partial input - SECURE VERSION
  */
 public function getSearchSuggestions(Request $request)

@@ -16,24 +16,31 @@ class StudentSearchService
      */
     public function search(Request $request): Builder
     {
-        // Eager load all necessary relationships to prevent N+1 queries
+        // Comprehensive eager loading to prevent N+1 queries
         $query = Student::with([
             'classModel:id,name,section,is_active',
             'user:id,name,email,phone,address,gender',
             'attendance' => function($query) {
-                $query->select('student_id', 'date', 'status', 'marked_at')
-                      ->latest('date')
-                      ->limit(5); // Only load recent attendance records
+                $query->select('id', 'student_id', 'date', 'status')
+                      ->whereMonth('date', now()->month);
+            },
+            'fees' => function($query) {
+                $query->select('id', 'student_id', 'amount', 'paid_amount', 'due_date')
+                      ->where('due_date', '>=', now());
             }
         ])
-        // Add aggregated data to prevent N+1 queries
+        // Add comprehensive counts to prevent N+1 queries
         ->withCount([
-            'attendance as total_attendance_count',
             'attendance as present_count' => function($query) {
-                $query->where('status', 'present');
+                $query->where('status', 'present')
+                      ->whereMonth('date', now()->month);
             },
-            'attendance as absent_count' => function($query) {
-                $query->where('status', 'absent');
+            'attendance as total_attendance_count' => function($query) {
+                $query->whereMonth('date', now()->month);
+            },
+            'fees as pending_fees_count' => function($query) {
+                $query->where('due_date', '<', now())
+                      ->whereColumn('paid_amount', '<', 'amount');
             }
         ])
         ->withSum('fees as total_fees_sum', 'amount')
