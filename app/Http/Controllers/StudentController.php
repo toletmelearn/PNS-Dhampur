@@ -249,28 +249,34 @@ class StudentController extends Controller
     /**
      * Get search suggestions based on partial input
      */
-    public function getSearchSuggestions(Request $request)
-    {
-        $request->validate([
-            'query' => 'required|string|min:2|max:100',
-            'field' => 'nullable|string|in:name,admission_no,father_name,mother_name,contact_number,email'
-        ]);
+    /**
+ * Get search suggestions based on partial input - SECURE VERSION
+ */
+public function getSearchSuggestions(Request $request)
+{
+    $request->validate([
+        'query' => 'required|string|min:2|max:100',
+        'field' => 'required|string|in:name,admission_no,father_name,mother_name,contact_number,email,aadhaar,address'
+    ]);
 
-        $field = $request->field ?? 'name';
-        $query = $request->query;
+    // Field whitelist for extra security
+    $allowedFields = ['name', 'admission_no', 'father_name', 'mother_name', 'contact_number', 'email', 'aadhaar', 'address'];
+    $field = in_array($request->field, $allowedFields) ? $request->field : 'name';
+    $query = $request->query;
 
-        $suggestions = Student::select($field)
-                             ->where($field, 'like', "%{$query}%")
-                             ->whereNotNull($field)
-                             ->where($field, '!=', '')
-                             ->distinct()
-                             ->limit(10)
-                             ->pluck($field)
-                             ->toArray();
+    // Use parameter binding to prevent SQL injection
+    $suggestions = Student::select($field)
+                         ->where($field, 'LIKE', DB::raw('?'))
+                         ->setBindings(["%{$query}%"])
+                         ->whereNotNull($field)
+                         ->where($field, '!=', '')
+                         ->distinct()
+                         ->limit(10)
+                         ->pluck($field)
+                         ->toArray();
 
-        return response()->json($suggestions);
-    }
-
+    return response()->json($suggestions);
+}
     /**
      * Get filter statistics for dashboard
      */
