@@ -81,7 +81,7 @@ class SalaryCalculationTest extends TestCase
         $allowances = ['hra' => 6000, 'da' => 4500, 'ta' => 2000];
         $deductions = ['pf' => 3600, 'esi' => 525];
 
-        $result = $this->salaryCalculator->calculateNetSalary($basic, $allowances, $deductions);
+        $result = $this->salaryCalculator->calculateNetSalaryDetailed($basic, $allowances, $deductions);
 
         $this->assertEquals(30000, $result['basic_salary']);
         $this->assertEquals(12500, $result['total_allowances']);
@@ -319,7 +319,7 @@ class SalaryCalculationTest extends TestCase
     /** @test */
     public function test_zero_salary_calculation()
     {
-        $result = $this->salaryCalculator->calculateNetSalary(0, [], []);
+        $result = $this->salaryCalculator->calculateNetSalaryDetailed(0, [], []);
 
         $this->assertEquals(0, $result['basic_salary']);
         $this->assertEquals(0, $result['total_allowances']);
@@ -332,7 +332,7 @@ class SalaryCalculationTest extends TestCase
     {
         // Test that negative values are handled appropriately
         $this->expectException(\Exception::class);
-        $this->salaryCalculator->calculateNetSalary(-1000, [], []);
+        $this->salaryCalculator->calculateNetSalaryDetailed(-1000, [], []);
     }
 
     /** @test */
@@ -342,7 +342,7 @@ class SalaryCalculationTest extends TestCase
         $allowances = ['hra' => 20000, 'da' => 15000, 'ta' => 5000];
         $deductions = ['pf' => 12000, 'esi' => 2450];
 
-        $result = $this->salaryCalculator->calculateNetSalary($basic, $allowances, $deductions);
+        $result = $this->salaryCalculator->calculateNetSalaryDetailed($basic, $allowances, $deductions);
 
         $this->assertEquals(100000, $result['basic_salary']);
         $this->assertEquals(40000, $result['total_allowances']);

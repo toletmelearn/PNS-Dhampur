@@ -9,15 +9,18 @@
         "barryvdh/laravel-dompdf": "^2.2",
         "doctrine/dbal": "^3.10",
         "dompdf/dompdf": "^2.0",
+        "ezyang/htmlpurifier": "^4.18",
         "guzzlehttp/guzzle": "^7.10",
         "jenssegers/agent": "^2.6",
         "laravel/framework": "^9.19",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.7",
         "laravel/ui": "^4.6",
+        "league/csv": "^9.8",
         "maatwebsite/excel": "^1.1"
     },
     "require-dev": {
+        "brianium/paratest": "^6.4",
         "fakerphp/faker": "^1.9.1",
         "laravel/pint": "^1.0",
         "laravel/sail": "^1.0.1",

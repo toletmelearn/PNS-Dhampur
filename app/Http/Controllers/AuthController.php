@@ -78,10 +78,18 @@ class AuthController extends Controller
         // Create new Sanctum token
         $token = $user->createToken('api-token')->plainTextToken;
 
-        // Start new user session
+        // Start new user session (only if session is available)
+        $sessionId = null;
+        try {
+            $sessionId = $request->session()->getId();
+        } catch (\Exception $e) {
+            // Session not available in API context, use a default
+            $sessionId = 'api-session-' . time();
+        }
+        
         $sessionData = UserSession::startSession(
             $user->id,
-            $request->session()->getId(),
+            $sessionId,
             $request->ip(),
             $request->userAgent(),
             'api_token'

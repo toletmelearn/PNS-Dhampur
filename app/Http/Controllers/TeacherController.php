@@ -12,6 +12,8 @@ use App\Rules\PasswordComplexity;
 use App\Rules\PasswordHistory;
 use App\Http\Traits\EmailValidationTrait;
 use App\Http\Traits\FileUploadValidationTrait;
+use App\Http\Traits\TeacherValidationTrait;
+use App\Traits\HandlesApiResponses;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -22,7 +24,7 @@ use Illuminate\Validation\Rule;
 
 class TeacherController extends Controller
 {
-    use EmailValidationTrait, FileUploadValidationTrait;
+    use HandlesApiResponses, EmailValidationTrait, FileUploadValidationTrait, TeacherValidationTrait;
     public function __construct()
     {
         $this->middleware('auth');
@@ -33,7 +35,16 @@ class TeacherController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Teacher::with(['user', 'classes', 'salaries']);
+        $query = Teacher::with([
+            'user:id,name,email,phone,status',
+            'classes:id,name,section',
+            'salaries' => function($query) {
+                $query->latest()->limit(3);
+            }
+        ])
+        ->withCount(['classes', 'salaries'])
+        ->withSum('salaries', 'amount')
+        ->withAvg('salaries', 'amount');
 
         // Apply filters
         if ($request->filled('search')) {
@@ -64,30 +75,52 @@ class TeacherController extends Controller
             $query->where('salary', '<=', $request->salary_max);
         }
 
-        $teachers = $query->orderBy('created_at', 'desc')->paginate(15);
+        // Apply sorting
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+        
+        $allowedSorts = ['created_at', 'experience_years', 'salary', 'qualification'];
+        if (in_array($sortBy, $allowedSorts)) {
+            $query->orderBy($sortBy, $sortOrder);
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
 
-        // Calculate statistics
+        $teachers = $query->paginate(15);
+
+        // Calculate statistics efficiently in a single query
+        $statsQuery = Teacher::selectRaw('
+            COUNT(*) as total_teachers,
+            COUNT(CASE WHEN users.status = "active" THEN 1 END) as active_teachers,
+            AVG(experience_years) as average_experience,
+            AVG(salary) as average_salary
+        ')->join('users', 'teachers.user_id', '=', 'users.id')->first();
+
         $stats = [
-            'total_teachers' => Teacher::count(),
-            'active_teachers' => Teacher::whereHas('user', function($q) {
-                $q->where('status', 'active');
-            })->count(),
-            'average_experience' => Teacher::avg('experience_years') ?? 0,
-            'average_salary' => Teacher::avg('salary') ?? 0,
+            'total_teachers' => $statsQuery->total_teachers ?? 0,
+            'active_teachers' => $statsQuery->active_teachers ?? 0,
+            'average_experience' => round($statsQuery->average_experience ?? 0, 1),
+            'average_salary' => round($statsQuery->average_salary ?? 0, 2),
         ];
 
-        // Get filter options
+        // Get filter options efficiently
         $qualifications = Teacher::distinct()->pluck('qualification')->filter();
-        // Use pagination for classes to avoid memory issues
-        $classes = ClassModel::paginate(50);
-        // Use pagination for subjects to avoid memory issues
-        $subjects = Subject::paginate(50);
+        $classes = ClassModel::select('id', 'name', 'section')->get();
+        $subjects = Subject::select('id', 'name')->get();
 
         if ($request->expectsJson()) {
             return response()->json([
                 'teachers' => $teachers,
                 'stats' => $stats,
-                'qualifications' => $qualifications
+                'qualifications' => $qualifications,
+                'pagination' => [
+                    'current_page' => $teachers->currentPage(),
+                    'last_page' => $teachers->lastPage(),
+                    'per_page' => $teachers->perPage(),
+                    'total' => $teachers->total(),
+                    'from' => $teachers->firstItem(),
+                    'to' => $teachers->lastItem(),
+                ]
             ]);
         }
 
@@ -111,30 +144,10 @@ class TeacherController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            ...$this->getCreateEmailValidationRules(),
-            'phone' => 'nullable|string|max:20',
-            'password' => [
-                'required',
-                'string',
-                'confirmed',
-                new PasswordComplexity(null, 'teacher')
-            ],
-            'qualification' => 'required|string|max:500',
-            'experience_years' => 'required|integer|min:0|max:50',
-            'salary' => 'required|numeric|min:0',
-            'joining_date' => 'required|date',
-            'address' => 'nullable|string|max:1000',
-            'emergency_contact' => 'nullable|string|max:20',
-            'blood_group' => 'nullable|string|max:5',
-            ...$this->getDocumentFileValidationRules('documents.*'),
-            'subjects' => 'nullable|array',
-            'subjects.*' => 'exists:subjects,id',
-        ], array_merge(
-            $this->getEmailValidationMessages(),
-            $this->getFileUploadValidationMessages()
-        ));
+        $validated = $request->validate(
+            $this->getTeacherCreateValidationRules(),
+            $this->getTeacherValidationMessages()
+        );
 
         try {
             DB::beginTransaction();

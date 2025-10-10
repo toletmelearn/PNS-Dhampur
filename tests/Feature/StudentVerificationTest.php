@@ -2,51 +2,67 @@
 
 namespace Tests\Feature;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Student;
 use App\Models\StudentVerification;
-use App\Models\SchoolClass;
-use App\Services\AadhaarVerificationService;
-use App\Services\DocumentVerificationService;
+use App\Models\ClassModel;
+use App\Models\Section;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
+use Laravel\Sanctum\Sanctum;
 
 class StudentVerificationTest extends TestCase
 {
     use RefreshDatabase, WithFaker;
 
     protected $admin;
+    protected $teacher;
     protected $student;
-    protected $schoolClass;
+    protected $class;
+    protected $section;
 
     protected function setUp(): void
     {
         parent::setUp();
         
-        // Create admin user
+        // Create test users with proper roles
         $this->admin = User::factory()->create([
             'role' => 'admin',
             'email' => 'admin@test.com'
         ]);
+        
+        $this->teacher = User::factory()->create([
+            'role' => 'teacher',
+            'email' => 'teacher@test.com'
+        ]);
 
-        // Create school class
-        $this->schoolClass = SchoolClass::factory()->create([
+        // Create class and section
+        $this->class = ClassModel::factory()->create([
             'name' => 'Class 10',
             'section' => 'A'
         ]);
 
-        // Create student
+        $this->section = Section::factory()->create([
+            'class_id' => $this->class->id,
+            'name' => 'A'
+        ]);
+
+        // Create test student
         $this->student = Student::factory()->create([
-            'name' => 'Test Student',
-            'father_name' => 'Test Father',
-            'mother_name' => 'Test Mother',
-            'dob' => '2005-01-15',
-            'aadhaar' => '123456789012',
-            'class_id' => $this->schoolClass->id,
-            'admission_number' => 'ADM001'
+            'name' => 'John Doe',
+            'father_name' => 'Robert Doe',
+            'mother_name' => 'Jane Doe',
+            'date_of_birth' => '2005-01-15',
+            'aadhaar_number' => '123456789012',
+            'class_id' => $this->class->id,
+            'section_id' => $this->section->id,
+            'verification_status' => 'pending'
         ]);
 
         Storage::fake('public');

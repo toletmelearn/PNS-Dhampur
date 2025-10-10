@@ -343,7 +343,8 @@ class TeacherAvailabilityController extends Controller
             'end_date' => 'required|date|after:start_date',
         ]);
 
-        $teachers = Teacher::all();
+        // Fix N+1 query by adding eager loading for related models
+        $teachers = Teacher::with(['subjects', 'classes'])->get();
         $created = 0;
 
         foreach ($teachers as $teacher) {

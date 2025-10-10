@@ -2,8 +2,94 @@
 
 namespace App\Http\Traits;
 
+use App\Services\VirusScanService;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
+
 trait FileUploadValidationTrait
 {
+    /**
+     * Enhanced file validation with virus scanning
+     *
+     * @param UploadedFile $file
+     * @param string $type
+     * @return array
+     */
+    protected function validateFileWithSecurity(UploadedFile $file, string $type = 'document'): array
+    {
+        // Basic validation
+        $basicValidation = $this->performBasicFileValidation($file, $type);
+        if (!$basicValidation['valid']) {
+            return $basicValidation;
+        }
+
+        // Security validation
+        if (config('fileupload.security_settings.enable_virus_scan', true)) {
+            $virusScanService = new VirusScanService();
+            $scanResult = $virusScanService->scanFile($file);
+            
+            if (!$scanResult['safe']) {
+                // Quarantine file if configured
+                if (config('fileupload.security_settings.quarantine_suspicious_files', true)) {
+                    $virusScanService->quarantineFile($file, $scanResult);
+                }
+
+                Log::warning('File upload blocked by security scan', [
+                    'filename' => $file->getClientOriginalName(),
+                    'scan_result' => $scanResult
+                ]);
+
+                return [
+                    'valid' => false,
+                    'error' => 'File failed security validation: ' . $scanResult['message'],
+                    'threat_type' => $scanResult['threat_type'] ?? 'SECURITY_VIOLATION'
+                ];
+            }
+        }
+
+        return ['valid' => true, 'message' => 'File passed all security checks'];
+    }
+
+    /**
+     * Perform basic file validation
+     *
+     * @param UploadedFile $file
+     * @param string $type
+     * @return array
+     */
+    protected function performBasicFileValidation(UploadedFile $file, string $type): array
+    {
+        // Check file size
+        $maxSize = config("fileupload.max_file_sizes.{$type}", config('fileupload.max_file_sizes.default'));
+        if ($file->getSize() > ($maxSize * 1024)) {
+            return [
+                'valid' => false,
+                'error' => "File size exceeds maximum limit of {$maxSize}KB"
+            ];
+        }
+
+        // Check file extension
+        $allowedExtensions = explode(',', config("fileupload.allowed_file_types.{$type}.mimes", ''));
+        $fileExtension = strtolower($file->getClientOriginalExtension());
+        
+        if (!in_array($fileExtension, $allowedExtensions)) {
+            return [
+                'valid' => false,
+                'error' => "File type '{$fileExtension}' is not allowed. Allowed types: " . implode(', ', $allowedExtensions)
+            ];
+        }
+
+        // Check against blocked extensions
+        $blockedExtensions = config('fileupload.blocked_extensions', []);
+        if (in_array($fileExtension, $blockedExtensions)) {
+            return [
+                'valid' => false,
+                'error' => "File type '{$fileExtension}' is blocked for security reasons"
+            ];
+        }
+
+        return ['valid' => true];
+    }
     /**
      * Get CSV file upload validation rules
      *

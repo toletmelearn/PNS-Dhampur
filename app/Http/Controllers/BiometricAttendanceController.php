@@ -33,7 +33,8 @@ class BiometricAttendanceController extends Controller
         }
         
         $attendances = $query->orderBy('check_in_time')->get();
-        $teachers = Teacher::orderBy('name')->get();
+        // Fix N+1 query by adding eager loading for user relationship
+        $teachers = Teacher::with(['user'])->orderBy('name')->get();
         
         // Calculate summary statistics
         $totalTeachers = Teacher::count();
@@ -302,7 +303,8 @@ class BiometricAttendanceController extends Controller
             ->whereDate('date', $date)
             ->get();
             
-        $allTeachers = Teacher::all();
+        // Fix N+1 query by adding eager loading for related models
+        $allTeachers = Teacher::with(['subjects', 'classes'])->get();
         
         // Prepare report data
         $report = [];
@@ -488,7 +490,20 @@ class BiometricAttendanceController extends Controller
             $dateFormat = $request->get('date_format', 'Y-m-d');
             $timeFormat = $request->get('time_format', 'H:i:s');
             
-            $csvData = array_map('str_getcsv', file($file->path()));
+            // Secure CSV file handling
+            $filePath = $file->getRealPath();
+            $fileHandle = fopen($filePath, 'r');
+            
+            if (!$fileHandle) {
+                throw new Exception('Unable to read CSV file');
+            }
+            
+            $csvData = [];
+            while (($row = fgetcsv($fileHandle)) !== false) {
+                $csvData[] = $row;
+            }
+            fclose($fileHandle);
+            
             $headers = array_shift($csvData); // Remove header row
             
             $imported = 0;

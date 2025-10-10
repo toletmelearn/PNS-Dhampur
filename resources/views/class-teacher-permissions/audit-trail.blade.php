@@ -263,7 +263,7 @@
                                             @endif
                                         </td>
                                         <td>
-                                            {!! $trail->status_badge !!}
+                                            <span class="badge {{ $trail->status_badge_class }}">{{ $trail->status_badge }}</span>
                                             @if($trail->approved_at)
                                                 <br><small class="text-success">
                                                     Approved by {{ $trail->approvedBy->name ?? 'Unknown' }}

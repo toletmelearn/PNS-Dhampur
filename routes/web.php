@@ -1,22 +1,20 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\HomeController;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Http\JsonResponse;
+use App\Http\Controllers\ClassTeacherPermissionController;
+use App\Http\Controllers\SRRegisterController;
+use App\Http\Controllers\BiometricAttendanceController;
+use App\Http\Controllers\ExamController;
+use App\Http\Controllers\ExamPaperController;
+use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\UserController;
-use App\Http\Controllers\StudentController;
-use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\SubjectController;
-use App\Http\Controllers\ExamController;
-use App\Http\Controllers\AttendanceController;
-use App\Http\Controllers\FeeController;
-use App\Http\Controllers\ReportController;
-use App\Http\Controllers\PerformanceController;
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\PasswordController;
-use App\Http\Controllers\DataCleanupController;
-use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\SystemMaintenanceController;
+use App\Http\Controllers\StudentController;
+use App\Http\Controllers\FileUploadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -29,163 +27,239 @@ use App\Http\Controllers\SystemMaintenanceController;
 |
 */
 
-// Authentication Routes
+// Health check endpoint for monitoring
+Route::get('/health', function (): JsonResponse {
+    $checks = [];
+    $overallStatus = 'healthy';
+    
+    try {
+        // Database check
+        $start = microtime(true);
+        DB::connection()->getPdo();
+        $dbTime = round((microtime(true) - $start) * 1000, 2);
+        
+        $checks['database'] = [
+            'status' => 'healthy',
+            'response_time' => $dbTime . 'ms'
+        ];
+        
+        if ($dbTime > 1000) {
+            $checks['database']['status'] = 'warning';
+            $overallStatus = 'warning';
+        }
+    } catch (Exception $e) {
+        $checks['database'] = [
+            'status' => 'critical',
+            'error' => 'Connection failed'
+        ];
+        $overallStatus = 'critical';
+    }
+    
+    try {
+        // Cache check
+        $testKey = 'health_check_' . time();
+        Cache::put($testKey, 'test', 60);
+        $cached = Cache::get($testKey);
+        Cache::forget($testKey);
+        
+        $checks['cache'] = [
+            'status' => $cached === 'test' ? 'healthy' : 'warning'
+        ];
+        
+        if ($cached !== 'test' && $overallStatus !== 'critical') {
+            $overallStatus = 'warning';
+        }
+    } catch (Exception $e) {
+        $checks['cache'] = [
+            'status' => 'critical',
+            'error' => 'Cache failed'
+        ];
+        $overallStatus = 'critical';
+    }
+    
+    // System info
+    $checks['system'] = [
+        'status' => 'healthy',
+        'php_version' => PHP_VERSION,
+        'laravel_version' => app()->version(),
+        'environment' => config('app.env'),
+        'debug_mode' => config('app.debug'),
+        'memory_usage' => round(memory_get_usage(true) / 1024 / 1024, 2) . 'MB'
+    ];
+    
+    // Security check
+    if (config('app.debug') && config('app.env') === 'production') {
+        $checks['security'] = [
+            'status' => 'critical',
+            'error' => 'Debug mode enabled in production'
+        ];
+        $overallStatus = 'critical';
+    } else {
+        $checks['security'] = [
+            'status' => 'healthy'
+        ];
+    }
+    
+    $response = [
+        'status' => $overallStatus,
+        'timestamp' => now()->toISOString(),
+        'checks' => $checks
+    ];
+    
+    $httpStatus = match($overallStatus) {
+        'healthy' => 200,
+        'warning' => 200,
+        'critical' => 503,
+        default => 200
+    };
+    
+    return response()->json($response, $httpStatus);
+})->name('health.check');
+
+Route::get('/', function () {
+    return redirect()->route('dashboard');
+});
+
+// Authentication Routes (manual implementation)
 Route::get('/login', function () {
     return view('auth.login');
 })->name('login');
 
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::post('/login', function () {
+    // Login logic here
+})->name('login.post');
 
-// Password Routes
-Route::get('/password/change', [PasswordController::class, 'showChangeForm'])->name('password.change');
-Route::post('/password/change', [PasswordController::class, 'changePassword'])->name('password.update');
+Route::post('/logout', function () {
+    // Logout logic here
+})->name('logout');
 
-// Home Routes
-Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/home', [HomeController::class, 'index'])->name('home.redirect');
+Route::get('/register', function () {
+    return view('auth.register');
+})->name('register');
 
-// Protected Routes (require authentication)
+Route::post('/register', function () {
+    // Registration logic here
+})->name('register.post');
+
+// Protected routes that require authentication
 Route::middleware(['auth'])->group(function () {
     
-    // Student Management
-    Route::resource('students', StudentController::class);
-    Route::get('students/{student}/profile', [StudentController::class, 'profile'])->name('students.profile');
-    Route::post('students/{student}/upload-photo', [StudentController::class, 'uploadPhoto'])->name('students.upload-photo');
+    // Dashboard routes
+    Route::get('/dashboard', [ClassTeacherPermissionController::class, 'dashboard'])->name('dashboard');
     
-    // Teacher Management
-    Route::resource('teachers', TeacherController::class);
-    Route::get('teachers/{teacher}/profile', [TeacherController::class, 'profile'])->name('teachers.profile');
-    
-    // Class Management
-    Route::resource('classes', ClassController::class);
-    Route::get('classes/{class}/students', [ClassController::class, 'students'])->name('classes.students');
-    
-    // Subject Management
-    Route::resource('subjects', SubjectController::class);
-    
-    // Exam Management
-    Route::resource('exams', ExamController::class);
-    Route::get('exams/{exam}/results', [ExamController::class, 'results'])->name('exams.results');
-    Route::post('exams/{exam}/results', [ExamController::class, 'storeResults'])->name('exams.store-results');
-    
-    // Attendance Management
-    Route::get('attendance', [AttendanceController::class, 'index'])->name('attendance.index');
-    Route::get('attendance/create', [AttendanceController::class, 'create'])->name('attendance.create');
-    Route::post('attendance', [AttendanceController::class, 'store'])->name('attendance.store');
-    Route::get('attendance/{class}/date/{date}', [AttendanceController::class, 'show'])->name('attendance.show');
-    Route::put('attendance/{class}/date/{date}', [AttendanceController::class, 'update'])->name('attendance.update');
-    
-    // Fee Management
-    Route::resource('fees', FeeController::class);
-    Route::get('fees/{student}/payment', [FeeController::class, 'payment'])->name('fees.payment');
-    Route::post('fees/{student}/payment', [FeeController::class, 'processPayment'])->name('fees.process-payment');
-    
-    // Reports
-    Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
-    Route::get('reports/attendance', [ReportController::class, 'attendance'])->name('reports.attendance');
-    Route::get('reports/fees', [ReportController::class, 'fees'])->name('reports.fees');
-    Route::get('reports/academic', [ReportController::class, 'academic'])->name('reports.academic');
-    
-    // User Management (Admin only)
-    Route::middleware(['admin'])->group(function () {
-        Route::resource('users', UserController::class);
-        Route::post('users/{user}/toggle-status', [UserController::class, 'toggleStatus'])->name('users.toggle-status');
+    // Class Teacher Permissions Management
+    Route::prefix('class-teacher-permissions')->name('class-teacher-permissions.')->group(function () {
+        Route::get('/', [ClassTeacherPermissionController::class, 'index'])->name('index');
+        Route::get('/create', [ClassTeacherPermissionController::class, 'create'])->name('create');
+        Route::post('/', [ClassTeacherPermissionController::class, 'store'])->name('store');
+        Route::get('/{classTeacherPermission}', [ClassTeacherPermissionController::class, 'show'])->name('show');
+        Route::get('/{classTeacherPermission}/edit', [ClassTeacherPermissionController::class, 'edit'])->name('edit');
+        Route::put('/{classTeacherPermission}', [ClassTeacherPermissionController::class, 'update'])->name('update');
+        Route::patch('/{classTeacherPermission}/revoke', [ClassTeacherPermissionController::class, 'revoke'])->name('revoke');
         
-        // Data Cleanup Routes
-        Route::prefix('admin/data-cleanup')->name('admin.data-cleanup.')->group(function () {
-            Route::get('/', [DataCleanupController::class, 'index'])->name('index');
-            Route::get('/orphaned-records', [DataCleanupController::class, 'orphanedRecords'])->name('orphaned-records');
-            Route::post('/orphaned-records/fix', [DataCleanupController::class, 'fixOrphanedRecords'])->name('fix-orphaned-records');
-            Route::get('/duplicate-detection', [DataCleanupController::class, 'duplicateDetection'])->name('duplicate-detection');
-            Route::post('/duplicate-detection/merge', [DataCleanupController::class, 'mergeDuplicates'])->name('merge-duplicates');
-            Route::get('/consistency-checks', [DataCleanupController::class, 'consistencyChecks'])->name('consistency-checks');
-            Route::post('/consistency-checks/fix', [DataCleanupController::class, 'fixConsistencyIssues'])->name('fix-consistency-issues');
-            Route::get('/archive-purge', [DataCleanupController::class, 'archivePurge'])->name('archive-purge');
-            Route::post('/archive-purge/archive', [DataCleanupController::class, 'archiveData'])->name('archive-data');
-            Route::get('/archive/progress/{jobId}', [DataCleanupController::class, 'archiveProgress'])->name('archive-progress');
-            Route::post('/archive/purge', [DataCleanupController::class, 'purgeArchive'])->name('purge-archive');
-            Route::get('/archive/download/{id?}', [DataCleanupController::class, 'downloadArchive'])->name('download-archive');
-        });
-        
-        // Configuration Management Routes
-        Route::prefix('admin/configuration')->name('admin.configuration.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\ConfigurationController::class, 'index'])->name('index');
-            
-            // System Settings
-            Route::get('/system-settings', [\App\Http\Controllers\Admin\ConfigurationController::class, 'systemSettings'])->name('system-settings');
-            Route::post('/system-settings', [\App\Http\Controllers\Admin\ConfigurationController::class, 'updateSystemSettings'])->name('update-system-settings');
-            
-            // Academic Years
-            Route::get('/academic-years', [\App\Http\Controllers\Admin\ConfigurationController::class, 'academicYears'])->name('academic-years');
-            Route::get('/academic-years/create', [\App\Http\Controllers\Admin\ConfigurationController::class, 'createAcademicYear'])->name('create-academic-year');
-            Route::post('/academic-years', [\App\Http\Controllers\Admin\ConfigurationController::class, 'storeAcademicYear'])->name('store-academic-year');
-            Route::get('/academic-years/{academicYear}/edit', [\App\Http\Controllers\Admin\ConfigurationController::class, 'editAcademicYear'])->name('edit-academic-year');
-            Route::put('/academic-years/{academicYear}', [\App\Http\Controllers\Admin\ConfigurationController::class, 'updateAcademicYear'])->name('update-academic-year');
-            Route::post('/academic-years/{academicYear}/set-current', [\App\Http\Controllers\Admin\ConfigurationController::class, 'setCurrentAcademicYear'])->name('set-current-academic-year');
-            Route::post('/academic-years/{academicYear}/toggle', [\App\Http\Controllers\Admin\ConfigurationController::class, 'toggleAcademicYear'])->name('toggle-academic-year');
-            
-            // Holidays
-            Route::get('/holidays', [\App\Http\Controllers\Admin\ConfigurationController::class, 'holidays'])->name('holidays');
-            Route::get('/holidays/create', [\App\Http\Controllers\Admin\ConfigurationController::class, 'createHoliday'])->name('create-holiday');
-            Route::post('/holidays', [\App\Http\Controllers\Admin\ConfigurationController::class, 'storeHoliday'])->name('store-holiday');
-            Route::get('/holidays/{holiday}/edit', [\App\Http\Controllers\Admin\ConfigurationController::class, 'editHoliday'])->name('edit-holiday');
-            Route::put('/holidays/{holiday}', [\App\Http\Controllers\Admin\ConfigurationController::class, 'updateHoliday'])->name('update-holiday');
-            Route::post('/holidays/{holiday}/toggle', [\App\Http\Controllers\Admin\ConfigurationController::class, 'toggleHoliday'])->name('toggle-holiday');
-            Route::delete('/holidays/{holiday}', [\App\Http\Controllers\Admin\ConfigurationController::class, 'deleteHoliday'])->name('delete-holiday');
-            
-            // Notification Templates
-            Route::get('/notification-templates', [\App\Http\Controllers\Admin\ConfigurationController::class, 'notificationTemplates'])->name('notification-templates');
-            Route::get('/notification-templates/create', [\App\Http\Controllers\Admin\ConfigurationController::class, 'createNotificationTemplate'])->name('create-notification-template');
-            Route::post('/notification-templates', [\App\Http\Controllers\Admin\ConfigurationController::class, 'storeNotificationTemplate'])->name('store-notification-template');
-            Route::get('/notification-templates/{notificationTemplate}/edit', [\App\Http\Controllers\Admin\ConfigurationController::class, 'editNotificationTemplate'])->name('edit-notification-template');
-            Route::put('/notification-templates/{notificationTemplate}', [\App\Http\Controllers\Admin\ConfigurationController::class, 'updateNotificationTemplate'])->name('update-notification-template');
-            Route::post('/notification-templates/{notificationTemplate}/toggle', [\App\Http\Controllers\Admin\ConfigurationController::class, 'toggleNotificationTemplate'])->name('toggle-notification-template');
-            Route::delete('/notification-templates/{notificationTemplate}', [\App\Http\Controllers\Admin\ConfigurationController::class, 'deleteNotificationTemplate'])->name('delete-notification-template');
-            Route::get('/notification-templates/{notificationTemplate}/preview', [\App\Http\Controllers\Admin\ConfigurationController::class, 'previewNotificationTemplate'])->name('preview-notification-template');
-        });
-        
-        // Performance Monitoring Routes
-        Route::prefix('admin/performance')->name('admin.performance.')->group(function () {
-            Route::get('/', [\App\Http\Controllers\Admin\PerformanceMonitoringController::class, 'index'])->name('index');
-            Route::get('/system-health', [\App\Http\Controllers\Admin\PerformanceMonitoringController::class, 'systemHealth'])->name('system-health');
-            Route::get('/metrics', [\App\Http\Controllers\Admin\PerformanceMonitoringController::class, 'metrics'])->name('metrics');
-            Route::get('/errors', [\App\Http\Controllers\Admin\PerformanceMonitoringController::class, 'errors'])->name('errors');
-            Route::get('/activities', [\App\Http\Controllers\Admin\PerformanceMonitoringController::class, 'activities'])->name('activities');
-            Route::post('/errors/{error}/resolve', [\App\Http\Controllers\Admin\PerformanceMonitoringController::class, 'resolveError'])->name('resolve-error');
-            Route::get('/export', [\App\Http\Controllers\Admin\PerformanceMonitoringController::class, 'export'])->name('export');
-            Route::get('/activities/export', [\App\Http\Controllers\Admin\PerformanceMonitoringController::class, 'exportActivities'])->name('activities.export');
-        });
+        // Audit Trail routes
+        Route::get('/audit-trail', [ClassTeacherPermissionController::class, 'auditTrail'])->name('audit-trail');
+        Route::patch('/audit-trail/{auditTrail}/approve', [ClassTeacherPermissionController::class, 'approveCorrection'])->name('audit-trail.approve');
+        Route::patch('/audit-trail/{auditTrail}/reject', [ClassTeacherPermissionController::class, 'rejectCorrection'])->name('audit-trail.reject');
+        Route::post('/audit-trail/bulk-approve', [ClassTeacherPermissionController::class, 'bulkApproveCorrections'])->name('audit-trail.bulk-approve');
+        Route::get('/audit-trail/export', [ClassTeacherPermissionController::class, 'exportAuditReport'])->name('audit-trail.export');
     });
     
-    // Settings
-    Route::get('settings', [SettingsController::class, 'index'])->name('settings.index');
-    Route::post('settings', [SettingsController::class, 'update'])->name('settings.update');
+    // SR Register routes with permission middleware
+    Route::prefix('sr-register')->name('sr-register.')->middleware('class.teacher.permission')->group(function () {
+        Route::get('/', [SRRegisterController::class, 'index'])->name('index');
+        Route::get('/create', [SRRegisterController::class, 'create'])->name('create')->middleware('class.teacher.permission:can_add_records');
+        Route::post('/', [SRRegisterController::class, 'store'])->name('store')->middleware('class.teacher.permission:can_add_records');
+        Route::get('/{srRegister}', [SRRegisterController::class, 'show'])->name('show');
+        Route::get('/{srRegister}/edit', [SRRegisterController::class, 'edit'])->name('edit')->middleware('class.teacher.permission:can_edit_records');
+        Route::put('/{srRegister}', [SRRegisterController::class, 'update'])->name('update')->middleware('class.teacher.permission:can_edit_records');
+        Route::delete('/{srRegister}', [SRRegisterController::class, 'destroy'])->name('destroy')->middleware('class.teacher.permission:can_delete_records');
+        
+        // Bulk operations
+        Route::get('/bulk-entry', [SRRegisterController::class, 'bulkEntry'])->name('bulk-entry')->middleware('class.teacher.permission:can_bulk_operations');
+        Route::post('/bulk-entry', [SRRegisterController::class, 'storeBulkEntry'])->name('bulk-entry.store')->middleware('class.teacher.permission:can_bulk_operations');
+        
+        // Reports and exports
+        Route::get('/export/report', [SRRegisterController::class, 'exportReport'])->name('export.report')->middleware('class.teacher.permission:can_export_reports');
+        Route::get('/student/{student}/profile', [SRRegisterController::class, 'studentProfile'])->name('student.profile');
+        Route::get('/class/{class}/report', [SRRegisterController::class, 'classReport'])->name('class.report');
+        
+        // AJAX routes
+        Route::get('/ajax/students-by-class', [SRRegisterController::class, 'getStudentsByClass'])->name('ajax.students-by-class');
+    });
     
-    // System Maintenance
-    Route::prefix('maintenance')->name('maintenance.')->group(function () {
-        Route::get('/', [SystemMaintenanceController::class, 'index'])->name('index');
-        Route::post('/clear-cache', [SystemMaintenanceController::class, 'clearCache'])->name('clear-cache');
-        Route::post('/optimize-database', [SystemMaintenanceController::class, 'optimizeDatabase'])->name('optimize-database');
-        Route::get('/logs', [SystemMaintenanceController::class, 'viewLogs'])->name('logs');
-        Route::post('/system-update', [SystemMaintenanceController::class, 'systemUpdate'])->name('system-update');
-        Route::get('/system-info', [SystemMaintenanceController::class, 'getSystemInfo'])->name('system-info');
+    // Biometric Attendance routes with permission middleware
+    Route::prefix('biometric-attendance')->name('biometric-attendance.')->middleware('class.teacher.permission')->group(function () {
+        Route::get('/', [BiometricAttendanceController::class, 'index'])->name('index');
+        Route::post('/check-in', [BiometricAttendanceController::class, 'checkIn'])->name('check-in')->middleware('class.teacher.permission:can_mark_attendance');
+        Route::post('/check-out', [BiometricAttendanceController::class, 'checkOut'])->name('check-out')->middleware('class.teacher.permission:can_mark_attendance');
+        Route::post('/bulk-check-in', [BiometricAttendanceController::class, 'bulkCheckIn'])->name('bulk-check-in')->middleware('class.teacher.permission:can_bulk_operations');
+        Route::post('/mark-absent', [BiometricAttendanceController::class, 'markAbsent'])->name('mark-absent')->middleware('class.teacher.permission:can_mark_attendance');
+        Route::get('/export', [BiometricAttendanceController::class, 'exportReport'])->name('export')->middleware('class.teacher.permission:can_export_reports');
+    });
+    
+    // Reports routes
+    Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
+    Route::get('/api/reports/academic', [ReportsController::class, 'academicReports'])->name('api.reports.academic');
+    Route::get('/api/reports/financial', [ReportsController::class, 'financialReports'])->name('api.reports.financial');
+    Route::get('/api/reports/attendance', [ReportsController::class, 'attendanceReports'])->name('api.reports.attendance');
+    Route::get('/api/reports/performance', [ReportsController::class, 'performanceReports'])->name('api.reports.performance');
+    Route::get('/api/reports/administrative', [ReportsController::class, 'administrativeReports'])->name('api.reports.administrative');
+    Route::post('/api/reports/export', [ReportsController::class, 'exportPdf'])->name('api.reports.export');
+
+    // Exam Management routes
+    Route::prefix('exams')->name('exams.')->group(function () {
+        Route::get('/', [ExamController::class, 'index'])->name('index');
+        Route::get('/api/classes', [ExamController::class, 'getClasses']);
+    });
+    
+    // Exam Papers routes with permission middleware
+    Route::prefix('exam-papers')->name('exam-papers.')->middleware('class.teacher.permission')->group(function () {
+        Route::get('/', [ExamPaperController::class, 'index'])->name('index');
+        Route::get('/create', [ExamPaperController::class, 'create'])->name('create')->middleware('class.teacher.permission:can_add_records');
+        Route::post('/', [ExamPaperController::class, 'store'])->name('store')->middleware('class.teacher.permission:can_add_records');
+        Route::get('/{examPaper}', [ExamPaperController::class, 'show'])->name('show');
+        Route::get('/{examPaper}/edit', [ExamPaperController::class, 'edit'])->name('edit')->middleware('class.teacher.permission:can_edit_records');
+        Route::put('/{examPaper}', [ExamPaperController::class, 'update'])->name('update')->middleware('class.teacher.permission:can_edit_records');
+        Route::delete('/{examPaper}', [ExamPaperController::class, 'destroy'])->name('destroy')->middleware('class.teacher.permission:can_delete_records');
+        
+        // Paper workflow
+        Route::patch('/{examPaper}/publish', [ExamPaperController::class, 'publish'])->name('publish')->middleware('class.teacher.permission:can_approve_corrections');
+        Route::patch('/{examPaper}/submit', [ExamPaperController::class, 'submit'])->name('submit');
+        Route::patch('/{examPaper}/approve', [ExamPaperController::class, 'approve'])->name('approve')->middleware('class.teacher.permission:can_approve_corrections');
+        Route::patch('/{examPaper}/reject', [ExamPaperController::class, 'reject'])->name('reject')->middleware('class.teacher.permission:can_approve_corrections');
+        Route::post('/{examPaper}/duplicate', [ExamPaperController::class, 'duplicate'])->name('duplicate')->middleware('class.teacher.permission:can_add_records');
+        
+        // Export and question bank
+        Route::get('/{examPaper}/export-pdf', [ExamPaperController::class, 'exportPdf'])->name('export-pdf')->middleware('class.teacher.permission:can_export_reports');
+        Route::get('/question-bank/{subject}', [ExamPaperController::class, 'getQuestionBank'])->name('question-bank');
+    });
+    
+    // Admin-only routes for permission management
+    Route::middleware(['role:admin,super_admin'])->group(function () {
+        Route::resource('users', UserController::class);
+        Route::resource('classes', ClassController::class);
+        Route::resource('subjects', SubjectController::class);
+        Route::resource('students', StudentController::class);
+        
+        // System audit and reports
+        Route::get('/system/audit-report', [ClassTeacherPermissionController::class, 'systemAuditReport'])->name('system.audit-report');
+        Route::get('/system/permissions-report', [ClassTeacherPermissionController::class, 'permissionsReport'])->name('system.permissions-report');
     });
 });
 
-// API Routes for AJAX calls
-Route::middleware(['auth'])->prefix('api')->group(function () {
-    Route::get('students/search', [StudentController::class, 'search'])->name('api.students.search');
-    Route::get('teachers/search', [TeacherController::class, 'search'])->name('api.teachers.search');
-    Route::get('classes/{class}/students', [ClassController::class, 'getStudents'])->name('api.classes.students');
-    
-    // Data Cleanup API Routes
-    Route::middleware(['admin'])->prefix('data-cleanup')->group(function () {
-        Route::get('/orphaned-students', [DataCleanupController::class, 'getOrphanedStudents']);
-        Route::get('/duplicate-students', [DataCleanupController::class, 'getDuplicateStudents']);
-        Route::get('/consistency-issues', [DataCleanupController::class, 'getConsistencyIssues']);
-        Route::get('/archivable-data', [DataCleanupController::class, 'getArchivableData']);
-    });
+// File Upload API Routes
+Route::prefix('api/files')->name('api.files.')->middleware(['auth', 'sanitize'])->group(function () {
+    Route::post('/upload', [App\Http\Controllers\FileUploadController::class, 'uploadFile'])->name('upload');
+    Route::post('/upload-multiple', [App\Http\Controllers\FileUploadController::class, 'uploadMultipleFiles'])->name('upload.multiple');
+    Route::get('/progress/{uploadId}', [App\Http\Controllers\FileUploadController::class, 'getUploadProgress'])->name('progress');
+    Route::delete('/delete', [App\Http\Controllers\FileUploadController::class, 'deleteFile'])->name('delete');
+    Route::get('/info', [App\Http\Controllers\FileUploadController::class, 'getFileInfo'])->name('info');
+    Route::post('/download-url', [App\Http\Controllers\FileUploadController::class, 'generateDownloadUrl'])->name('download.url');
+    Route::get('/allowed-types', [App\Http\Controllers\FileUploadController::class, 'getAllowedFileTypes'])->name('allowed.types');
+    Route::post('/validate', [App\Http\Controllers\FileUploadController::class, 'validateFile'])->name('validate');
 });
+
+Route::get('/test-simple', function () { return 'Hello World'; });
 
 

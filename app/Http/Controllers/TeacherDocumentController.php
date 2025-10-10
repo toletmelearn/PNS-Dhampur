@@ -10,9 +10,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Http\Traits\FileUploadValidationTrait;
 
 class TeacherDocumentController extends Controller
 {
+    use FileUploadValidationTrait;
     protected $documentExpiryAlertService;
 
     public function __construct(DocumentExpiryAlertService $documentExpiryAlertService)
@@ -536,55 +538,22 @@ class TeacherDocumentController extends Controller
             return response()->json(['error' => 'Teacher profile not found.'], 404);
         }
 
-        $validator = Validator::make($request->all(), [
-            'documents' => 'required|array|min:1|max:10',
-            'documents.*' => [
-                'required',
-                'file',
-                'mimes:pdf,doc,docx,jpg,jpeg,png',
-                'max:10240', // 10MB
-                function ($attribute, $value, $fail) {
-                    // Additional file validation
-                    $allowedMimeTypes = [
-                        'application/pdf',
-                        'application/msword',
-                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'image/jpeg',
-                        'image/jpg',
-                        'image/png'
-                    ];
-                    
-                    if (!in_array($value->getMimeType(), $allowedMimeTypes)) {
-                        $fail('The file must be a valid PDF, DOC, DOCX, JPG, JPEG, or PNG file.');
-                    }
-                    
-                    // Check file signature (magic bytes) for additional security
-                    $fileContent = file_get_contents($value->getPathname());
-                    $fileSignature = bin2hex(substr($fileContent, 0, 4));
-                    
-                    $validSignatures = [
-                        '25504446', // PDF
-                        'd0cf11e0', // DOC/DOCX (OLE2)
-                        '504b0304', // DOCX (ZIP-based)
-                        'ffd8ffe0', // JPEG
-                        'ffd8ffe1', // JPEG
-                        'ffd8ffe2', // JPEG
-                        'ffd8ffe3', // JPEG
-                        'ffd8ffe8', // JPEG
-                        'ffd8ffdb', // JPEG
-                        '89504e47', // PNG
-                    ];
-                    
-                    if (!in_array($fileSignature, $validSignatures)) {
-                        $fail('The file appears to be corrupted or is not a valid document/image file.');
-                    }
-                }
-            ],
+        // Use enhanced validation from trait
+        $validationRules = [
             'document_types' => 'required|array',
             'document_types.*' => 'required|in:' . implode(',', array_keys(TeacherDocument::DOCUMENT_TYPES)),
             'expiry_dates' => 'nullable|array',
             'expiry_dates.*' => 'nullable|date|after:today'
+        ];
+        
+        // Add enhanced file validation rules from trait
+        $fileRules = $this->getMultipleFilesValidationRules(['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png'], 10240, 10);
+        $validationRules = array_merge($validationRules, [
+            'documents' => $fileRules['files'],
+            'documents.*' => $fileRules['files.*']
         ]);
+
+        $validator = Validator::make($request->all(), $validationRules, $this->getFileUploadValidationMessages());
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
@@ -595,6 +564,13 @@ class TeacherDocumentController extends Controller
 
         foreach ($request->file('documents') as $index => $file) {
             try {
+                // Perform enhanced file validation with virus scanning
+                $validationResult = $this->validateFileWithSecurity($file);
+                if (!$validationResult['valid']) {
+                    $errors[] = "File '{$file->getClientOriginalName()}': " . $validationResult['message'];
+                    continue;
+                }
+
                 $documentType = $request->document_types[$index];
                 $expiryDate = $request->expiry_dates[$index] ?? null;
 
@@ -608,24 +584,6 @@ class TeacherDocumentController extends Controller
                     $errors[] = "Document type '{$documentType}' already exists.";
                     continue;
                 }
-
-                // Additional file size validation (double-check)
-                if ($file->getSize() > 10485760) { // 10MB in bytes
-                    $errors[] = "File '{$file->getClientOriginalName()}' exceeds maximum size of 10MB.";
-                    continue;
-                }
-
-                // Validate file extension matches MIME type
-                $extension = strtolower($file->getClientOriginalExtension());
-                $mimeType = $file->getMimeType();
-                
-                $validCombinations = [
-                    'pdf' => ['application/pdf'],
-                    'doc' => ['application/msword'],
-                    'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-                    'jpg' => ['image/jpeg'],
-                    'jpeg' => ['image/jpeg'],
-                    'png' => ['image/png']
                 ];
                 
                 if (!isset($validCombinations[$extension]) || !in_array($mimeType, $validCombinations[$extension])) {

@@ -14,10 +14,15 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use App\Services\ComprehensiveErrorHandlingService;
 use Throwable;
 
 class Handler extends ExceptionHandler
 {
+    /**
+     * Comprehensive error handling service
+     */
+    protected $errorHandlingService;
     /**
      * A list of exception types with their corresponding custom log levels.
      *
@@ -59,6 +64,18 @@ class Handler extends ExceptionHandler
     public function register()
     {
         $this->reportable(function (Throwable $e) {
+            // Initialize error handling service only when needed
+            if (!$this->errorHandlingService) {
+                $this->errorHandlingService = app(ComprehensiveErrorHandlingService::class);
+            }
+            
+            // Use comprehensive error handling service
+            $request = request();
+            $this->errorHandlingService->handleError($e, $request, [
+                'handler' => 'exception_handler',
+                'reported_at' => now()
+            ]);
+
             // Log security-related exceptions with additional context
             if ($this->isSecurityException($e)) {
                 Log::warning('Security exception occurred', [
@@ -79,6 +96,11 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $e)
     {
+        // Unified JSON error response for API requests
+        if ($request->expectsJson()) {
+            return $this->renderJsonError($request, $e);
+        }
+
         // Handle authentication exceptions
         if ($e instanceof AuthenticationException) {
             return $this->handleUnauthenticated($request, $e);
@@ -100,6 +122,167 @@ class Handler extends ExceptionHandler
         }
 
         return parent::render($request, $e);
+    }
+
+    /**
+     * Render unified JSON error response
+     */
+    protected function renderJsonError($request, Throwable $exception)
+    {
+        $statusCode = $this->getStatusCode($exception);
+        $errorCode = $this->getErrorCode($exception);
+        $message = $this->getErrorMessage($exception);
+
+        // Log the error with context
+        Log::error('API Error Response', [
+            'exception' => get_class($exception),
+            'message' => $exception->getMessage(),
+            'status_code' => $statusCode,
+            'error_code' => $errorCode,
+            'user_id' => Auth::id(),
+            'ip' => $request->ip(),
+            'url' => $request->fullUrl(),
+            'method' => $request->method(),
+            'timestamp' => now(),
+        ]);
+
+        $response = [
+            'error' => $message,
+            'code' => $errorCode,
+            'status_code' => $statusCode,
+            'timestamp' => now()->toISOString(),
+        ];
+
+        // Add validation errors if applicable
+        if ($exception instanceof ValidationException) {
+            $response['errors'] = $exception->errors();
+        }
+
+        // Add debug information in non-production environments
+        if (config('app.debug') && !app()->environment('production')) {
+            $response['debug'] = [
+                'exception' => get_class($exception),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+                'trace' => collect($exception->getTrace())->take(5)->toArray(),
+            ];
+        }
+
+        return response()->json($response, $statusCode);
+    }
+
+    /**
+     * Get appropriate HTTP status code for exception
+     */
+    protected function getStatusCode(Throwable $exception): int
+    {
+        if ($exception instanceof HttpException) {
+            return $exception->getStatusCode();
+        }
+
+        if ($exception instanceof AuthenticationException) {
+            return 401;
+        }
+
+        if ($exception instanceof AuthorizationException) {
+            return 403;
+        }
+
+        if ($exception instanceof ValidationException) {
+            return 422;
+        }
+
+        if ($exception instanceof TokenMismatchException) {
+            return 419;
+        }
+
+        if ($exception instanceof NotFoundHttpException) {
+            return 404;
+        }
+
+        if ($exception instanceof MethodNotAllowedHttpException) {
+            return 405;
+        }
+
+        // Default to 500 for unhandled exceptions
+        return 500;
+    }
+
+    /**
+     * Get error code for exception
+     */
+    protected function getErrorCode(Throwable $exception): string
+    {
+        if ($exception instanceof AuthenticationException) {
+            return 'AUTHENTICATION_REQUIRED';
+        }
+
+        if ($exception instanceof AuthorizationException) {
+            return 'INSUFFICIENT_PERMISSIONS';
+        }
+
+        if ($exception instanceof ValidationException) {
+            return 'VALIDATION_ERROR';
+        }
+
+        if ($exception instanceof TokenMismatchException) {
+            return 'CSRF_TOKEN_MISMATCH';
+        }
+
+        if ($exception instanceof NotFoundHttpException) {
+            return 'RESOURCE_NOT_FOUND';
+        }
+
+        if ($exception instanceof MethodNotAllowedHttpException) {
+            return 'METHOD_NOT_ALLOWED';
+        }
+
+        if ($exception instanceof HttpException) {
+            return 'HTTP_' . $exception->getStatusCode();
+        }
+
+        return 'INTERNAL_SERVER_ERROR';
+    }
+
+    /**
+     * Get user-friendly error message
+     */
+    protected function getErrorMessage(Throwable $exception): string
+    {
+        if ($exception instanceof AuthenticationException) {
+            return 'Authentication required to access this resource.';
+        }
+
+        if ($exception instanceof AuthorizationException) {
+            return $exception->getMessage() ?: 'You do not have permission to access this resource.';
+        }
+
+        if ($exception instanceof ValidationException) {
+            return 'The given data was invalid.';
+        }
+
+        if ($exception instanceof TokenMismatchException) {
+            return 'The provided CSRF token is invalid. Please refresh the page and try again.';
+        }
+
+        if ($exception instanceof NotFoundHttpException) {
+            return 'The requested resource was not found.';
+        }
+
+        if ($exception instanceof MethodNotAllowedHttpException) {
+            return 'The specified method for the request is invalid.';
+        }
+
+        if ($exception instanceof HttpException) {
+            return $exception->getMessage() ?: 'An error occurred while processing your request.';
+        }
+
+        // For production, return generic message
+        if (app()->environment('production')) {
+            return 'An unexpected error occurred. Please try again later.';
+        }
+
+        return $exception->getMessage() ?: 'An unexpected error occurred.';
     }
 
     /**

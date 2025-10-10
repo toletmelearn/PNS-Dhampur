@@ -201,7 +201,7 @@
                                         @endif
                                     </div>
                                     <div class="text-end">
-                                        {!! $activity->status_badge !!}
+                                        <span class="badge {{ $activity->status_badge_class }}">{{ $activity->status_badge }}</span>
                                         <br><small class="text-muted">{{ $activity->created_at->diffForHumans() }}</small>
                                     </div>
                                 </div>

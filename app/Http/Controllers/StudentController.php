@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreStudentRequest;
+use App\Http\Traits\FileUploadValidationTrait;
+use App\Http\Traits\StudentValidationTrait;
 use App\Models\Student;
 use App\Models\StudentDocument;
 use App\Models\StudentVerification;
@@ -27,7 +29,7 @@ use Illuminate\Support\Facades\Auth;
 
 class StudentController extends Controller
 {
-    use HandlesApiResponses;
+    use HandlesApiResponses, FileUploadValidationTrait, StudentValidationTrait;
 
     protected $searchService;
 
@@ -49,18 +51,34 @@ class StudentController extends Controller
             }
 
             // Get search results using the enhanced search service
-            $results = $this->searchService->search($request);
+            $query = $this->searchService->search($request);
+            
+            // Apply sorting
+            $query = $this->searchService->applySorting($query, $request);
+            
+            // Paginate results to prevent memory issues
+            $perPage = $request->get('per_page', 25);
+            $perPage = min($perPage, 100); // Maximum 100 per page
+            $results = $query->paginate($perPage);
             
             // Get filter options for the UI
             $filterOptions = $this->searchService->getFilterOptions();
             
             // Get search statistics
-            $searchStats = $this->searchService->getSearchStatistics($request);
+            $searchStats = $this->searchService->getSearchStats($query->getQuery());
 
             // Return JSON for API requests
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
-                    'students' => $results,
+                    'students' => $results->items(),
+                    'pagination' => [
+                        'current_page' => $results->currentPage(),
+                        'last_page' => $results->lastPage(),
+                        'per_page' => $results->perPage(),
+                        'total' => $results->total(),
+                        'from' => $results->firstItem(),
+                        'to' => $results->lastItem(),
+                    ],
                     'filter_options' => $filterOptions,
                     'search_stats' => $searchStats,
                     'current_filters' => $request->only([
@@ -142,12 +160,7 @@ class StudentController extends Controller
      */
     public function saveSearch(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:500',
-            'is_public' => 'nullable|boolean',
-            'is_default' => 'nullable|boolean'
-        ]);
+        $request->validate($this->getStudentSearchValidationRules());
 
         try {
             $savedSearch = SavedSearch::createFromRequest(
@@ -468,15 +481,7 @@ class StudentController extends Controller
     // POST /api/students/{id}/verify
     public function verify(Request $request, Student $student)
     {
-        $payload = $request->validate([
-            'verified_data' => 'required|array',
-            'verified_data.name' => 'sometimes|string',
-            'verified_data.father_name' => 'sometimes|string',
-            'verified_data.mother_name' => 'sometimes|string',
-            'verified_data.dob' => 'sometimes|date',
-            'verified_data.aadhaar' => 'sometimes|string',
-            'force' => 'nullable|boolean'
-        ]);
+        $payload = $request->validate($this->getStudentVerificationValidationRules());
 
         $verifiedData = $payload['verified_data'];
 
@@ -520,17 +525,11 @@ class StudentController extends Controller
     // Enhanced secure file storage method
     protected function storeFileSecurely($file, $dir)
     {
-        // Validate file type and size
-        $allowedMimes = ['pdf', 'jpg', 'jpeg', 'png'];
-        // Update file size limit based on configuration
-            $maxSize = config('fileupload.max_file_sizes.document'); // Get from config instead of hardcoded value
+        // Use enhanced file validation with virus scanning
+        $validationResult = $this->validateFileWithSecurity($file, 'document');
         
-        if (!in_array($file->getClientOriginalExtension(), $allowedMimes)) {
-            throw new \Exception('Invalid file type. Only PDF, JPG, JPEG, and PNG files are allowed.');
-        }
-        
-        if ($file->getSize() > ($maxSize * 1024)) {
-            throw new \Exception('File size exceeds 2MB limit.');
+        if (!$validationResult['valid']) {
+            throw new \Exception($validationResult['error']);
         }
         
         // Generate secure filename
@@ -827,15 +826,23 @@ class StudentController extends Controller
     public function bulkDocumentUpload(Request $request)
     {
         try {
-            $request->validate([
+            // Use enhanced validation rules from trait
+            $validationRules = [
                 'student_ids' => 'required|array|min:1',
                 'student_ids.*' => 'exists:students,id',
                 'document_type' => 'required|in:birth_cert,aadhaar,photo,other',
                 'documents' => 'required|array|min:1',
-                'documents.*' => 'file|mimes:pdf,jpg,jpeg,png|max:5120', // 5MB max
                 'document_names' => 'nullable|array',
                 'document_names.*' => 'nullable|string|max:255'
+            ];
+            
+            // Add file validation rules from trait
+            $fileRules = $this->getMultipleFilesValidationRules(['pdf', 'jpg', 'jpeg', 'png'], 5120, 50);
+            $validationRules = array_merge($validationRules, [
+                'documents.*' => $fileRules['files.*']
             ]);
+
+            $request->validate($validationRules, $this->getFileUploadValidationMessages());
 
             $studentIds = $request->student_ids;
             $documentType = $request->document_type;
@@ -848,12 +855,22 @@ class StudentController extends Controller
 
             $uploadedFiles = [];
             $updatedStudents = 0;
+            $validationErrors = [];
 
             foreach ($studentIds as $index => $studentId) {
                 $student = Student::find($studentId);
                 if (!$student) continue;
 
                 $document = $documents[$index];
+                
+                // Use enhanced file validation with virus scanning
+                $validationResult = $this->validateFileWithSecurity($document, 'document');
+                
+                if (!$validationResult['valid']) {
+                    $validationErrors[] = "Student {$student->name}: {$validationResult['error']}";
+                    continue;
+                }
+
                 $customName = $documentNames[$index] ?? null;
 
                 // Generate file name
@@ -883,6 +900,19 @@ class StudentController extends Controller
                 ];
 
                 $updatedStudents++;
+            }
+            
+            // If there were validation errors, include them in the response
+            if (!empty($validationErrors)) {
+                $errorMessage = "Some files failed validation: " . implode(', ', $validationErrors);
+                if ($updatedStudents === 0) {
+                    throw new \Exception($errorMessage);
+                }
+                // Log warnings for partial success
+                \Log::warning('Bulk document upload had validation errors', [
+                    'errors' => $validationErrors,
+                    'successful_uploads' => $updatedStudents
+                ]);
             }
 
             \Log::info('Bulk document upload completed', [

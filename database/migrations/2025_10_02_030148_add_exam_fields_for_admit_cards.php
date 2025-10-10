@@ -26,7 +26,33 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('exams', function (Blueprint $table) {
-            $table->dropColumn(['subject', 'start_time', 'end_time', 'duration', 'total_marks']);
+            if (Schema::hasColumn('exams', 'subject')) {
+                $table->dropColumn('subject');
+            }
+        });
+        
+        Schema::table('exams', function (Blueprint $table) {
+            if (Schema::hasColumn('exams', 'start_time')) {
+                $table->dropColumn('start_time');
+            }
+        });
+        
+        Schema::table('exams', function (Blueprint $table) {
+            if (Schema::hasColumn('exams', 'end_time')) {
+                $table->dropColumn('end_time');
+            }
+        });
+        
+        Schema::table('exams', function (Blueprint $table) {
+            if (Schema::hasColumn('exams', 'duration')) {
+                $table->dropColumn('duration');
+            }
+        });
+        
+        Schema::table('exams', function (Blueprint $table) {
+            if (Schema::hasColumn('exams', 'total_marks')) {
+                $table->dropColumn('total_marks');
+            }
         });
     }
 };

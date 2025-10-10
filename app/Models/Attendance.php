@@ -128,16 +128,32 @@ class Attendance extends Model
 
     public function getStatusBadgeAttribute()
     {
-        $badges = [
-            self::STATUS_PRESENT => '<span class="badge bg-success">Present</span>',
-            self::STATUS_ABSENT => '<span class="badge bg-danger">Absent</span>',
-            self::STATUS_LATE => '<span class="badge bg-warning">Late</span>',
-            self::STATUS_EXCUSED => '<span class="badge bg-info">Excused</span>',
-            self::STATUS_SICK => '<span class="badge bg-secondary">Sick</span>',
-            self::STATUS_HOLIDAY => '<span class="badge bg-primary">Holiday</span>',
+        // Return safe status text only - HTML should be handled in views
+        $statuses = [
+            self::STATUS_PRESENT => 'Present',
+            self::STATUS_ABSENT => 'Absent',
+            self::STATUS_LATE => 'Late',
+            self::STATUS_EXCUSED => 'Excused',
+            self::STATUS_SICK => 'Sick',
+            self::STATUS_HOLIDAY => 'Holiday',
         ];
 
-        return $badges[$this->status] ?? '<span class="badge bg-light">Unknown</span>';
+        return $statuses[$this->status] ?? 'Unknown';
+    }
+
+    public function getStatusBadgeClassAttribute()
+    {
+        // Return CSS class for safe styling
+        $classes = [
+            self::STATUS_PRESENT => 'bg-success',
+            self::STATUS_ABSENT => 'bg-danger',
+            self::STATUS_LATE => 'bg-warning',
+            self::STATUS_EXCUSED => 'bg-info',
+            self::STATUS_SICK => 'bg-secondary',
+            self::STATUS_HOLIDAY => 'bg-primary',
+        ];
+
+        return $classes[$this->status] ?? 'bg-light';
     }
 
     public function getFormattedDateAttribute()

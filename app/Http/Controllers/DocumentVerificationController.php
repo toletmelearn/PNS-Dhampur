@@ -101,7 +101,12 @@ class DocumentVerificationController extends Controller
         try {
             // Store the file
             $file = $request->file('document_file');
-            $fileName = time() . '_' . $file->getClientOriginalName();
+            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $extension = $file->getClientOriginalExtension();
+            
+            // Generate secure filename
+            $sanitizedName = Str::slug($originalName);
+            $fileName = $sanitizedName . '_' . time() . '_' . Str::random(8) . '.' . $extension;
             $filePath = $file->storeAs('documents/verification', $fileName);
 
             // Generate file hash

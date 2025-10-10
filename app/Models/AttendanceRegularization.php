@@ -91,13 +91,26 @@ class AttendanceRegularization extends Model
     // Accessors
     public function getStatusBadgeAttribute()
     {
-        $badges = [
-            'pending' => '<span class="badge bg-warning">Pending</span>',
-            'approved' => '<span class="badge bg-success">Approved</span>',
-            'rejected' => '<span class="badge bg-danger">Rejected</span>'
+        // Return safe status text only - HTML should be handled in views
+        $statuses = [
+            'pending' => 'Pending',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected'
         ];
 
-        return $badges[$this->status] ?? '<span class="badge bg-secondary">Unknown</span>';
+        return $statuses[$this->status] ?? 'Unknown';
+    }
+
+    public function getStatusBadgeClassAttribute()
+    {
+        // Return CSS class for safe styling
+        $classes = [
+            'pending' => 'bg-warning',
+            'approved' => 'bg-success',
+            'rejected' => 'bg-danger'
+        ];
+
+        return $classes[$this->status] ?? 'bg-secondary';
     }
 
     public function getRequestTypeDisplayAttribute()

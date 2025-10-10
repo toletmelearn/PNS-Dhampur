@@ -317,6 +317,12 @@
                                     <div>
                                         <h6 class="mb-0">{{ $teacher->user->name }}</h6>
                                         <small class="text-muted">ID: {{ $teacher->id }}</small>
+                                        <div class="mt-1">
+                                            <small class="text-info">Classes: {{ $teacher->classes_count }}</small>
+                                            @if($teacher->salaries_sum_amount)
+                                                <small class="text-success ms-2">Total Paid: ₹{{ number_format($teacher->salaries_sum_amount) }}</small>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </td>
@@ -335,7 +341,12 @@
                                 <span class="experience-badge">{{ $teacher->experience_years }} Years</span>
                             </td>
                             <td>
-                                <strong>₹{{ number_format($teacher->salary) }}</strong>
+                                <div>
+                                    <strong>₹{{ number_format($teacher->salary) }}</strong>
+                                    @if($teacher->salaries_avg_amount)
+                                        <br><small class="text-muted">Avg: ₹{{ number_format($teacher->salaries_avg_amount) }}</small>
+                                    @endif
+                                </div>
                             </td>
                             <td>
                                 <span class="status-badge status-{{ $teacher->user->status }}">

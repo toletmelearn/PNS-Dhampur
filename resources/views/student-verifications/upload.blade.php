@@ -205,7 +205,7 @@ $(document).ready(function() {
     // Initialize enhanced file upload with specific configuration
     const uploader = new EnhancedFileUpload({
         maxFileSize: {{ config('fileupload.max_file_sizes.document') }},
-        allowedTypes: {!! json_encode(explode(',', config('fileupload.allowed_file_types.verification.extensions'))) !!},
+        allowedTypes: @json(explode(',', config('fileupload.allowed_file_types.verification.extensions'))),
         dropZone: '#upload-area',
         fileInput: '#document_file',
         previewContainer: '#file-preview',

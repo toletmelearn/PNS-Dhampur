@@ -329,13 +329,14 @@
                                 <label class="form-label required-field">Aadhaar Number</label>
                                 <input type="text" class="form-control @error('aadhaar') is-invalid @enderror" 
                                        name="aadhaar" id="aadhaar" value="{{ old('aadhaar') }}" 
-                                       placeholder="XXXX-XXXX-XXXX" 
+                                       placeholder="Enter 12-digit Aadhaar number" 
                                        required
-                                       minlength="12" maxlength="14" 
-                                       pattern="[0-9]{4}[-\s]?[0-9]{4}[-\s]?[0-9]{4}"
+                                       minlength="12" 
+                                       maxlength="12" 
+                                       pattern="[0-9]{12}"
                                        data-validation="aadhaar"
                                        autocomplete="off"
-                                       title="Please enter a valid 12-digit Aadhaar number">
+                                       title="12-digit Aadhaar number">
                                 <div class="invalid-feedback" id="aadhaar-error"></div>
                                 <div class="valid-feedback" id="aadhaar-success">
                                     <i class="fas fa-check-circle me-1"></i>Valid Aadhaar number
@@ -427,6 +428,7 @@
                                 <input type="email" class="form-control @error('email') is-invalid @enderror" 
                                        name="email" id="email" value="{{ old('email') }}"
                                        placeholder="student@example.com"
+                                       required
                                        pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
                                        title="Please enter a valid email address"
                                        data-validation="email">
@@ -572,7 +574,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize enhanced file upload for birth certificate
     const birthCertUploader = new EnhancedFileUpload({
         maxFileSize: {{ config('fileupload.max_file_sizes.document') }},
-        allowedTypes: {!! json_encode(explode(',', config('fileupload.allowed_file_types.document.extensions'))) !!},
+        allowedTypes: @json(explode(',', config('fileupload.allowed_file_types.document.extensions'))),
         dropZone: '#birth-cert-drop-zone',
         fileInput: '#birth_cert',
         previewContainer: '#birth-cert-preview',
@@ -582,7 +584,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize enhanced file upload for Aadhaar
     const aadhaarUploader = new EnhancedFileUpload({
         maxFileSize: {{ config('fileupload.max_file_sizes.document') }},
-        allowedTypes: {!! json_encode(explode(',', config('fileupload.allowed_file_types.document.extensions'))) !!},
+        allowedTypes: @json(explode(',', config('fileupload.allowed_file_types.document.extensions'))),
         dropZone: '#aadhaar-drop-zone',
         fileInput: '#aadhaar_file',
         previewContainer: '#aadhaar-preview',
@@ -592,7 +594,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize enhanced file upload for other documents (multiple files)
     const otherDocsUploader = new EnhancedFileUpload({
         maxFileSize: {{ config('fileupload.max_file_sizes.document') }},
-        allowedTypes: {!! json_encode(explode(',', config('fileupload.allowed_file_types.document.extensions'))) !!},
+        allowedTypes: @json(explode(',', config('fileupload.allowed_file_types.document.extensions'))),
         dropZone: '#other-docs-drop-zone',
         fileInput: '#other_docs',
         previewContainer: '#other-docs-preview',

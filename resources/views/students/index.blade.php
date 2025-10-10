@@ -566,6 +566,12 @@
                                         <td>
                                             @if($student->contact_number)
                                                 <span class="fw-semibold">{{ $student->contact_number }}</span>
+                                                @if($student->attendance_total_count > 0)
+                                                    <br><small class="text-muted">
+                                                        Attendance: {{ $student->attendance_present_count }}/{{ $student->attendance_total_count }}
+                                                        ({{ round(($student->attendance_present_count / $student->attendance_total_count) * 100, 1) }}%)
+                                                    </small>
+                                                @endif
                                             @else
                                                 <span class="text-muted">N/A</span>
                                             @endif
@@ -587,6 +593,11 @@
                                                 @default
                                                     <span class="badge badge-status bg-secondary">Unknown</span>
                                             @endswitch
+                                            @if($student->fees_total_sum > 0)
+                                                <br><small class="text-muted">
+                                                    Fees: ₹{{ number_format($student->fees_paid_sum ?? 0) }}/₹{{ number_format($student->fees_total_sum) }}
+                                                </small>
+                                            @endif
                                         </td>
                                         <td>
                                             @switch($student->verification_status ?? 'pending')

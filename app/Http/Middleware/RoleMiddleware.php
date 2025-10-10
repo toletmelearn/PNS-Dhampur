@@ -8,116 +8,115 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use App\Models\Role;
-use Carbon\Carbon;
+use App\Services\ComprehensiveErrorHandlingService;
 
 class RoleMiddleware
 {
+    protected $errorHandlingService;
+
     /**
-     * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
-     * @param  string  ...$roles
-     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
+     * Get the error handling service instance (lazy loading)
+     */
+    protected function getErrorHandlingService()
+    {
+        if (!$this->errorHandlingService) {
+            $this->errorHandlingService = app(ComprehensiveErrorHandlingService::class);
+        }
+        return $this->errorHandlingService;
+    }
+
+    /**
+     * Handle an incoming request with enhanced role hierarchy checking
      */
     public function handle(Request $request, Closure $next, ...$roles)
     {
         // Enhanced authentication validation
-        if (!$this->isProperlyAuthenticated($request)) {
-            $this->logSecurityEvent($request, 'authentication_failed', [
-                'reason' => 'User not properly authenticated',
-                'session_id' => Session::getId()
+        if (!$this->isAuthenticated($request)) {
+            $this->logSecurityEvent('authentication_failed', [
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'route' => $request->route()?->getName(),
+                'url' => $request->fullUrl(),
+                'method' => $request->method(),
+                'timestamp' => now()->toISOString()
             ]);
-            
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'error' => 'Unauthorized',
-                    'message' => 'Authentication required'
-                ], 401);
-            }
-            
-            return redirect()->route('login')->with('error', 'Please login to access this page.');
+
+            return $this->handleUnauthorized($request, 'Authentication required');
         }
 
         $user = Auth::user();
 
         // Check if user can access attendance module
         if (!$user->canAccessAttendance()) {
-            $this->logSecurityEvent($request, 'attendance_access_denied', [
+            $this->logSecurityEvent('attendance_access_denied', [
                 'user_id' => $user->id,
-                'user_role' => $user->role
+                'user_role' => $user->role,
+                'ip' => $request->ip(),
+                'route' => $request->route()?->getName(),
+                'timestamp' => now()->toISOString()
             ]);
-            
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'error' => 'Forbidden',
-                    'message' => 'Access denied to attendance module'
-                ], 403);
-            }
-            
-            return redirect()->route('dashboard')->with('error', 'You do not have access to the attendance module.');
+
+            return $this->handleUnauthorized($request, 'Access to attendance module denied');
         }
 
-        // If no specific roles are required, allow access
-        if (empty($roles)) {
-            return $next($request);
+        // Enhanced session integrity checks
+        if (!$this->validateSessionIntegrity($request, $user)) {
+            return $this->handleUnauthorized($request, 'Session integrity validation failed');
         }
 
-        // Parse roles - handle comma-separated strings from route definitions
-        $parsedRoles = $this->parseRequiredRoles($roles);
+        // Parse required roles and permissions
+        $requiredRoles = $this->parseRequiredRoles($roles);
+        $requiredPermissions = $this->extractPermissions($roles);
 
-        // Enhanced role checking with hierarchy and admin override
-        if ($this->hasRequiredAccess($user, $parsedRoles, $request)) {
-            return $next($request);
+        // Enhanced role and permission checking with hierarchy
+        if (!$this->hasRequiredAccess($user, $requiredRoles, $requiredPermissions, $request)) {
+            $this->logSecurityEvent('access_denied', [
+                'user_id' => $user->id,
+                'user_role' => $user->role,
+                'user_level' => $user->getRoleLevel(),
+                'required_roles' => $requiredRoles,
+                'required_permissions' => $requiredPermissions,
+                'ip' => $request->ip(),
+                'route' => $request->route()?->getName(),
+                'url' => $request->fullUrl(),
+                'method' => $request->method(),
+                'timestamp' => now()->toISOString()
+            ]);
+
+            return $this->handleUnauthorized($request, 'Insufficient privileges for this action');
         }
 
-        // Log unauthorized access attempt
-        $this->logSecurityEvent($request, 'role_access_denied', [
+        // Log successful access for audit trail
+        $this->logSecurityEvent('access_granted', [
             'user_id' => $user->id,
             'user_role' => $user->role,
-            'user_role_level' => $user->getRoleLevel(),
-            'required_roles' => $parsedRoles,
-            'route' => $request->route() ? $request->route()->getName() : null,
-            'url' => $request->fullUrl()
-        ]);
+            'user_level' => $user->getRoleLevel(),
+            'route' => $request->route()?->getName(),
+            'method' => $request->method(),
+            'timestamp' => now()->toISOString()
+        ], 'info');
 
-        if ($request->expectsJson()) {
-            return response()->json([
-                'error' => 'Forbidden',
-                'message' => 'Insufficient privileges. Required roles: ' . implode(', ', $parsedRoles),
-                'user_role' => $user->role,
-                'user_role_level' => $user->getRoleLevel(),
-                'required_roles' => $parsedRoles,
-                'timestamp' => now()->toISOString()
-            ], 403);
-        }
-        
-        return redirect()->route('dashboard')->with('error', 
-            'Access denied. You need one of the following roles: ' . implode(', ', array_map(function($role) {
-                return Role::getRoleName($role);
-            }, $parsedRoles))
-        );
+        return $next($request);
     }
 
     /**
      * Enhanced authentication validation
      */
-    private function isProperlyAuthenticated(Request $request): bool
+    protected function isAuthenticated(Request $request): bool
     {
-        // Basic authentication check
         if (!Auth::check()) {
             return false;
         }
 
         $user = Auth::user();
-
-        // Validate session integrity
-        if (!$this->validateSessionIntegrity($request, $user)) {
+        
+        // Additional validation checks
+        if (!$user || !$user->id) {
             return false;
         }
 
-        // Check for session hijacking indicators
-        if ($this->detectSessionHijacking($request, $user)) {
+        // Check if user account is active (if soft deletes are used)
+        if (method_exists($user, 'trashed') && $user->trashed()) {
             return false;
         }
 
@@ -125,210 +124,304 @@ class RoleMiddleware
     }
 
     /**
-     * Validate session integrity
+     * Enhanced session integrity validation
      */
-    private function validateSessionIntegrity(Request $request, $user): bool
+    protected function validateSessionIntegrity(Request $request, $user): bool
     {
-        // Check if session has required authentication markers
-        if (!Session::has('login_time') || !Session::has('user_agent_hash')) {
-            return false;
-        }
-
-        // Validate user agent consistency
-        $currentUserAgentHash = hash('sha256', $request->userAgent() ?? '');
-        $sessionUserAgentHash = Session::get('user_agent_hash');
-        
-        if ($currentUserAgentHash !== $sessionUserAgentHash) {
-            Log::warning('Session user agent mismatch detected', [
+        // Check for session hijacking indicators
+        if ($this->detectSessionHijacking($request, $user)) {
+            $this->logSecurityEvent('session_hijacking_detected', [
                 'user_id' => $user->id,
                 'ip' => $request->ip(),
-                'current_hash' => $currentUserAgentHash,
-                'session_hash' => $sessionUserAgentHash
+                'user_agent' => $request->userAgent(),
+                'session_id' => Session::getId(),
+                'timestamp' => now()->toISOString()
             ]);
+            
+            Auth::logout();
+            Session::invalidate();
+            Session::regenerateToken();
+            
             return false;
         }
 
         // Check session timeout based on role
-        $loginTime = Session::get('login_time');
         $sessionTimeout = $this->getSessionTimeoutForRole($user->role);
+        $lastActivity = Session::get('last_activity', time());
         
-        if (Carbon::parse($loginTime)->addMinutes($sessionTimeout)->isPast()) {
+        if (time() - $lastActivity > $sessionTimeout) {
+            $this->logSecurityEvent('session_timeout', [
+                'user_id' => $user->id,
+                'role' => $user->role,
+                'timeout_duration' => $sessionTimeout,
+                'last_activity' => date('Y-m-d H:i:s', $lastActivity),
+                'timestamp' => now()->toISOString()
+            ]);
+            
+            Auth::logout();
+            Session::invalidate();
+            Session::regenerateToken();
+            
             return false;
         }
 
+        // Update last activity
+        Session::put('last_activity', time());
+        
         return true;
     }
 
     /**
      * Detect potential session hijacking
      */
-    private function detectSessionHijacking(Request $request, $user): bool
+    protected function detectSessionHijacking(Request $request, $user): bool
     {
         $currentIp = $request->ip();
-        $sessionIp = Session::get('login_ip');
-
-        // Allow IP changes for mobile users but log them
-        if ($sessionIp && $currentIp !== $sessionIp) {
-            Log::info('IP address change detected', [
-                'user_id' => $user->id,
-                'session_ip' => $sessionIp,
-                'current_ip' => $currentIp,
-                'user_agent' => $request->userAgent()
-            ]);
-            
-            // Update session IP for legitimate IP changes
-            Session::put('login_ip', $currentIp);
+        $currentUserAgent = $request->userAgent();
+        
+        $sessionIp = Session::get('user_ip');
+        $sessionUserAgent = Session::get('user_agent');
+        
+        // First time setting session data
+        if (!$sessionIp || !$sessionUserAgent) {
+            Session::put('user_ip', $currentIp);
+            Session::put('user_agent', $currentUserAgent);
+            return false;
         }
+        
+        // Check for IP address changes (allow for reasonable IP changes)
+        if ($sessionIp !== $currentIp) {
+            // Allow IP changes within the same subnet for dynamic IPs
+            if (!$this->isIpInSameSubnet($sessionIp, $currentIp)) {
+                return true;
+            }
+        }
+        
+        // Check for user agent changes
+        if ($sessionUserAgent !== $currentUserAgent) {
+            return true;
+        }
+        
+        return false;
+    }
 
-        return false; // For now, we don't block on IP changes
+    /**
+     * Check if two IPs are in the same subnet
+     */
+    protected function isIpInSameSubnet($ip1, $ip2): bool
+    {
+        // Simple subnet check for /24 networks
+        $subnet1 = substr($ip1, 0, strrpos($ip1, '.'));
+        $subnet2 = substr($ip2, 0, strrpos($ip2, '.'));
+        
+        return $subnet1 === $subnet2;
     }
 
     /**
      * Parse required roles from middleware parameters
      */
-    private function parseRequiredRoles(array $roles): array
+    protected function parseRequiredRoles(array $roles): array
     {
         $parsedRoles = [];
+        
         foreach ($roles as $role) {
-            if (strpos($role, ',') !== false) {
-                // Split comma-separated role string
-                $parsedRoles = array_merge($parsedRoles, array_map('trim', explode(',', $role)));
+            // Handle role with minimum level requirement (e.g., "teacher:2")
+            if (strpos($role, ':') !== false) {
+                [$roleName, $minLevel] = explode(':', $role, 2);
+                $parsedRoles[] = [
+                    'name' => $roleName,
+                    'min_level' => (int)$minLevel
+                ];
             } else {
-                $parsedRoles[] = $role;
+                $parsedRoles[] = [
+                    'name' => $role,
+                    'min_level' => null
+                ];
             }
         }
+        
         return $parsedRoles;
     }
 
     /**
-     * Enhanced role checking with hierarchy and admin override
+     * Extract permission requirements from roles
      */
-    private function hasRequiredAccess($user, array $requiredRoles, Request $request): bool
+    protected function extractPermissions(array $roles): array
     {
-        // Admin override: Admins can access everything except student-specific routes
-        if ($this->hasAdminOverride($user, $requiredRoles, $request)) {
-            $this->logSecurityEvent($request, 'admin_override_used', [
-                'user_id' => $user->id,
-                'user_role' => $user->role,
-                'required_roles' => $requiredRoles,
-                'route' => $request->route() ? $request->route()->getName() : null
-            ]);
-            return true;
+        $permissions = [];
+        
+        foreach ($roles as $role) {
+            // Handle permission requirements (e.g., "permission:attendance.view_all")
+            if (strpos($role, 'permission:') === 0) {
+                $permissions[] = substr($role, 11); // Remove "permission:" prefix
+            }
         }
-
-        // Check direct role match
-        if ($user->hasAnyRole($requiredRoles)) {
-            return true;
-        }
-
-        // Check role hierarchy (higher level roles can access lower level resources)
-        if ($this->hasHierarchicalAccess($user, $requiredRoles)) {
-            $this->logSecurityEvent($request, 'hierarchical_access_granted', [
-                'user_id' => $user->id,
-                'user_role' => $user->role,
-                'user_role_level' => $user->getRoleLevel(),
-                'required_roles' => $requiredRoles,
-                'route' => $request->route() ? $request->route()->getName() : null
-            ]);
-            return true;
-        }
-
-        return false;
+        
+        return $permissions;
     }
 
     /**
-     * Check if user has admin override privileges
+     * Enhanced access checking with role hierarchy and permissions
      */
-    private function hasAdminOverride($user, array $requiredRoles, Request $request): bool
+    protected function hasRequiredAccess($user, array $requiredRoles, array $requiredPermissions, Request $request): bool
     {
-        // Only admin, principal, and IT roles have override privileges
-        if (!$user->hasAnyRole(['admin', 'principal', 'it'])) {
-            return false;
-        }
-
-        // Admin override restrictions: Cannot access student-only routes
-        $studentOnlyRoutes = [
-            'student.profile',
-            'student.attendance.view',
-            'student.grades.view'
-        ];
-
-        $currentRoute = $request->route() ? $request->route()->getName() : '';
+        $userRole = $user->role;
+        $userLevel = $user->getRoleLevel();
         
-        // Block admin override for student-specific functionality
-        if (in_array($currentRoute, $studentOnlyRoutes) && in_array('student', $requiredRoles)) {
-            return false;
+        // Admin override with enhanced security checks
+        if ($this->hasAdminOverride($user, $request)) {
+            $this->logSecurityEvent('admin_override_used', [
+                'user_id' => $user->id,
+                'user_role' => $userRole,
+                'route' => $request->route()?->getName(),
+                'timestamp' => now()->toISOString()
+            ], 'info');
+            return true;
         }
 
-        // Block admin override if explicitly requiring student role only
-        if (count($requiredRoles) === 1 && $requiredRoles[0] === 'student') {
-            return false;
+        // Check specific role requirements
+        if (!empty($requiredRoles)) {
+            $hasRoleAccess = false;
+            
+            foreach ($requiredRoles as $roleRequirement) {
+                $requiredRole = $roleRequirement['name'];
+                $minLevel = $roleRequirement['min_level'];
+                
+                // Direct role match
+                if ($userRole === $requiredRole) {
+                    $hasRoleAccess = true;
+                    break;
+                }
+                
+                // Hierarchical access check
+                if ($minLevel !== null && $userLevel >= $minLevel) {
+                    $hasRoleAccess = true;
+                    break;
+                }
+                
+                // Check if user role has higher hierarchy than required role
+                $requiredRoleLevel = Role::getRoleLevel($requiredRole);
+                if ($userLevel >= $requiredRoleLevel) {
+                    $hasRoleAccess = true;
+                    break;
+                }
+            }
+            
+            if (!$hasRoleAccess) {
+                return false;
+            }
+        }
+
+        // Check specific permission requirements
+        if (!empty($requiredPermissions)) {
+            foreach ($requiredPermissions as $permission) {
+                if (!$user->hasPermission($permission)) {
+                    $this->logSecurityEvent('permission_denied', [
+                        'user_id' => $user->id,
+                        'user_role' => $userRole,
+                        'required_permission' => $permission,
+                        'route' => $request->route()?->getName(),
+                        'timestamp' => now()->toISOString()
+                    ]);
+                    return false;
+                }
+            }
         }
 
         return true;
     }
 
     /**
-     * Check hierarchical access based on role levels
+     * Enhanced admin override with security restrictions
      */
-    private function hasHierarchicalAccess($user, array $requiredRoles): bool
+    protected function hasAdminOverride($user, Request $request): bool
     {
-        $userLevel = $user->getRoleLevel();
+        $adminRoles = ['admin', 'principal', 'it'];
         
-        foreach ($requiredRoles as $requiredRole) {
-            $requiredLevel = Role::getRoleLevel($requiredRole);
-            
-            // Users with higher or equal role level can access lower level resources
-            if ($userLevel >= $requiredLevel) {
-                return true;
-            }
+        if (!in_array($user->role, $adminRoles)) {
+            return false;
         }
-
-        return false;
+        
+        // Restrict admin access to student-only routes for security
+        $studentOnlyRoutes = [
+            'student.attendance.view',
+            'student.profile.basic',
+            'student.reports.own'
+        ];
+        
+        $currentRoute = $request->route()?->getName();
+        if (in_array($currentRoute, $studentOnlyRoutes)) {
+            $this->logSecurityEvent('admin_student_route_blocked', [
+                'user_id' => $user->id,
+                'user_role' => $user->role,
+                'blocked_route' => $currentRoute,
+                'timestamp' => now()->toISOString()
+            ]);
+            return false;
+        }
+        
+        return true;
     }
 
     /**
-     * Get session timeout based on user role
+     * Get session timeout based on role (in seconds)
      */
-    private function getSessionTimeoutForRole(string $role): int
+    protected function getSessionTimeoutForRole($role): int
     {
         $timeouts = [
-            'admin' => 20,
-            'principal' => 25,
-            'it' => 20,
-            'accountant' => 30,
-            'teacher' => 45,
-            'class_teacher' => 45,
-            'exam_incharge' => 45,
-            'student' => 120
+            'admin' => 3600,      // 1 hour
+            'principal' => 3600,   // 1 hour
+            'it' => 7200,         // 2 hours
+            'teacher' => 14400,    // 4 hours
+            'class_teacher' => 14400, // 4 hours
+            'accountant' => 7200,  // 2 hours
+            'exam_incharge' => 7200, // 2 hours
+            'student' => 28800,    // 8 hours
         ];
 
-        return $timeouts[$role] ?? 60; // Default 60 minutes
+        return $timeouts[$role] ?? 3600; // Default 1 hour
     }
 
     /**
-     * Log security events
+     * Handle unauthorized access with enhanced error response
      */
-    private function logSecurityEvent(Request $request, string $event, array $context = []): void
+    protected function handleUnauthorized(Request $request, string $message)
     {
-        $baseContext = [
-            'event' => $event,
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'session_id' => Session::getId(),
-            'timestamp' => now()->toISOString()
-        ];
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+                'error_code' => 'UNAUTHORIZED_ACCESS',
+                'timestamp' => now()->toISOString(),
+                'request_id' => $request->header('X-Request-ID', uniqid()),
+                'security_context' => [
+                    'ip_address' => $request->ip(),
+                    'user_agent' => substr($request->userAgent(), 0, 100),
+                    'route' => $request->route()?->getName(),
+                    'method' => $request->method()
+                ]
+            ], 403);
+        }
 
-        $fullContext = array_merge($baseContext, $context);
+        return redirect()->route('login')->with('error', $message);
+    }
 
-        // Log to security channel
-        Log::channel('security')->info("Security Event: {$event}", $fullContext);
+    /**
+     * Enhanced security event logging
+     */
+    protected function logSecurityEvent(string $event, array $context, string $level = 'warning'): void
+    {
+        // Log to dedicated security channel
+        Log::channel('security')->{$level}("Security Event: {$event}", $context);
         
-        // Also log to default channel for critical events
-        if (in_array($event, ['authentication_failed', 'role_access_denied', 'session_hijacking_detected'])) {
-            Log::warning("Critical Security Event: {$event}", $fullContext);
+        // Also log critical events to default channel
+        if (in_array($level, ['error', 'critical', 'alert', 'emergency'])) {
+            Log::{$level}("Critical Security Event: {$event}", $context);
+        }
+
+        // Use comprehensive error handling service for critical security events
+        if (in_array($event, ['session_hijacking_detected', 'authentication_failed', 'access_denied'])) {
+            $this->getErrorHandlingService()->handleSecurityEvent($event, $context);
         }
     }
 }

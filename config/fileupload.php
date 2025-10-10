@@ -81,4 +81,27 @@ return [
         'upload_failed' => 'Failed to upload :attribute. Please try again.',
         'too_many_files' => 'You can upload a maximum of :max files.',
     ],
+
+    'security_settings' => [
+        'enable_virus_scan' => env('ENABLE_VIRUS_SCAN', true),
+        'quarantine_suspicious_files' => env('QUARANTINE_SUSPICIOUS_FILES', true),
+        'max_scan_size' => 100 * 1024 * 1024, // 100MB
+        'scan_timeout' => 30, // seconds
+        'enable_signature_validation' => true,
+        'enable_content_analysis' => true,
+        'strict_mime_validation' => true,
+    ],
+
+    'blocked_extensions' => [
+        'exe', 'bat', 'cmd', 'com', 'pif', 'scr', 'vbs', 'vbe', 'js', 'jse',
+        'wsf', 'wsh', 'msi', 'msp', 'hta', 'cpl', 'jar', 'app', 'deb', 'rpm',
+        'dmg', 'pkg', 'run', 'bin', 'sh', 'bash', 'ps1', 'psm1', 'psd1'
+    ],
+
+    'rate_limiting' => [
+        'enable_upload_rate_limit' => true,
+        'max_uploads_per_minute' => 10,
+        'max_uploads_per_hour' => 100,
+        'max_total_size_per_hour' => 500 * 1024 * 1024, // 500MB
+    ],
 ];

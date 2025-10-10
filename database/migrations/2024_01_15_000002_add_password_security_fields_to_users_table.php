@@ -39,14 +39,22 @@ return new class extends Migration
         Schema::table('users', function (Blueprint $table) {
             $table->dropIndex(['password_expires_at']);
             $table->dropIndex(['locked_until']);
-            
-            $table->dropColumn([
-                'password_changed_at',
-                'password_expires_at',
-                'password_reset_required',
-                'failed_login_attempts',
-                'locked_until'
-            ]);
         });
+        
+        $columns = [
+            'password_changed_at',
+            'password_expires_at',
+            'password_reset_required',
+            'failed_login_attempts',
+            'locked_until'
+        ];
+        
+        foreach ($columns as $column) {
+            Schema::table('users', function (Blueprint $table) use ($column) {
+                if (Schema::hasColumn('users', $column)) {
+                    $table->dropColumn($column);
+                }
+            });
+        }
     }
 };

@@ -10,6 +10,7 @@ use App\Services\BirthCertificateOCRService;
 use App\Services\BulkVerificationService;
 use App\Services\MismatchResolutionService;
 use App\Services\AuditTrailService;
+use App\Http\Traits\FileUploadValidationTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -20,6 +21,7 @@ use Carbon\Carbon;
 
 class StudentVerificationController extends Controller
 {
+    use FileUploadValidationTrait;
     protected $verificationService;
     protected $aadhaarService;
     protected $birthCertificateOCRService;
@@ -108,14 +110,28 @@ class StudentVerificationController extends Controller
      */
     public function upload(Request $request)
     {
-        $maxVerificationSize = config('fileupload.max_file_sizes.document');
-        $verificationMimes = config('fileupload.allowed_file_types.verification.mimes');
-        
-        $request->validate([
+        // Use enhanced validation from trait
+        $validationRules = [
             'student_id' => 'required|exists:students,id',
             'document_type' => ['required', Rule::in(array_keys(StudentVerification::DOCUMENT_TYPES))],
-            'document' => "required|file|mimes:{$verificationMimes}|max:{$maxVerificationSize}", // Updated with config values
-        ]);
+        ];
+        
+        // Add enhanced file validation rules from trait
+        $fileRules = $this->getDocumentValidationRules();
+        $validationRules['document'] = $fileRules['document'];
+        
+        $request->validate($validationRules, $this->getFileUploadValidationMessages());
+
+        // Perform enhanced file validation with virus scanning
+        if ($request->hasFile('document')) {
+            $validationResult = $this->validateFileWithSecurity($request->file('document'));
+            if (!$validationResult['valid']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validationResult['message']
+                ], 422);
+            }
+        }
 
         try {
             $verification = $this->verificationService->processDocument(
@@ -666,10 +682,28 @@ class StudentVerificationController extends Controller
      */
     public function processBirthCertificateOCR(Request $request)
     {
-        $request->validate([
+        // Use enhanced validation from trait
+        $validationRules = [
             'student_id' => 'required|exists:students,id',
-            'birth_certificate' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB max
-        ]);
+        ];
+        
+        // Add enhanced file validation rules from trait
+        $fileRules = $this->getDocumentValidationRules();
+        $validationRules['birth_certificate'] = $fileRules['document'];
+        
+        $request->validate($validationRules, $this->getFileUploadValidationMessages());
+
+        // Perform enhanced file validation with virus scanning
+        if ($request->hasFile('birth_certificate')) {
+            $validationResult = $this->validateFileWithSecurity($request->file('birth_certificate'));
+            if (!$validationResult['valid']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validationResult['message'],
+                    'error_code' => 'FILE_VALIDATION_FAILED',
+                ], 422);
+            }
+        }
 
         try {
             $student = Student::findOrFail($request->student_id);

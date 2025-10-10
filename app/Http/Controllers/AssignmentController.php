@@ -156,9 +156,12 @@ class AssignmentController extends Controller
             // Handle file upload
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
-                $originalName = $file->getClientOriginalName();
+                $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
                 $extension = $file->getClientOriginalExtension();
-                $fileName = Str::uuid() . '.' . $extension;
+                
+                // Sanitize original filename for safe storage
+                $sanitizedName = Str::slug($originalName);
+                $fileName = $sanitizedName . '_' . time() . '_' . Str::random(8) . '.' . $extension;
                 $filePath = $file->storeAs('assignments', $fileName, 'public');
 
                 $data['attachment_path'] = $filePath;
@@ -620,7 +623,8 @@ class AssignmentController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Successfully {$request->action}ed {$updated} assignments"
+                'message' => "Successfully {$request->action}ed {$updated} assignment(s).",
+                'data' => ['updated' => $updated]
             ]);
 
         } catch (\Exception $e) {

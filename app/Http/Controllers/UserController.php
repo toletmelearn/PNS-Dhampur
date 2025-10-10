@@ -7,6 +7,7 @@ use App\Models\Role;
 use App\Traits\HandlesApiResponses;
 use App\Http\Traits\EmailValidationTrait;
 use App\Http\Traits\FileUploadValidationTrait;
+use App\Http\Traits\UserValidationTrait;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Rules\PasswordComplexity;
@@ -22,7 +23,7 @@ use League\Csv\Statement;
 
 class UserController extends Controller
 {
-    use HandlesApiResponses, EmailValidationTrait, FileUploadValidationTrait;
+    use HandlesApiResponses, EmailValidationTrait, FileUploadValidationTrait, UserValidationTrait;
     /**
      * Display a listing of the resource.
      *
@@ -70,17 +71,10 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            ...$this->getCreateEmailValidationRules(),
-            'password' => [
-                'required',
-                'string',
-                'confirmed',
-                new PasswordComplexity(null, $request->role)
-            ],
-            'role' => 'required|in:admin,teacher,student'
-        ], $this->getEmailValidationMessages());
+        $data = $request->validate(
+            $this->getUserCreateRules(),
+            $this->getUserValidationMessages()
+        );
 
         $user = User::create([
             'name' => $data['name'],
@@ -133,19 +127,10 @@ class UserController extends Controller
     {
         $user = User::findOrFail($id);
 
-        $data = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            ...$this->getUpdateEmailValidationRules($user->id),
-            'password' => [
-                'sometimes',
-                'nullable',
-                'string',
-                'confirmed',
-                new PasswordComplexity($user, $user->role),
-                new PasswordHistory($user)
-            ],
-            'role' => 'sometimes|required|in:admin,teacher,student'
-        ], $this->getEmailValidationMessages());
+        $data = $request->validate(
+            $this->getUserUpdateRules($user->id),
+            $this->getUserValidationMessages()
+        );
 
         if (isset($data['password']) && $data['password']) {
             // Use the new updatePassword method which handles history and expiration

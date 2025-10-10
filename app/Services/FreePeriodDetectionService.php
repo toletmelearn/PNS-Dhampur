@@ -9,6 +9,7 @@ use App\Models\TeacherAbsence;
 use App\Models\BellTiming;
 use App\Models\Subject;
 use App\Models\ClassModel;
+use App\Support\Constants;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -265,7 +266,7 @@ class FreePeriodDetectionService
             ->where('date', Carbon::today()->format('Y-m-d'))
             ->first();
 
-        return $availability->max_substitutions_per_day ?? 3;
+        return $availability->max_substitutions_per_day ?? Constants::get('scoring.max_teacher_score', 3);
     }
 
     /**
@@ -301,24 +302,24 @@ class FreePeriodDetectionService
      */
     private function calculateTeacherScore(Teacher $teacher, $subjectId, $classId, $priorityCriteria, $date): int
     {
-        $score = 0;
+        $score = Constants::get('scoring.base_availability_score', 0);
 
         // Subject expertise (highest priority)
         if ($subjectId && $teacher->subjects()->where('subject_id', $subjectId)->exists()) {
-            $score += 50;
+            $score += Constants::get('scoring.subject_compatibility_score', 50);
         }
 
         // Class familiarity
         if ($classId && $teacher->classes()->where('class_id', $classId)->exists()) {
-            $score += 30;
+            $score += Constants::get('scoring.class_familiarity_score', 30);
         }
 
         // Workload consideration (prefer less busy teachers)
         $todaySubstitutions = $this->getTodaySubstitutionCount($teacher, $date);
-        $score += (5 - $todaySubstitutions) * 5; // Max 25 points
+        $score += (Constants::get('scoring.workload_balance_score', 5) - $todaySubstitutions) * Constants::get('scoring.workload_balance_score', 5);
 
         // Experience and performance
-        $score += min($teacher->experience_years ?? 0, 10) * 2; // Max 20 points
+        $score += min($teacher->experience_years ?? 0, Constants::get('scoring.max_experience_points', 10)) * Constants::get('scoring.experience_multiplier', 2);
 
         // Availability preference
         $availability = TeacherAvailability::where('teacher_id', $teacher->id)
@@ -326,7 +327,7 @@ class FreePeriodDetectionService
             ->first();
         
         if ($availability && $availability->can_substitute) {
-            $score += 10;
+            $score += Constants::get('scoring.base_availability_score', 10);
         }
 
         return $score;
@@ -340,13 +341,13 @@ class FreePeriodDetectionService
         $score = 0;
         
         // Subject count
-        $score += $teacher->subjects->count() * 5;
+        $score += $teacher->subjects->count() * Constants::get('scoring.workload_balance_score', 5);
         
         // Experience
-        $score += min($teacher->experience_years ?? 0, 20);
+        $score += min($teacher->experience_years ?? 0, Constants::get('scoring.max_experience_points', 20));
         
         // Performance rating (if available)
-        $score += ($teacher->performance_rating ?? 3) * 5;
+        $score += ($teacher->performance_rating ?? 3) * Constants::get('scoring.workload_balance_score', 5);
         
         return $score;
     }
@@ -418,7 +419,7 @@ class FreePeriodDetectionService
             $subjectScore = $this->calculateSubjectCompatibilityScore($teacher, $subjectId);
             $score += $subjectScore;
         } else {
-            $score += 50; // Base score if no subject specified
+            $score += Constants::get('scoring.base_availability_score', 50); // Base score if no subject specified
         }
 
         // Class familiarity scoring (0-50 points)
@@ -426,7 +427,7 @@ class FreePeriodDetectionService
             $classScore = $this->calculateClassFamiliarityScore($teacher, $classId);
             $score += $classScore;
         } else {
-            $score += 25; // Base score if no class specified
+            $score += Constants::get('scoring.max_experience_points', 25); // Base score if no class specified
         }
 
         // Workload balancing (0-30 points - higher score for less busy teachers)
@@ -457,7 +458,7 @@ class FreePeriodDetectionService
         
         // Direct subject match (highest priority)
         if ($teacher->subjects()->where('subject_id', $subjectId)->exists()) {
-            $score += 100;
+            $score += Constants::get('scoring.max_teacher_score', 100);
             
             // Check teaching experience in this subject
             $teachingRecord = DB::table('teacher_subject_assignments')
@@ -466,7 +467,7 @@ class FreePeriodDetectionService
                 ->first();
                 
             if ($teachingRecord && isset($teachingRecord->years_experience)) {
-                $score += min($teachingRecord->years_experience * 5, 25);
+                $score += min($teachingRecord->years_experience * Constants::get('scoring.workload_balance_score', 5), Constants::get('scoring.max_experience_points', 25));
             }
         } else {
             // Check for related subjects
@@ -474,7 +475,7 @@ class FreePeriodDetectionService
             $score += $relatedScore;
         }
 
-        return min($score, 100); // Cap at 100
+        return min($score, Constants::get('scoring.max_teacher_score', 100)); // Cap at 100
     }
 
     /**
@@ -490,11 +491,11 @@ class FreePeriodDetectionService
 
         foreach ($relatedSubjects as $relatedSubject) {
             if ($teacher->subjects()->where('subject_id', $relatedSubject->id)->exists()) {
-                $score += 30; // Partial compatibility for related subjects
+                $score += Constants::get('scoring.workload_balance_score', 30); // Partial compatibility for related subjects
             }
         }
 
-        return min($score, 60); // Cap at 60 for related subjects
+        return min($score, Constants::get('scoring.subject_compatibility_score', 60)); // Cap at 60 for related subjects
     }
 
     /**

@@ -23,17 +23,15 @@ class PerformanceMetricsService
         
         $cacheKey = "performance_dashboard_{$startDate->format('Y-m-d')}_{$endDate->format('Y-m-d')}_{$teacherId}";
         
-        return Cache::remember($cacheKey, $this->cacheTimeout, function () use ($startDate, $endDate, $teacherId) {
+        return Cache::remember($cacheKey, Constants::PERFORMANCE_CACHE_TIMEOUT, function () use ($startDate, $endDate, $teacherId) {
             return [
                 'overview' => $this->getOverviewMetrics($startDate, $endDate, $teacherId),
-                'attendance_trends' => $this->getAttendanceTrends($startDate, $endDate, $teacherId),
-                'punctuality_analysis' => $this->getPunctualityAnalysis($startDate, $endDate, $teacherId),
-                'productivity_metrics' => $this->getProductivityMetrics($startDate, $endDate, $teacherId),
-                'leave_patterns' => $this->getLeavePatterns($startDate, $endDate, $teacherId),
-                'performance_rankings' => $this->getPerformanceRankings($startDate, $endDate),
+                'trends' => $this->getTrendAnalysis($startDate, $endDate, $teacherId),
+                'patterns' => $this->getPatternAnalysis($startDate, $endDate, $teacherId),
+                'rankings' => $this->getPerformanceRankings($startDate, $endDate),
                 'department_comparison' => $this->getDepartmentComparison($startDate, $endDate),
-                'alerts_and_insights' => $this->getAlertsAndInsights($startDate, $endDate, $teacherId),
-                'predictive_analytics' => $this->getPredictiveAnalytics($startDate, $endDate, $teacherId)
+                'alerts' => $this->getAlertsAndInsights($startDate, $endDate, $teacherId),
+                'predictive' => $this->getPredictiveAnalytics($startDate, $endDate, $teacherId)
             ];
         });
     }
@@ -50,7 +48,7 @@ class PerformanceMetricsService
         }
         
         $attendances = $query->get();
-        $totalTeachers = $teacherId ? 1 : Teacher::count();
+        $totalTeachers = $teacherId ? Constants::SINGLE_TEACHER_COUNT : Teacher::count();
         $workingDays = $this->calculateWorkingDays($startDate, $endDate);
         
         $presentDays = $attendances->where('status', 'present')->count();
@@ -62,14 +60,14 @@ class PerformanceMetricsService
             'total_attendance_records' => $attendances->count(),
             'present_days' => $presentDays,
             'absent_days' => $totalPossibleDays - $presentDays,
-            'overall_attendance_rate' => $totalPossibleDays > 0 ? round(($presentDays / $totalPossibleDays) * 100, 2) : 0,
-            'average_working_hours' => round($attendances->where('working_hours', '>', 0)->avg('working_hours'), 2),
-            'total_working_hours' => round($attendances->sum('working_hours'), 2),
+            'overall_attendance_rate' => $totalPossibleDays > Constants::ZERO_COUNT ? round(($presentDays / $totalPossibleDays) * Constants::PERCENTAGE_DIVISOR, Constants::DECIMAL_PLACES) : Constants::ZERO_COUNT,
+            'average_working_hours' => round($attendances->where('working_hours', '>', Constants::ZERO_COUNT)->avg('working_hours'), Constants::DECIMAL_PLACES),
+            'total_working_hours' => round($attendances->sum('working_hours'), Constants::DECIMAL_PLACES),
             'late_arrivals' => $attendances->where('is_late', true)->count(),
             'early_departures' => $attendances->where('is_early_departure', true)->count(),
-            'punctuality_rate' => $presentDays > 0 ? round((($presentDays - $attendances->where('is_late', true)->count()) / $presentDays) * 100, 2) : 0,
-            'overtime_instances' => $attendances->where('working_hours', '>', 8)->count(),
-            'total_overtime_hours' => round($attendances->where('working_hours', '>', 8)->sum('working_hours') - ($attendances->where('working_hours', '>', 8)->count() * 8), 2)
+            'punctuality_rate' => $presentDays > Constants::ZERO_COUNT ? round((($presentDays - $attendances->where('is_late', true)->count()) / $presentDays) * Constants::PERCENTAGE_DIVISOR, Constants::DECIMAL_PLACES) : Constants::ZERO_COUNT,
+            'overtime_instances' => $attendances->where('working_hours', '>', Constants::OVERTIME_HOURS_THRESHOLD)->count(),
+            'total_overtime_hours' => round($attendances->where('working_hours', '>', Constants::OVERTIME_HOURS_THRESHOLD)->sum('working_hours') - ($attendances->where('working_hours', '>', Constants::OVERTIME_HOURS_THRESHOLD)->count() * Constants::OVERTIME_HOURS_THRESHOLD), Constants::DECIMAL_PLACES)
         ];
     }
 
@@ -349,33 +347,35 @@ class PerformanceMetricsService
             $earlyDepartures = $attendances->where('is_early_departure', true)->count();
             $totalWorkingHours = $attendances->sum('working_hours');
             
-            $attendanceRate = $workingDays > 0 ? ($presentDays / $workingDays) * 100 : 0;
-            $punctualityRate = $presentDays > 0 ? (($presentDays - $lateArrivals) / $presentDays) * 100 : 0;
+            $attendanceRate = $workingDays > Constants::ZERO_COUNT ? ($presentDays / $workingDays) * Constants::PERCENTAGE_DIVISOR : Constants::ZERO_COUNT;
+            $punctualityRate = $presentDays > Constants::ZERO_COUNT ? (($presentDays - $lateArrivals) / $presentDays) * Constants::PERCENTAGE_DIVISOR : Constants::ZERO_COUNT;
             $consistencyScore = $this->calculateConsistencyScore($attendances);
             
             // Overall performance score (weighted average)
-            $performanceScore = ($attendanceRate * 0.4) + ($punctualityRate * 0.3) + ($consistencyScore * 0.3);
+            $performanceScore = ($attendanceRate * Constants::PERFORMANCE_SCORE_WEIGHTS[0]) + 
+                              ($punctualityRate * Constants::PERFORMANCE_SCORE_WEIGHTS[1]) + 
+                              ($consistencyScore * Constants::PERFORMANCE_SCORE_WEIGHTS[2]);
             
             return [
                 'teacher_id' => $teacher->id,
                 'teacher_name' => $teacher->name,
                 'employee_id' => $teacher->employee_id,
                 'department' => $teacher->department,
-                'attendance_rate' => round($attendanceRate, 2),
-                'punctuality_rate' => round($punctualityRate, 2),
-                'consistency_score' => round($consistencyScore, 2),
-                'performance_score' => round($performanceScore, 2),
+                'attendance_rate' => round($attendanceRate, Constants::DECIMAL_PLACES),
+                'punctuality_rate' => round($punctualityRate, Constants::DECIMAL_PLACES),
+                'consistency_score' => round($consistencyScore, Constants::DECIMAL_PLACES),
+                'performance_score' => round($performanceScore, Constants::DECIMAL_PLACES),
                 'present_days' => $presentDays,
                 'late_arrivals' => $lateArrivals,
                 'early_departures' => $earlyDepartures,
-                'total_working_hours' => round($totalWorkingHours, 2),
-                'average_daily_hours' => $presentDays > 0 ? round($totalWorkingHours / $presentDays, 2) : 0
+                'total_working_hours' => round($totalWorkingHours, Constants::DECIMAL_PLACES),
+                'average_daily_hours' => $presentDays > Constants::ZERO_COUNT ? round($totalWorkingHours / $presentDays, Constants::DECIMAL_PLACES) : Constants::ZERO_COUNT
             ];
         })->sortByDesc('performance_score')->values();
 
         return [
-            'top_performers' => $rankings->take(10),
-            'bottom_performers' => $rankings->reverse()->take(10),
+            'top_performers' => $rankings->take(Constants::TOP_PERFORMERS_LIMIT),
+            'bottom_performers' => $rankings->reverse()->take(Constants::BOTTOM_PERFORMERS_LIMIT),
             'all_rankings' => $rankings
         ];
     }
@@ -403,12 +403,12 @@ class PerformanceMetricsService
             return [
                 'department' => $department,
                 'total_teachers' => $totalTeachers,
-                'attendance_rate' => ($totalTeachers * $workingDays) > 0 ? 
-                    round(($presentDays / ($totalTeachers * $workingDays)) * 100, 2) : 0,
-                'punctuality_rate' => $presentDays > 0 ? 
-                    round((($presentDays - $attendances->where('is_late', true)->count()) / $presentDays) * 100, 2) : 0,
-                'average_working_hours' => round($attendances->where('working_hours', '>', 0)->avg('working_hours'), 2),
-                'total_working_hours' => round($attendances->sum('working_hours'), 2),
+                'attendance_rate' => ($totalTeachers * $workingDays) > Constants::ZERO_COUNT ? 
+                    round(($presentDays / ($totalTeachers * $workingDays)) * Constants::PERCENTAGE_DIVISOR, Constants::DECIMAL_PLACES) : Constants::ZERO_COUNT,
+                'punctuality_rate' => $presentDays > Constants::ZERO_COUNT ? 
+                    round((($presentDays - $attendances->where('is_late', true)->count()) / $presentDays) * Constants::PERCENTAGE_DIVISOR, Constants::DECIMAL_PLACES) : Constants::ZERO_COUNT,
+                'average_working_hours' => round($attendances->where('working_hours', '>', Constants::ZERO_COUNT)->avg('working_hours'), Constants::DECIMAL_PLACES),
+                'total_working_hours' => round($attendances->sum('working_hours'), Constants::DECIMAL_PLACES),
                 'late_arrivals' => $attendances->where('is_late', true)->count(),
                 'early_departures' => $attendances->where('is_early_departure', true)->count()
             ];
@@ -433,7 +433,7 @@ class PerformanceMetricsService
             $alerts[] = [
                 'type' => 'warning',
                 'title' => 'Low Performance Alert',
-                'message' => $bottomPerformers->count() . ' teachers have performance scores below 70%',
+                'message' => $bottomPerformers->count() . ' teachers have performance scores below ' . Constants::LOW_PERFORMANCE_THRESHOLD . '%',
                 'action' => 'Review and provide support'
             ];
         }
@@ -441,7 +441,7 @@ class PerformanceMetricsService
         // Attendance insights
         $overviewMetrics = $this->getOverviewMetrics($startDate, $endDate, $teacherId);
         
-        if ($overviewMetrics['overall_attendance_rate'] < 85) {
+        if ($overviewMetrics['overall_attendance_rate'] < Constants::LOW_ATTENDANCE_THRESHOLD) {
             $alerts[] = [
                 'type' => 'danger',
                 'title' => 'Low Attendance Rate',
@@ -450,7 +450,7 @@ class PerformanceMetricsService
             ];
         }
         
-        if ($overviewMetrics['punctuality_rate'] < 80) {
+        if ($overviewMetrics['punctuality_rate'] < Constants::LOW_PUNCTUALITY_THRESHOLD) {
             $alerts[] = [
                 'type' => 'warning',
                 'title' => 'Punctuality Concern',
@@ -517,34 +517,34 @@ class PerformanceMetricsService
         if ($times->isEmpty()) return null;
         
         $totalMinutes = $times->sum(function ($time) {
-            return Carbon::parse($time)->hour * 60 + Carbon::parse($time)->minute;
+            return Carbon::parse($time)->hour * Constants::MINUTES_PER_HOUR + Carbon::parse($time)->minute;
         });
         
         $averageMinutes = $totalMinutes / $times->count();
-        $hours = floor($averageMinutes / 60);
-        $minutes = $averageMinutes % 60;
+        $hours = floor($averageMinutes / Constants::MINUTES_PER_HOUR);
+        $minutes = $averageMinutes % Constants::MINUTES_PER_HOUR;
         
         return sprintf('%02d:%02d', $hours, $minutes);
     }
 
     protected function calculateAverageLateMinutes($lateAttendances)
     {
-        if ($lateAttendances->isEmpty()) return 0;
+        if ($lateAttendances->isEmpty()) return Constants::ZERO_COUNT;
         
         $totalLateMinutes = $lateAttendances->sum(function ($attendance) {
-            $schoolStart = Carbon::createFromFormat('H:i:s', '08:00:00');
+            $schoolStart = Carbon::createFromFormat('H:i:s', Constants::SCHOOL_START_TIME);
             return Carbon::parse($attendance->check_in_time)->diffInMinutes($schoolStart);
         });
         
-        return round($totalLateMinutes / $lateAttendances->count(), 2);
+        return round($totalLateMinutes / $lateAttendances->count(), Constants::DECIMAL_PLACES);
     }
 
     protected function calculateConsistencyScore($attendances)
     {
-        if ($attendances->isEmpty()) return 0;
+        if ($attendances->isEmpty()) return Constants::ZERO_COUNT;
         
-        $workingHours = $attendances->where('working_hours', '>', 0)->pluck('working_hours');
-        if ($workingHours->isEmpty()) return 0;
+        $workingHours = $attendances->where('working_hours', '>', Constants::ZERO_COUNT)->pluck('working_hours');
+        if ($workingHours->isEmpty()) return Constants::ZERO_COUNT;
         
         $mean = $workingHours->avg();
         $variance = $workingHours->sum(function ($hours) use ($mean) {
@@ -554,7 +554,7 @@ class PerformanceMetricsService
         $standardDeviation = sqrt($variance);
         
         // Convert to consistency score (0-100, where 100 is most consistent)
-        return max(0, 100 - ($standardDeviation * 10));
+        return max(Constants::ZERO_COUNT, Constants::PERCENTAGE_DIVISOR - ($standardDeviation * Constants::CONSISTENCY_SCORE_MULTIPLIER));
     }
 
     protected function calculateProductivityTrend($attendances)
@@ -566,15 +566,15 @@ class PerformanceMetricsService
             return $weekAttendances->avg('working_hours');
         })->values();
         
-        if ($weeklyAverages->count() < 2) return 'stable';
+        if ($weeklyAverages->count() < Constants::DECIMAL_PLACES) return 'stable';
         
         $firstHalf = $weeklyAverages->take($weeklyAverages->count() / 2)->avg();
         $secondHalf = $weeklyAverages->skip($weeklyAverages->count() / 2)->avg();
         
-        $change = (($secondHalf - $firstHalf) / $firstHalf) * 100;
+        $change = (($secondHalf - $firstHalf) / $firstHalf) * Constants::PERCENTAGE_DIVISOR;
         
-        if ($change > 5) return 'improving';
-        if ($change < -5) return 'declining';
+        if ($change > Constants::TREND_CHANGE_THRESHOLD) return 'improving';
+        if ($change < -Constants::TREND_CHANGE_THRESHOLD) return 'declining';
         return 'stable';
     }
 
@@ -582,7 +582,7 @@ class PerformanceMetricsService
     protected function findMostConsistentWeek($attendances) { return null; }
     protected function findHighestProductivityMonth($attendances) { return null; }
     protected function generateProductivityRecommendations($attendances) { return []; }
-    protected function getAbsencesForDay($day, $startDate, $endDate, $teacherId) { return 0; }
+    protected function getAbsencesForDay($day, $startDate, $endDate, $teacherId) { return Constants::ZERO_COUNT; }
     protected function getFrequentAbsentees($startDate, $endDate, $teacherId) { return []; }
     protected function analyzeLeaveClusters($startDate, $endDate, $teacherId) { return []; }
     protected function analyzeSeasonalTrends($startDate, $endDate, $teacherId) { return []; }

@@ -24,7 +24,21 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('class_models', function (Blueprint $table) {
-            $table->dropColumn(['is_active', 'description', 'capacity']);
+            if (Schema::hasColumn('class_models', 'is_active')) {
+                $table->dropColumn('is_active');
+            }
+        });
+        
+        Schema::table('class_models', function (Blueprint $table) {
+            if (Schema::hasColumn('class_models', 'description')) {
+                $table->dropColumn('description');
+            }
+        });
+        
+        Schema::table('class_models', function (Blueprint $table) {
+            if (Schema::hasColumn('class_models', 'capacity')) {
+                $table->dropColumn('capacity');
+            }
         });
     }
 };

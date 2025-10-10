@@ -9,98 +9,116 @@ class Kernel extends ConsoleKernel
 {
     /**
      * Define the application's command schedule.
-     *
-     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
-     * @return void
      */
-    protected function schedule(Schedule $schedule)
+    protected function schedule(Schedule $schedule): void
     {
-        // Check for bell notifications every minute during school hours
-        $schedule->command('bell:check')
-                 ->everyMinute()
-                 ->between('07:00', '15:00')
-                 ->weekdays();
+        // Backup schedules based on configuration
+        $backupConfig = config('backup.schedules', []);
 
-        // Auto-assign substitute teachers every hour during school hours
-        $schedule->command('substitutes:auto-assign')
-                 ->hourly()
-                 ->between('07:00', '15:00')
-                 ->weekdays();
+        // Daily full backup
+        if (isset($backupConfig['daily_full']) && $backupConfig['daily_full']['enabled']) {
+            $schedule->command('backup:create full')
+                ->dailyAt($backupConfig['daily_full']['time'])
+                ->withoutOverlapping()
+                ->onOneServer()
+                ->runInBackground()
+                ->emailOutputOnFailure(config('backup.notifications.channels.email.recipients', []));
+        }
 
-        // Daily auto-assignment for next day (run at 6 PM)
-        $schedule->command('substitutes:auto-assign --date=' . now()->addDay()->format('Y-m-d'))
-                 ->dailyAt('18:00')
-                 ->weekdays();
+        // Hourly database backup
+        if (isset($backupConfig['hourly_database']) && $backupConfig['hourly_database']['enabled']) {
+            $schedule->command('backup:create database')
+                ->hourly()
+                ->withoutOverlapping()
+                ->onOneServer()
+                ->runInBackground();
+        }
 
-        // Send notification reminders every hour during school hours
-        $schedule->command('notifications:send-reminders')
-                 ->hourly()
-                 ->between('07:00', '18:00')
-                 ->weekdays();
+        // Weekly archive backup
+        if (isset($backupConfig['weekly_archive']) && $backupConfig['weekly_archive']['enabled']) {
+            $schedule->command('backup:create full --compress --encrypt')
+                ->weeklyOn($backupConfig['weekly_archive']['day'], $backupConfig['weekly_archive']['time'])
+                ->withoutOverlapping()
+                ->onOneServer()
+                ->runInBackground()
+                ->emailOutputOnFailure(config('backup.notifications.channels.email.recipients', []));
+        }
 
-        // Process scheduled notifications every 15 minutes
-        $schedule->command('notifications:send-reminders --type=scheduled')
-                 ->everyFifteenMinutes();
+        // Backup cleanup - daily at 3 AM
+        $schedule->command('backup:cleanup')
+            ->dailyAt('03:00')
+            ->withoutOverlapping()
+            ->onOneServer();
 
-        // Process substitute notifications every 5 minutes
-        $schedule->command('substitute:process-notifications')
-                 ->everyFiveMinutes();
+        // System monitoring - every 5 minutes
+        $schedule->command('monitoring:check')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground();
 
-        // Clean up expired notifications daily at midnight
-        $schedule->command('notifications:send-reminders --type=cleanup')
-                 ->dailyAt('00:00');
+        // Health check - every hour
+        $schedule->command('system:health-check')
+            ->hourly()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground();
 
-        // Check for season switching daily at 6 AM
-        $schedule->command('bell:check-season-switch')
-                 ->dailyAt('06:00');
+        // Log cleanup - daily at 2 AM
+        $schedule->command('log:clear')
+            ->dailyAt('02:00')
+            ->withoutOverlapping()
+            ->onOneServer();
 
-        // Automated backup scheduling
-        // Daily database backup at 2 AM
-        $schedule->command('backup:database --compress')
-                 ->dailyAt('02:00')
-                 ->withoutOverlapping()
-                 ->onFailure(function () {
-                     \Log::error('Daily database backup failed');
-                 });
+        // Cache optimization - daily at 1 AM
+        $schedule->command('optimize:clear')
+            ->dailyAt('01:00')
+            ->withoutOverlapping()
+            ->onOneServer();
 
-        // Weekly full file backup on Sundays at 3 AM
-        $schedule->command('backup:files --compress --exclude=node_modules,vendor,.git')
-                 ->weeklyOn(0, '03:00')
-                 ->withoutOverlapping()
-                 ->onFailure(function () {
-                     \Log::error('Weekly file backup failed');
-                 });
+        // Queue monitoring - every minute
+        $schedule->command('queue:monitor redis --max=100')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->onOneServer();
 
-        // Monthly full system export on the 1st at 4 AM
-        $schedule->command('data:export --format=json --all-tables')
-                 ->monthlyOn(1, '04:00')
-                 ->withoutOverlapping()
-                 ->onFailure(function () {
-                     \Log::error('Monthly data export failed');
-                 });
+        // Failed jobs cleanup - daily at 4 AM
+        $schedule->command('queue:flush')
+            ->dailyAt('04:00')
+            ->withoutOverlapping()
+            ->onOneServer();
 
-        // Clean up old backups daily at 5 AM (keep last 30 days)
-        $schedule->call(function () {
-            $backupPath = storage_path('app/backups');
-            if (is_dir($backupPath)) {
-                $files = glob($backupPath . '/*');
-                $cutoff = now()->subDays(30)->timestamp;
-                
-                foreach ($files as $file) {
-                    if (is_file($file) && filemtime($file) < $cutoff) {
-                        unlink($file);
-                    }
-                }
-            }
-        })->dailyAt('05:00');
+        // Security scan - daily at midnight
+        $schedule->command('security:scan')
+            ->dailyAt('00:00')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground();
+
+        // Performance monitoring - every 10 minutes
+        $schedule->command('performance:monitor')
+            ->everyTenMinutes()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground();
+
+        // Database optimization - weekly on Sunday at 5 AM
+        $schedule->command('db:optimize')
+            ->weeklyOn(0, '05:00')
+            ->withoutOverlapping()
+            ->onOneServer();
+
+        // Storage cleanup - daily at 6 AM
+        $schedule->command('storage:cleanup')
+            ->dailyAt('06:00')
+            ->withoutOverlapping()
+            ->onOneServer();
     }
 
     /**
      * Register the commands for the application.
-     *
-     * @return void
      */
-    protected function commands()
+    protected function commands(): void
     {
         $this->load(__DIR__.'/Commands');
 

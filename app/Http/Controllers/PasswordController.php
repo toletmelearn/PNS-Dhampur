@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Rules\PasswordComplexity;
 use App\Rules\PasswordHistory;
 use App\Models\AuditTrail;
+use App\Models\User;
 
 class PasswordController extends Controller
 {
@@ -101,7 +102,7 @@ class PasswordController extends Controller
             ], 403);
         }
 
-        $user = \App\Models\User::findOrFail($userId);
+        $user = User::findOrFail($userId);
         
         $user->forcePasswordReset();
 

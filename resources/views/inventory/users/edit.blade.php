@@ -86,7 +86,10 @@
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label for="email">Email Address <span class="text-danger">*</span></label>
-                                            <input type="email" class="form-control" id="email" name="email" required>
+                                            <input type="email" class="form-control" id="email" name="email" 
+                                                   required
+                                                   pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$"
+                                                   title="Please enter a valid email address">
                                             <div class="invalid-feedback"></div>
                                             <small class="form-text text-muted">Used for login and notifications</small>
                                         </div>
@@ -94,7 +97,10 @@
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label for="phone">Phone Number</label>
-                                            <input type="tel" class="form-control" id="phone" name="phone" placeholder="+91 XXXXX XXXXX">
+                                            <input type="tel" class="form-control" id="phone" name="phone" 
+                                                   placeholder="+91 XXXXX XXXXX"
+                                                   pattern="[+]?[0-9]{10,15}"
+                                                   title="Please enter a valid phone number (10-15 digits)">
                                             <div class="invalid-feedback"></div>
                                         </div>
                                     </div>

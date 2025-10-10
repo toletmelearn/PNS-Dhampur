@@ -47,13 +47,8 @@ function makeRequest($url, $data = null, $headers = [], $timeout = 30) {
     $info = curl_getinfo($ch);
     
     // Get verbose output
-    $stderr = curl_getinfo($ch, CURLOPT_STDERR);
-    if (is_resource($stderr)) {
-        rewind($stderr);
-        $verbose_log = stream_get_contents($stderr);
-    } else {
-        $verbose_log = 'Verbose logging not available';
-    }
+    $verbose_log = 'Verbose logging not available';
+    // Note: CURLOPT_STDERR is not retrieved via curl_getinfo
     
     curl_close($ch);
     

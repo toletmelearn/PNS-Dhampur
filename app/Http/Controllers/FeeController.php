@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Fee;
 use App\Models\Student;
 use App\Models\Payment;
+use App\Models\ClassModel;
 use App\Services\UserFriendlyErrorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -73,7 +74,8 @@ class FeeController extends Controller
             ]);
         }
 
-        $classes = ClassModel::all();
+        // Fix N+1 query by adding eager loading for students relationship
+        $classes = ClassModel::with(['students'])->get();
         return view('finance.fees.index', compact('fees', 'stats', 'classes'));
     }
 
@@ -81,7 +83,8 @@ class FeeController extends Controller
     {
         // Use pagination for students to avoid memory issues
         $students = Student::with(['user', 'classModel'])->paginate(100);
-        $classes = ClassModel::all();
+        // Fix N+1 query by adding eager loading for students relationship
+        $classes = ClassModel::with(['students'])->get();
         
         return view('finance.fees.create', compact('students', 'classes'));
     }
@@ -162,7 +165,8 @@ class FeeController extends Controller
         $fee = Fee::with(['student.user', 'student.classModel'])->findOrFail($id);
         // Use pagination for students to avoid memory issues
         $students = Student::with(['user', 'classModel'])->paginate(100);
-        $classes = ClassModel::all();
+        // Fix N+1 query by adding eager loading for students relationship
+        $classes = ClassModel::with(['students'])->get();
         
         return view('finance.fees.edit', compact('fee', 'students', 'classes'));
     }

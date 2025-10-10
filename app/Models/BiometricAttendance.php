@@ -90,14 +90,28 @@ class BiometricAttendance extends Model
     // Accessors
     public function getStatusBadgeAttribute()
     {
-        $badges = [
-            'present' => '<span class="badge bg-success">Present</span>',
-            'absent' => '<span class="badge bg-danger">Absent</span>',
-            'late' => '<span class="badge bg-warning">Late</span>',
-            'early_departure' => '<span class="badge bg-info">Early Departure</span>'
+        // Return safe status text only - HTML should be handled in views
+        $statuses = [
+            'present' => 'Present',
+            'absent' => 'Absent',
+            'late' => 'Late',
+            'early_departure' => 'Early Departure'
         ];
 
-        return $badges[$this->status] ?? '<span class="badge bg-secondary">Unknown</span>';
+        return $statuses[$this->status] ?? 'Unknown';
+    }
+
+    public function getStatusBadgeClassAttribute()
+    {
+        // Return CSS class for safe styling
+        $classes = [
+            'present' => 'bg-success',
+            'absent' => 'bg-danger',
+            'late' => 'bg-warning',
+            'early_departure' => 'bg-info'
+        ];
+
+        return $classes[$this->status] ?? 'bg-secondary';
     }
 
     public function getFormattedCheckInTimeAttribute()

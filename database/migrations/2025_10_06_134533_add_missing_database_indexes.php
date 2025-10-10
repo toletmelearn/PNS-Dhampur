@@ -14,9 +14,19 @@ return new class extends Migration
     {
         // Helper function to check if index exists
         $indexExists = function ($table, $indexName) {
-            // Skip index checking for SQLite as SHOW INDEX is not supported
             if (DB::getDriverName() === 'sqlite') {
-                return false; // Always create indexes in SQLite (they'll be ignored if they exist)
+                // For SQLite, check if index exists using pragma
+                try {
+                    $indexes = DB::select("PRAGMA index_list({$table})");
+                    foreach ($indexes as $index) {
+                        if ($index->name === $indexName) {
+                            return true;
+                        }
+                    }
+                    return false;
+                } catch (\Exception $e) {
+                    return false;
+                }
             }
             $indexes = DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$indexName]);
             return !empty($indexes);
@@ -34,8 +44,8 @@ return new class extends Migration
             if (!$indexExists('students', 'idx_students_verification_status')) {
                 $table->index('verification_status', 'idx_students_verification_status');
             }
-            if (!$indexExists('students', 'idx_students_status')) {
-                $table->index('status', 'idx_students_status');
+            if (!$indexExists('students', 'idx_students_is_active')) {
+                $table->index('is_active', 'idx_students_is_active');
             }
             if (!$indexExists('students', 'idx_students_dob')) {
                 $table->index('dob', 'idx_students_dob');
@@ -188,8 +198,8 @@ return new class extends Migration
             if ($indexExists('students', 'idx_students_verification_status')) {
                 $table->dropIndex('idx_students_verification_status');
             }
-            if ($indexExists('students', 'idx_students_status')) {
-                $table->dropIndex('idx_students_status');
+            if ($indexExists('students', 'idx_students_is_active')) {
+                $table->dropIndex('idx_students_is_active');
             }
             if ($indexExists('students', 'idx_students_dob')) {
                 $table->dropIndex('idx_students_dob');

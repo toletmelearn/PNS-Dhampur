@@ -30,19 +30,25 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('attendances', function (Blueprint $table) {
-            $table->dropColumn([
-                'check_in_time',
-                'check_out_time',
-                'late_minutes',
-                'early_departure_minutes',
-                'remarks',
-                'academic_year',
-                'month',
-                'week_number',
-                'is_holiday',
-                'attendance_type'
-            ]);
-        });
+        $columns = [
+            'check_in_time',
+            'check_out_time',
+            'late_minutes',
+            'early_departure_minutes',
+            'remarks',
+            'academic_year',
+            'month',
+            'week_number',
+            'is_holiday',
+            'attendance_type'
+        ];
+        
+        foreach ($columns as $column) {
+            Schema::table('attendances', function (Blueprint $table) use ($column) {
+                if (Schema::hasColumn('attendances', $column)) {
+                    $table->dropColumn($column);
+                }
+            });
+        }
     }
 };

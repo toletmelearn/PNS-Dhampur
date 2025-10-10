@@ -7,8 +7,19 @@
     <div class="row">
         <div class="col-12">
             <div class="page-title-box">
-                <h4 class="page-title">Performance Monitoring Dashboard</h4>
+                <h4 class="page-title">Performance Monitoring</h4>
                 <div class="page-title-right">
+                    <div class="btn-group me-2">
+                        <a href="{{ route('admin.performance.dashboard') }}" class="btn btn-sm btn-primary">
+                            <i class="mdi mdi-view-dashboard"></i> Dashboard
+                        </a>
+                        <a href="{{ route('admin.performance.alerts') }}" class="btn btn-sm btn-outline-warning">
+                            <i class="mdi mdi-alert-circle"></i> Alerts
+                        </a>
+                        <a href="{{ route('admin.performance.metrics') }}" class="btn btn-sm btn-outline-info">
+                            <i class="mdi mdi-chart-line"></i> Metrics
+                        </a>
+                    </div>
                     <ol class="breadcrumb m-0">
                         <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Admin</a></li>
                         <li class="breadcrumb-item active">Performance Monitoring</li>

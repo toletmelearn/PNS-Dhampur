@@ -14,25 +14,44 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use App\Http\Traits\FileUploadValidationTrait;
 
 class StudentPortalController extends Controller
 {
+    use FileUploadValidationTrait;
+    
+    private $student = null;
+    
+    /**
+     * Get authenticated student with caching
+     */
+    private function getAuthenticatedStudent()
+    {
+        if ($this->student === null) {
+            $this->student = Student::with(['class', 'user'])
+                ->where('user_id', Auth::id())
+                ->first();
+        }
+        
+        return $this->student;
+    }
+    
     /**
      * Student portal dashboard
      */
     public function dashboard()
     {
-        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
+        $student = $this->getAuthenticatedStudent();
         
         if (!$student) {
             abort(403, 'Student profile not found.');
         }
 
-        // Get student's class assignments
+        // Get student's class assignments with optimized queries
         $upcomingAssignments = Assignment::published()
             ->forClass($student->class_id)
             ->upcoming()
-            ->with(['subject', 'teacher'])
+            ->with(['subject', 'teacher.user'])
             ->orderBy('due_datetime', 'asc')
             ->limit(5)
             ->get();
@@ -40,37 +59,38 @@ class StudentPortalController extends Controller
         $overdueAssignments = Assignment::published()
             ->forClass($student->class_id)
             ->overdue()
-            ->with(['subject', 'teacher'])
+            ->with(['subject', 'teacher.user'])
             ->orderBy('due_datetime', 'desc')
             ->limit(5)
             ->get();
 
-        // Get recent submissions
+        // Get recent submissions with optimized eager loading
         $recentSubmissions = AssignmentSubmission::where('student_id', $student->id)
-            ->with(['assignment.subject', 'assignment.teacher'])
+            ->with(['assignment.subject', 'assignment.teacher.user'])
             ->orderBy('submitted_at', 'desc')
             ->limit(5)
             ->get();
 
-        // Get statistics
+        // Optimize statistics with single queries
+        $totalAssignments = Assignment::published()->forClass($student->class_id)->count();
+        $submittedCount = AssignmentSubmission::where('student_id', $student->id)->submitted()->count();
+        $gradedSubmissions = AssignmentSubmission::where('student_id', $student->id)->graded();
+        
         $stats = [
-            'total_assignments' => Assignment::published()->forClass($student->class_id)->count(),
-            'submitted' => AssignmentSubmission::where('student_id', $student->id)->submitted()->count(),
-            'pending' => Assignment::published()->forClass($student->class_id)->count() - 
-                        AssignmentSubmission::where('student_id', $student->id)->submitted()->count(),
-            'graded' => AssignmentSubmission::where('student_id', $student->id)->graded()->count(),
-            'average_grade' => AssignmentSubmission::where('student_id', $student->id)
-                ->graded()
-                ->avg('final_marks') ?? 0,
+            'total_assignments' => $totalAssignments,
+            'submitted' => $submittedCount,
+            'pending' => $totalAssignments - $submittedCount,
+            'graded' => $gradedSubmissions->count(),
+            'average_grade' => $gradedSubmissions->avg('final_marks') ?? 0,
         ];
 
-        // Get available syllabi
+        // Get available syllabi with eager loading
         $syllabi = Syllabus::active()
             ->where(function ($query) use ($student) {
                 $query->forClass($student->class_id)
                       ->orWhere('visibility', 'public');
             })
-            ->with(['subject', 'teacher'])
+            ->with(['subject', 'teacher.user'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
@@ -86,7 +106,7 @@ class StudentPortalController extends Controller
      */
     public function assignments(Request $request)
     {
-        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
+        $student = $this->getAuthenticatedStudent();
         
         if (!$student) {
             abort(403, 'Student profile not found.');
@@ -94,7 +114,7 @@ class StudentPortalController extends Controller
 
         $query = Assignment::published()
             ->forClass($student->class_id)
-            ->with(['subject', 'teacher', 'syllabus']);
+            ->with(['subject', 'teacher.user', 'syllabus']);
 
         // Apply filters
         if ($request->filled('subject_id')) {
@@ -138,7 +158,7 @@ class StudentPortalController extends Controller
 
         $assignments = $query->orderBy('due_datetime', 'asc')->paginate(12);
 
-        // Add submission status to each assignment
+        // Optimize submission status loading with single query
         $assignmentIds = $assignments->pluck('id');
         $submissions = AssignmentSubmission::where('student_id', $student->id)
             ->whereIn('assignment_id', $assignmentIds)
@@ -149,7 +169,7 @@ class StudentPortalController extends Controller
             $assignment->student_submission = $submissions->get($assignment->id);
         }
 
-        // Get filter options
+        // Get filter options with optimized query
         $subjects = Subject::whereHas('assignments', function ($query) use ($student) {
             $query->published()->forClass($student->class_id);
         })->orderBy('name')->get();
@@ -162,7 +182,7 @@ class StudentPortalController extends Controller
      */
     public function showAssignment($id)
     {
-        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
+        $student = $this->getAuthenticatedStudent();
         
         if (!$student) {
             abort(403, 'Student profile not found.');
@@ -170,7 +190,7 @@ class StudentPortalController extends Controller
 
         $assignment = Assignment::published()
             ->forClass($student->class_id)
-            ->with(['subject', 'teacher', 'syllabus'])
+            ->with(['subject', 'teacher.user', 'syllabus'])
             ->findOrFail($id);
 
         // Get student's submission if exists
@@ -186,7 +206,7 @@ class StudentPortalController extends Controller
      */
     public function submitAssignment(Request $request, $id)
     {
-        $student = Student::with(['class', 'user'])->where('user_id', Auth::id())->first();
+        $student = $this->getAuthenticatedStudent();
         
         if (!$student) {
             return response()->json([
@@ -221,17 +241,17 @@ class StudentPortalController extends Controller
 
         // Validate based on submission type
         $rules = [];
-        $maxAssignmentSize = config('fileupload.max_file_sizes.assignment');
-        $assignmentMimes = config('fileupload.allowed_file_types.assignment.mimes');
         
         if ($assignment->submission_type === 'text' || $assignment->submission_type === 'both') {
             $rules['submission_text'] = 'required|string';
         }
         if ($assignment->submission_type === 'file' || $assignment->submission_type === 'both') {
-            $rules['attachment'] = "required|file|mimes:{$assignmentMimes}|max:{$maxAssignmentSize}"; // Updated with config values
+            // Use enhanced validation from trait
+            $fileRules = $this->getDocumentValidationRules();
+            $rules['attachment'] = $fileRules['document'];
         }
 
-        $validator = Validator::make($request->all(), $rules);
+        $validator = Validator::make($request->all(), $rules, $this->getFileUploadValidationMessages());
 
         if ($validator->fails()) {
             return response()->json([
@@ -250,9 +270,20 @@ class StudentPortalController extends Controller
                 'is_late' => $assignment->isOverdue(),
             ];
 
-            // Handle file upload
+            // Handle file upload with enhanced validation
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
+                
+                // Use enhanced file validation with virus scanning
+                $validationResult = $this->validateFileWithSecurity($file, 'document');
+                
+                if (!$validationResult['valid']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'File validation failed: ' . $validationResult['error']
+                    ], 422);
+                }
+                
                 $originalName = $file->getClientOriginalName();
                 $extension = $file->getClientOriginalExtension();
                 $fileName = Str::uuid() . '.' . $extension;
@@ -306,9 +337,11 @@ class StudentPortalController extends Controller
 
         // Validate file upload if present
         if ($request->hasFile('attachment')) {
+            // Use enhanced validation from trait
+            $fileRules = $this->getDocumentValidationRules();
             $validator = Validator::make($request->all(), [
-                'attachment' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png|max:5120'
-            ]);
+                'attachment' => $fileRules['document']
+            ], $this->getFileUploadValidationMessages());
 
             if ($validator->fails()) {
                 return response()->json([
@@ -326,9 +359,20 @@ class StudentPortalController extends Controller
                 'status' => AssignmentSubmission::STATUS_DRAFT,
             ];
 
-            // Handle file upload
+            // Handle file upload with enhanced validation
             if ($request->hasFile('attachment')) {
                 $file = $request->file('attachment');
+                
+                // Use enhanced file validation with virus scanning
+                $validationResult = $this->validateFileWithSecurity($file, 'document');
+                
+                if (!$validationResult['valid']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'File validation failed: ' . $validationResult['error']
+                    ], 422);
+                }
+                
                 $originalName = $file->getClientOriginalName();
                 $extension = $file->getClientOriginalExtension();
                 $fileName = Str::uuid() . '.' . $extension;

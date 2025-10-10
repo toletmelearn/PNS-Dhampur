@@ -316,14 +316,18 @@
                             <div class="form-group">
                                 <label for="password">Password <span class="text-danger">*</span></label>
                                 <div class="input-group">
-                                    <input type="password" class="form-control" id="password" name="password" required>
+                                    <input type="password" class="form-control" id="password" name="password" 
+                                           required
+                                           minlength="8"
+                                           pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+                                           title="Password must be at least 8 characters with uppercase, lowercase, number and special character">
                                     <div class="input-group-append">
                                         <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('password')">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                     </div>
                                 </div>
-                                <small class="form-text text-muted">Minimum 8 characters</small>
+                                <small class="form-text text-muted">Minimum 8 characters with uppercase, lowercase, number and special character</small>
                             </div>
                         </div>
                         <div class="col-md-6">

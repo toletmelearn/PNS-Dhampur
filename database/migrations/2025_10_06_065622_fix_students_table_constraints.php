@@ -20,8 +20,8 @@ return new class extends Migration
                 $table->dropForeign(['class_id']);
             }
             
-            // Make admission_no not nullable (if there are existing null values, they need to be handled first)
-            $table->string('admission_no')->nullable(false)->change();
+            // Make admission_number not nullable (if there are existing null values, they need to be handled first)
+            $table->string('admission_number')->nullable(false)->change();
             
             // Re-add foreign key constraint with cascade delete
             $table->foreign('class_id')->references('id')->on('class_models')->onDelete('cascade');
@@ -42,8 +42,8 @@ return new class extends Migration
                 $table->dropForeign(['class_id']);
             }
             
-            // Make admission_no nullable again
-            $table->string('admission_no')->nullable()->change();
+            // Make admission_number nullable again
+            $table->string('admission_number')->nullable()->change();
             
             // Re-add foreign key constraint with set null
             $table->foreign('class_id')->references('id')->on('class_models')->onDelete('set null');

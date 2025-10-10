@@ -285,6 +285,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="scheduleMaintenanceForm">
+                @csrf
                 <div class="modal-body">
                     <div class="row mb-3">
                         <div class="col-md-6">
@@ -409,6 +410,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="completeMaintenanceForm">
+                @csrf
                 <div class="modal-body">
                     <div class="row mb-3">
                         <div class="col-md-6">

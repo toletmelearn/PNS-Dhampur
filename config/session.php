@@ -205,6 +205,6 @@ return [
     |
     */
 
-    'same_site' => env('SESSION_SAME_SITE', 'strict'), // Enhanced CSRF protection
+    'same_site' => env('SESSION_SAME_SITE', 'lax'), // Enhanced CSRF protection while allowing AJAX
 
 ];

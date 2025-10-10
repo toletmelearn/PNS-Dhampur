@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Config;
+use App\Support\Constants;
 
 class SeasonSwitchingService
 {
@@ -16,18 +17,18 @@ class SeasonSwitchingService
      */
     private const SEASON_CONFIG = [
         'summer' => [
-            'start_month' => 4,  // April
-            'start_day' => 1,
-            'end_month' => 9,    // September
-            'end_day' => 30,
+            'start_month' => Constants::APRIL_MONTH,  // April
+            'start_day' => Constants::FIRST_DAY_OF_MONTH,
+            'end_month' => Constants::SEPTEMBER_MONTH,    // September
+            'end_day' => Constants::SEPTEMBER_LAST_DAY,
             'name' => 'Summer Schedule',
             'description' => 'Hot weather schedule with adjusted timings'
         ],
         'winter' => [
-            'start_month' => 10, // October
-            'start_day' => 1,
-            'end_month' => 3,    // March
-            'end_day' => 31,
+            'start_month' => Constants::OCTOBER_MONTH, // October
+            'start_day' => Constants::FIRST_DAY_OF_MONTH,
+            'end_month' => Constants::MARCH_MONTH,    // March
+            'end_day' => Constants::MARCH_LAST_DAY,
             'name' => 'Winter Schedule',
             'description' => 'Cold weather schedule with standard timings'
         ]
@@ -50,7 +51,7 @@ class SeasonSwitchingService
         $day = $date->day;
 
         // Summer season: April 1 - September 30
-        if (($month >= 4 && $month <= 9)) {
+        if (($month >= Constants::APRIL_MONTH && $month <= Constants::SEPTEMBER_MONTH)) {
             return 'summer';
         }
 
@@ -71,8 +72,8 @@ class SeasonSwitchingService
             'from_season' => $lastKnownSeason,
             'to_season' => $currentSeason,
             'switch_date' => Carbon::now()->toDateTimeString(),
-            'affected_schedules' => 0,
-            'notifications_sent' => 0
+            'affected_schedules' => Constants::ZERO_COUNT,
+            'notifications_sent' => Constants::ZERO_COUNT
         ];
 
         // If this is the first time or season has changed
@@ -80,7 +81,7 @@ class SeasonSwitchingService
             $result['switched'] = true;
             
             // Update cache
-            Cache::put('current_bell_season', $currentSeason, now()->addDays(30));
+            Cache::put('current_bell_season', $currentSeason, now()->addDays(Constants::SEASON_CACHE_DAYS));
             
             // Switch active schedules
             $result['affected_schedules'] = $this->switchActiveSchedules($currentSeason);

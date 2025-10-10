@@ -157,6 +157,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="salaryStructureForm">
+                @csrf
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">

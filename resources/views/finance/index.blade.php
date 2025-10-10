@@ -590,6 +590,7 @@
             </div>
             <div class="modal-body">
                 <form id="collectFeeForm">
+                    @csrf
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Student *</label>
@@ -663,6 +664,7 @@
             </div>
             <div class="modal-body">
                 <form id="addTransactionForm">
+                    @csrf
                     <div class="mb-3">
                         <label class="form-label">Transaction Type *</label>
                         <select class="form-select" name="type" required>

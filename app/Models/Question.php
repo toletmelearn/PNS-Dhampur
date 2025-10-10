@@ -73,15 +73,26 @@ class Question extends Model
         return $badges[$this->question_type] ?? '<span class="badge badge-light">Unknown</span>';
     }
 
-    public function getDifficultyBadgeAttribute()
+    public function getDifficultyBadgeClassAttribute()
     {
-        $badges = [
-            'easy' => '<span class="badge badge-success">Easy</span>',
-            'medium' => '<span class="badge badge-warning">Medium</span>',
-            'hard' => '<span class="badge badge-danger">Hard</span>'
+        $classes = [
+            'easy' => 'badge-success',
+            'medium' => 'badge-warning',
+            'hard' => 'badge-danger'
         ];
 
-        return $badges[$this->difficulty_level] ?? '<span class="badge badge-secondary">Not Set</span>';
+        return $classes[$this->difficulty_level] ?? 'badge-secondary';
+    }
+
+    public function getDifficultyBadgeTextAttribute()
+    {
+        $texts = [
+            'easy' => 'Easy',
+            'medium' => 'Medium',
+            'hard' => 'Hard'
+        ];
+
+        return $texts[$this->difficulty_level] ?? 'Not Set';
     }
 
     public function getBloomTaxonomyBadgeAttribute()

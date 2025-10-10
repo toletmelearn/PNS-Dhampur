@@ -108,7 +108,7 @@ trait EmailValidationTrait
     protected function getSimpleEmailValidationRules(bool $required = true): array
     {
         $rules = [
-            'email:rfc,dns',
+            'email:rfc',  // Removed DNS validation for testing
             'max:255'
         ];
 

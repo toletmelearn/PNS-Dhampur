@@ -464,7 +464,7 @@ $(document).ready(function() {
     // Initialize enhanced file upload for assignment submissions
     const assignmentUploader = new EnhancedFileUpload({
         maxFileSize: {{ config('fileupload.max_file_sizes.assignment') }},
-        allowedTypes: {!! json_encode(explode(',', config('fileupload.allowed_file_types.assignment.extensions'))) !!},
+        allowedTypes: @json(explode(',', config('fileupload.allowed_file_types.assignment.extensions'))),
         dropZone: '#assignment-drop-zone',
         fileInput: '#attachments',
         previewContainer: '#assignment-preview',

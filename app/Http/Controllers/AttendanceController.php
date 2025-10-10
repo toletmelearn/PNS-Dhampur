@@ -27,8 +27,11 @@ class AttendanceController extends Controller
         $classId = $request->get('class_id');
         $status = $request->get('status');
         
-        $query = Attendance::with(['student.classModel', 'markedBy'])
-            ->whereDate('date', $date);
+        $query = Attendance::with([
+            'student:id,name,admission_no,class_id',
+            'student.classModel:id,name,section',
+            'markedBy:id,name'
+        ])->whereDate('date', $date);
             
         if ($classId) {
             $query->where('class_id', $classId);
@@ -38,22 +41,46 @@ class AttendanceController extends Controller
             $query->where('status', $status);
         }
         
-        $attendances = $query->orderBy('created_at', 'desc')->paginate(15);
-        $classes = ClassModel::orderBy('name')->get();
+        // Apply sorting
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
         
-        // Calculate summary statistics
-        $totalStudents = Student::where('status', 'active')->count();
-        $todayAttendances = Attendance::whereDate('date', $date)->get();
-        $presentCount = $todayAttendances->where('status', 'present')->count();
-        $absentCount = $todayAttendances->where('status', 'absent')->count();
-        $lateCount = $todayAttendances->where('status', 'late')->count();
+        $allowedSorts = ['created_at', 'status', 'student_id'];
+        if (in_array($sortBy, $allowedSorts)) {
+            $query->orderBy($sortBy, $sortOrder);
+        } else {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        $attendances = $query->paginate(15);
+        $classes = ClassModel::select('id', 'name', 'section')->orderBy('name')->get();
+        
+        // Calculate summary statistics efficiently in a single query
+        $summaryQuery = Attendance::selectRaw('
+            COUNT(*) as total_records,
+            SUM(CASE WHEN status = "present" THEN 1 ELSE 0 END) as present_count,
+            SUM(CASE WHEN status = "absent" THEN 1 ELSE 0 END) as absent_count,
+            SUM(CASE WHEN status = "late" THEN 1 ELSE 0 END) as late_count
+        ')->whereDate('date', $date);
+        
+        if ($classId) {
+            $summaryQuery->where('class_id', $classId);
+        }
+        
+        $summaryData = $summaryQuery->first();
+        $totalStudents = Student::where('status', 'active')
+            ->when($classId, function($query) use ($classId) {
+                return $query->where('class_id', $classId);
+            })
+            ->count();
         
         $summary = [
             'total_students' => $totalStudents,
-            'present' => $presentCount,
-            'absent' => $absentCount,
-            'late' => $lateCount,
-            'attendance_percentage' => $totalStudents > 0 ? round(($presentCount / $totalStudents) * 100, 2) : 0
+            'present' => $summaryData->present_count ?? 0,
+            'absent' => $summaryData->absent_count ?? 0,
+            'late' => $summaryData->late_count ?? 0,
+            'attendance_percentage' => $totalStudents > 0 ? 
+                round((($summaryData->present_count ?? 0) / $totalStudents) * 100, 2) : 0
         ];
         
         if ($request->expectsJson()) {
@@ -62,7 +89,15 @@ class AttendanceController extends Controller
                 'data' => [
                     'attendances' => $attendances,
                     'summary' => $summary,
-                    'classes' => $classes
+                    'classes' => $classes,
+                    'pagination' => [
+                        'current_page' => $attendances->currentPage(),
+                        'last_page' => $attendances->lastPage(),
+                        'per_page' => $attendances->perPage(),
+                        'total' => $attendances->total(),
+                        'from' => $attendances->firstItem(),
+                        'to' => $attendances->lastItem(),
+                    ]
                 ]
             ]);
         }
@@ -78,12 +113,13 @@ class AttendanceController extends Controller
         $date = $request->get('date', now()->format('Y-m-d'));
         $classId = $request->get('class_id');
         
-        $classes = ClassModel::orderBy('name')->get();
+        $classes = ClassModel::select('id', 'name', 'section')->orderBy('name')->get();
         $students = collect();
         $existingAttendances = collect();
         
         if ($classId) {
-            $students = Student::with(['classModel', 'user'])
+            $students = Student::with(['classModel:id,name,section', 'user:id,name,email'])
+                ->select('id', 'name', 'admission_no', 'class_id', 'user_id', 'status')
                 ->where('class_id', $classId)
                 ->where('status', 'active')
                 ->orderBy('name')
@@ -121,7 +157,7 @@ class AttendanceController extends Controller
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        return $this->handleBulkOperation($request, function () use ($request) {
+        return DB::transaction(function () use ($request) {
             $date = $request->date;
             $classId = $request->class_id;
             $attendanceData = $request->attendances;
@@ -151,7 +187,13 @@ class AttendanceController extends Controller
                         'student_id' => $attendance['student_id'],
                         'error' => $e->getMessage()
                     ]);
+                    // Re-throw to trigger transaction rollback
+                    throw new \Exception("Failed to mark attendance for student ID: " . $attendance['student_id'] . ". " . $e->getMessage());
                 }
+            }
+            
+            if ($successCount === 0) {
+                throw new \Exception('No attendance records were successfully created');
             }
             
             $message = "Successfully marked attendance for {$successCount} students.";
@@ -193,7 +235,7 @@ class AttendanceController extends Controller
             return $this->jsonValidationErrorResponse($validator);
         }
 
-        return $this->handleWithTransaction($request, function () use ($request) {
+        return DB::transaction(function () use ($request) {
             $date = $request->date;
             $classId = $request->class_id;
             $status = $request->status;
@@ -204,24 +246,39 @@ class AttendanceController extends Controller
                 ->get();
 
             if ($students->isEmpty()) {
-                return $this->jsonErrorResponse('No active students found in the selected class.', 404);
+                throw new \Exception('No active students found in the selected class.');
             }
                 
             $successCount = 0;
+            $errors = [];
             
             foreach ($students as $student) {
-                Attendance::updateOrCreate(
-                    [
+                try {
+                    Attendance::updateOrCreate(
+                        [
+                            'student_id' => $student->id,
+                            'date' => $date
+                        ],
+                        [
+                            'class_id' => $classId,
+                            'status' => $status,
+                            'marked_by' => $markedBy
+                        ]
+                    );
+                    $successCount++;
+                } catch (\Exception $e) {
+                    $errors[] = "Failed to mark attendance for {$student->name}";
+                    Log::error('Bulk attendance marking error', [
                         'student_id' => $student->id,
-                        'date' => $date
-                    ],
-                    [
-                        'class_id' => $classId,
-                        'status' => $status,
-                        'marked_by' => $markedBy
-                    ]
-                );
-                $successCount++;
+                        'error' => $e->getMessage()
+                    ]);
+                    // Re-throw to trigger transaction rollback
+                    throw new \Exception("Failed to mark attendance for student {$student->name}. " . $e->getMessage());
+                }
+            }
+            
+            if ($successCount === 0) {
+                throw new \Exception('No attendance records were successfully created');
             }
             
             Log::info('Bulk attendance marked', [
@@ -362,109 +419,124 @@ class AttendanceController extends Controller
      */
     public function analytics(Request $request)
     {
-        try {
-            $classId = $request->get('class_id');
-            $startDate = $request->get('date_from', now()->startOfMonth()->format('Y-m-d'));
-            $endDate = $request->get('date_to', now()->format('Y-m-d'));
-
-            // Overall statistics
-            $totalRecords = Attendance::whereBetween('date', [$startDate, $endDate])
-                ->when($classId, function ($query) use ($classId) {
-                    return $query->where('class_id', $classId);
-                })
+        $dateFrom = $request->get('date_from', now()->subDays(30)->format('Y-m-d'));
+        $dateTo = $request->get('date_to', now()->format('Y-m-d'));
+        $classId = $request->get('class_id');
+        
+        // Overall statistics with efficient single query
+        $overallStats = Attendance::selectRaw('
+            COUNT(*) as total_records,
+            SUM(CASE WHEN status = "present" THEN 1 ELSE 0 END) as present_count,
+            SUM(CASE WHEN status = "absent" THEN 1 ELSE 0 END) as absent_count,
+            SUM(CASE WHEN status = "late" THEN 1 ELSE 0 END) as late_count
+        ')
+        ->whereBetween('date', [$dateFrom, $dateTo])
+        ->when($classId, function($query) use ($classId) {
+            return $query->where('class_id', $classId);
+        })
+        ->first();
+        
+        $totalStudents = Student::where('status', 'active')
+            ->when($classId, function($query) use ($classId) {
+                return $query->where('class_id', $classId);
+            })
+            ->count();
+        
+        // Daily attendance trends with optimized query
+        $dailyTrends = Attendance::selectRaw('
+            DATE(date) as attendance_date,
+            COUNT(*) as total_records,
+            SUM(CASE WHEN status = "present" THEN 1 ELSE 0 END) as present_count,
+            SUM(CASE WHEN status = "absent" THEN 1 ELSE 0 END) as absent_count,
+            SUM(CASE WHEN status = "late" THEN 1 ELSE 0 END) as late_count
+        ')
+        ->whereBetween('date', [$dateFrom, $dateTo])
+        ->when($classId, function($query) use ($classId) {
+            return $query->where('class_id', $classId);
+        })
+        ->groupBy('attendance_date')
+        ->orderBy('attendance_date')
+        ->get()
+        ->map(function($item) use ($totalStudents) {
+            $item->attendance_percentage = $totalStudents > 0 ? 
+                round(($item->present_count / $totalStudents) * 100, 2) : 0;
+            return $item;
+        });
+        
+        // Class-wise statistics with optimized query
+        $classStats = Attendance::selectRaw('
+            class_id,
+            COUNT(*) as total_records,
+            SUM(CASE WHEN status = "present" THEN 1 ELSE 0 END) as present_count,
+            SUM(CASE WHEN status = "absent" THEN 1 ELSE 0 END) as absent_count,
+            SUM(CASE WHEN status = "late" THEN 1 ELSE 0 END) as late_count
+        ')
+        ->with(['classModel:id,name,section'])
+        ->whereBetween('date', [$dateFrom, $dateTo])
+        ->when($classId, function($query) use ($classId) {
+            return $query->where('class_id', $classId);
+        })
+        ->groupBy('class_id')
+        ->get()
+        ->map(function($item) {
+            $classStudents = Student::where('class_id', $item->class_id)
+                ->where('status', 'active')
                 ->count();
-
-            $presentCount = Attendance::whereBetween('date', [$startDate, $endDate])
-                ->when($classId, function ($query) use ($classId) {
-                    return $query->where('class_id', $classId);
-                })
-                ->where('status', 'present')
-                ->count();
-
-            $absentCount = Attendance::whereBetween('date', [$startDate, $endDate])
-                ->when($classId, function ($query) use ($classId) {
-                    return $query->where('class_id', $classId);
-                })
-                ->where('status', 'absent')
-                ->count();
-
-            $lateCount = Attendance::whereBetween('date', [$startDate, $endDate])
-                ->when($classId, function ($query) use ($classId) {
-                    return $query->where('class_id', $classId);
-                })
-                ->where('status', 'late')
-                ->count();
-
-            // Daily attendance trends
-            $dailyTrends = Attendance::selectRaw('DATE(date) as date, status, COUNT(*) as count')
-                ->whereBetween('date', [$startDate, $endDate])
-                ->when($classId, function ($query) use ($classId) {
-                    return $query->where('class_id', $classId);
-                })
-                ->groupBy('date', 'status')
-                ->orderBy('date')
-                ->get()
-                ->groupBy('date');
-
-            // Class-wise statistics (if no specific class selected)
-            $classStats = [];
-            if (!$classId) {
-                $classStats = Attendance::selectRaw('class_id, status, COUNT(*) as count')
-                    ->with('classModel:id,name')
-                    ->whereBetween('date', [$startDate, $endDate])
-                    ->groupBy('class_id', 'status')
-                    ->get()
-                    ->groupBy('class_id');
-            }
-
-            // Low attendance students
-            $lowAttendanceStudents = Student::with(['attendances' => function ($query) use ($startDate, $endDate) {
-                    $query->whereBetween('date', [$startDate, $endDate]);
-                }])
-                ->when($classId, function ($query) use ($classId) {
-                    return $query->where('class_id', $classId);
-                })
-                ->get()
-                ->map(function ($student) {
-                    $totalDays = $student->attendances->count();
-                    $presentDays = $student->attendances->where('status', 'present')->count();
-                    $percentage = $totalDays > 0 ? ($presentDays / $totalDays) * 100 : 0;
-                    
-                    return [
-                        'student' => $student,
-                        'total_days' => $totalDays,
-                        'present_days' => $presentDays,
-                        'percentage' => round($percentage, 2)
-                    ];
-                })
-                ->where('percentage', '<', 75)
-                ->sortBy('percentage')
-                ->values();
-
+            $item->attendance_percentage = $classStudents > 0 ? 
+                round(($item->present_count / $classStudents) * 100, 2) : 0;
+            $item->total_students = $classStudents;
+            return $item;
+        });
+        
+        // Low attendance students with optimized query
+        $lowAttendanceStudents = Student::select('id', 'name', 'admission_no', 'class_id')
+            ->with(['classModel:id,name,section'])
+            ->withCount([
+                'attendances as total_attendance' => function($query) use ($dateFrom, $dateTo) {
+                    $query->whereBetween('date', [$dateFrom, $dateTo]);
+                },
+                'attendances as present_count' => function($query) use ($dateFrom, $dateTo) {
+                    $query->whereBetween('date', [$dateFrom, $dateTo])
+                          ->where('status', 'present');
+                }
+            ])
+            ->having('total_attendance', '>', 0)
+            ->get()
+            ->map(function($student) {
+                $student->attendance_percentage = $student->total_attendance > 0 ? 
+                    round(($student->present_count / $student->total_attendance) * 100, 2) : 0;
+                return $student;
+            })
+            ->filter(function($student) {
+                return $student->attendance_percentage < 75;
+            })
+            ->sortBy('attendance_percentage')
+            ->take(10);
+        
+        $classes = ClassModel::select('id', 'name', 'section')->orderBy('name')->get();
+        
+        $analytics = [
+            'overall_stats' => [
+                'total_students' => $totalStudents,
+                'present' => $overallStats->present_count ?? 0,
+                'absent' => $overallStats->absent_count ?? 0,
+                'late' => $overallStats->late_count ?? 0,
+                'attendance_percentage' => $totalStudents > 0 ? 
+                    round((($overallStats->present_count ?? 0) / $totalStudents) * 100, 2) : 0
+            ],
+            'daily_trends' => $dailyTrends,
+            'class_stats' => $classStats,
+            'low_attendance_students' => $lowAttendanceStudents
+        ];
+        
+        if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'data' => [
-                    'overview' => [
-                        'total_records' => $totalRecords,
-                        'present_count' => $presentCount,
-                        'absent_count' => $absentCount,
-                        'late_count' => $lateCount,
-                        'attendance_percentage' => $totalRecords > 0 ? round(($presentCount / $totalRecords) * 100, 2) : 0
-                    ],
-                    'daily_trends' => $dailyTrends,
-                    'class_stats' => $classStats,
-                    'low_attendance_students' => $lowAttendanceStudents
-                ]
+                'data' => $analytics
             ]);
-
-        } catch (\Exception $e) {
-            Log::error('Attendance analytics error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return UserFriendlyErrorService::jsonErrorResponse($e, 'report_generate');
         }
+        
+        return view('attendance.analytics', compact('analytics', 'classes', 'dateFrom', 'dateTo'));
     }
 
     /**
@@ -589,45 +661,57 @@ class AttendanceController extends Controller
             ], 422);
         }
 
-        try {
-            $attendanceIds = $request->attendance_ids;
-            $status = $request->status;
-            $updatedBy = Auth::id();
+        return DB::transaction(function () use ($request) {
+            try {
+                $attendanceIds = $request->attendance_ids;
+                $status = $request->status;
+                $updatedBy = Auth::id();
 
-            $updated = Attendance::whereIn('id', $attendanceIds)
-                ->update([
+                // Verify all attendance records exist and can be updated
+                $existingRecords = Attendance::whereIn('id', $attendanceIds)->count();
+                if ($existingRecords !== count($attendanceIds)) {
+                    throw new \Exception('Some attendance records not found or cannot be updated');
+                }
+
+                $updated = Attendance::whereIn('id', $attendanceIds)
+                    ->update([
+                        'status' => $status,
+                        'marked_by' => $updatedBy,
+                        'updated_at' => now()
+                    ]);
+
+                if ($updated === 0) {
+                    throw new \Exception('No attendance records were updated');
+                }
+
+                Log::info('Bulk attendance status updated', [
+                    'attendance_ids' => $attendanceIds,
                     'status' => $status,
-                    'marked_by' => $updatedBy,
-                    'updated_at' => now()
+                    'updated_count' => $updated,
+                    'updated_by' => $updatedBy
                 ]);
 
-            Log::info('Bulk attendance status updated', [
-                'attendance_ids' => $attendanceIds,
-                'status' => $status,
-                'updated_count' => $updated,
-                'updated_by' => $updatedBy
-            ]);
+                return response()->json([
+                    'success' => true,
+                    'message' => "Successfully updated {$updated} attendance records to {$status}.",
+                    'data' => [
+                        'updated_count' => $updated
+                    ]
+                ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => "Successfully updated {$updated} attendance records to {$status}.",
-                'data' => [
-                    'updated_count' => $updated
-                ]
-            ]);
+            } catch (\Exception $e) {
+                Log::error('Bulk update attendance status error', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'request_data' => $request->all()
+                ]);
 
-        } catch (\Exception $e) {
-            Log::error('Bulk update attendance status error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update attendance records'
-            ], 500);
-        }
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update attendance records: ' . $e->getMessage()
+                ], 500);
+            }
+        });
     }
 
     /**

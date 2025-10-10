@@ -444,43 +444,77 @@ class SyllabusController extends Controller
             ], 422);
         }
 
-        try {
-            $syllabi = Syllabus::whereIn('id', $request->syllabus_ids)->get();
-            $updated = 0;
+        return DB::transaction(function () use ($request) {
+            try {
+                $syllabi = Syllabus::whereIn('id', $request->syllabus_ids)->get();
+                $updated = 0;
+                $errors = [];
 
-            foreach ($syllabi as $syllabus) {
-                // Check permissions
-                if (Auth::id() !== $syllabus->teacher_id && Auth::id() !== $syllabus->created_by) {
-                    continue;
+                foreach ($syllabi as $syllabus) {
+                    try {
+                        // Check permissions
+                        if (Auth::id() !== $syllabus->teacher_id && Auth::id() !== $syllabus->created_by) {
+                            $errors[] = "No permission to modify syllabus: {$syllabus->title}";
+                            continue;
+                        }
+
+                        switch ($request->action) {
+                            case 'activate':
+                                $syllabus->update(['is_active' => true, 'updated_by' => Auth::id()]);
+                                $updated++;
+                                break;
+                            case 'deactivate':
+                                $syllabus->update(['is_active' => false, 'updated_by' => Auth::id()]);
+                                $updated++;
+                                break;
+                            case 'delete':
+                                $syllabus->delete();
+                                $updated++;
+                                break;
+                        }
+                    } catch (\Exception $e) {
+                        $errors[] = "Failed to {$request->action} syllabus: {$syllabus->title}";
+                        Log::error('Syllabus bulk operation error', [
+                            'syllabus_id' => $syllabus->id,
+                            'action' => $request->action,
+                            'error' => $e->getMessage()
+                        ]);
+                        // Re-throw to trigger transaction rollback
+                        throw new \Exception("Failed to {$request->action} syllabus {$syllabus->title}. " . $e->getMessage());
+                    }
                 }
 
-                switch ($request->action) {
-                    case 'activate':
-                        $syllabus->update(['is_active' => true, 'updated_by' => Auth::id()]);
-                        $updated++;
-                        break;
-                    case 'deactivate':
-                        $syllabus->update(['is_active' => false, 'updated_by' => Auth::id()]);
-                        $updated++;
-                        break;
-                    case 'delete':
-                        $syllabus->delete();
-                        $updated++;
-                        break;
+                if ($updated === 0) {
+                    throw new \Exception('No syllabus records were successfully updated');
                 }
+
+                $message = "Successfully {$request->action}d {$updated} syllabus record(s).";
+                if (!empty($errors)) {
+                    $message .= " Errors: " . implode(', ', $errors);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'data' => [
+                        'updated' => $updated,
+                        'errors' => $errors
+                    ]
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('Syllabus bulk operation failed', [
+                    'action' => $request->action,
+                    'syllabus_ids' => $request->syllabus_ids,
+                    'error' => $e->getMessage()
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bulk operation failed: ' . $e->getMessage()
+                ], 500);
             }
-
-            return response()->json([
-                'success' => true,
-                'message' => "Successfully {$request->action}d {$updated} syllabi"
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error performing bulk action: ' . $e->getMessage()
-            ], 500);
-        }
+        });
     }
 
     /**

@@ -17,17 +17,38 @@ return [
 
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
 
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => env('APP_ENV') === 'production' ? 
+        explode(',', env('CORS_ALLOWED_ORIGINS', 'https://pnsdhampur.com,https://app.pnsdhampur.com')) : 
+        ['http://localhost:3000', 'http://localhost:8000', 'http://127.0.0.1:8000', 'http://localhost:5173'],
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => env('APP_ENV') === 'production' ? 
+        ['/^https:\/\/.*\.pnsdhampur\.com$/'] : 
+        ['/^http:\/\/localhost:\d+$/', '/^http:\/\/127\.0\.0\.1:\d+$/'],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => [
+        'Accept',
+        'Authorization',
+        'Content-Type',
+        'X-Requested-With',
+        'X-CSRF-TOKEN',
+        'X-Socket-ID',
+        'Cache-Control',
+        'Pragma',
+        'X-API-Key'
+    ],
 
-    'exposed_headers' => [],
+    'exposed_headers' => [
+        'X-RateLimit-Limit',
+        'X-RateLimit-Remaining',
+        'X-RateLimit-Reset',
+        'X-Total-Count',
+        'X-Page-Count',
+        'X-Per-Page'
+    ],
 
-    'max_age' => 0,
+    'max_age' => env('APP_ENV') === 'production' ? 86400 : 0, // 24 hours in production
 
     'supports_credentials' => true,
 

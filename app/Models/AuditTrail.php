@@ -191,12 +191,25 @@ class AuditTrail extends Model
 
     public function getStatusBadgeAttribute()
     {
+        // Return safe status text only - HTML should be handled in views
         return match($this->status) {
-            'pending_approval' => '<span class="badge bg-warning">Pending Approval</span>',
-            'approved' => '<span class="badge bg-success">Approved</span>',
-            'rejected' => '<span class="badge bg-danger">Rejected</span>',
-            'auto_approved' => '<span class="badge bg-info">Auto Approved</span>',
-            default => '<span class="badge bg-secondary">Unknown</span>'
+            'pending_approval' => 'Pending Approval',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected',
+            'auto_approved' => 'Auto Approved',
+            default => 'Unknown'
+        };
+    }
+
+    public function getStatusBadgeClassAttribute()
+    {
+        // Return CSS class for safe styling
+        return match($this->status) {
+            'pending_approval' => 'bg-warning',
+            'approved' => 'bg-success',
+            'rejected' => 'bg-danger',
+            'auto_approved' => 'bg-info',
+            default => 'bg-secondary'
         };
     }
 

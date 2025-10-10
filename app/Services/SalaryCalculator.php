@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\Storage;
 
 class SalaryCalculator
 {
+    // Salary component percentages as requested
+    const BASIC_PERCENTAGE = 0.4; // 40% of gross salary
+    const HRA_PERCENTAGE = 0.2; // 20% of gross salary
+    const ALLOWANCE_PERCENTAGE = 0.15; // 15% of gross salary
+    
     // Constants for magic numbers
     const HEALTH_EDUCATION_CESS_RATE = 1.04; // 4% Health and Education Cess
     const SUNDAY_DAY_OF_WEEK = 0; // Sunday identifier in Carbon
@@ -42,9 +47,21 @@ class SalaryCalculator
     protected $pfSalaryLimit = 15000; // PF calculated on basic salary up to 15k
 
     /**
-     * Calculate net salary with all deductions
+     * Calculate net salary using the new percentage constants
      */
-    public function calculateNetSalary($basic, $allowances, $deductions = [])
+    public function calculateNetSalary($grossSalary)
+    {
+        $basic = $grossSalary * self::BASIC_PERCENTAGE;
+        $hra = $grossSalary * self::HRA_PERCENTAGE;
+        $allowances = $grossSalary * self::ALLOWANCE_PERCENTAGE;
+        
+        return $basic + $hra + $allowances;
+    }
+
+    /**
+     * Calculate net salary with all deductions (legacy method)
+     */
+    public function calculateNetSalaryDetailed($basic, $allowances, $deductions = [])
     {
         try {
             // Calculate gross salary
@@ -301,7 +318,7 @@ class SalaryCalculator
 
                 if ($salaryStructure) {
                     $salaryCalc = $salaryStructure->calculateSalary();
-                    $netSalary = $this->calculateNetSalary(
+                    $netSalary = $this->calculateNetSalaryDetailed(
                         $salaryCalc['basic_salary'],
                         $salaryCalc['allowances'],
                         []
@@ -405,7 +422,7 @@ class SalaryCalculator
                 }
 
                 $salaryCalc = $salaryStructure->calculateSalary();
-                $netSalary = $this->calculateNetSalary(
+                $netSalary = $this->calculateNetSalaryDetailed(
                     $salaryCalc['basic_salary'],
                     $salaryCalc['allowances'],
                     []

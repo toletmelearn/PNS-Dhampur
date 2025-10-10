@@ -7,6 +7,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="createSubstitutionForm">
+                @csrf
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6">
@@ -14,7 +15,7 @@
                                 <label for="original_teacher_id" class="form-label">Original Teacher *</label>
                                 <select class="form-select" id="original_teacher_id" name="original_teacher_id" required>
                                     <option value="">Select Teacher</option>
-                                    @foreach(\App\Models\Teacher::where('is_active', true)->get() as $teacher)
+                                    @foreach($teachers ?? \App\Models\Teacher::with(['user'])->where('is_active', true)->get() as $teacher)
                                     <option value="{{ $teacher->id }}">{{ $teacher->name }}</option>
                                     @endforeach
                                 </select>
@@ -25,7 +26,7 @@
                                 <label for="class_id" class="form-label">Class *</label>
                                 <select class="form-select" id="class_id" name="class_id" required>
                                     <option value="">Select Class</option>
-                                    @foreach(\App\Models\ClassModel::all() as $class)
+                                    @foreach($classes ?? \App\Models\ClassModel::with(['students'])->get() as $class)
                                     <option value="{{ $class->id }}">{{ $class->name }}</option>
                                     @endforeach
                                 </select>
@@ -154,6 +155,7 @@
                         <div id="availableTeachersList"></div>
                     </div>
                     <form id="assignSubstituteForm">
+                        @csrf
                         <input type="hidden" id="assign_substitution_id" name="substitution_id">
                         <div class="mb-3">
                             <label for="substitute_teacher_id" class="form-label">Select Substitute Teacher</label>
@@ -186,6 +188,7 @@
             </div>
             <div class="modal-body">
                 <form id="findTeachersForm">
+                    @csrf
                     <div class="row">
                         <div class="col-md-4">
                             <div class="mb-3">
@@ -223,7 +226,7 @@
                                 <label for="search_class_id" class="form-label">Class (Optional)</label>
                                 <select class="form-select" id="search_class_id" name="class_id">
                                     <option value="">Any Class</option>
-                                    @foreach(\App\Models\ClassModel::all() as $class)
+                                    @foreach($classes ?? \App\Models\ClassModel::with(['students'])->get() as $class)
                                     <option value="{{ $class->id }}">{{ $class->name }}</option>
                                     @endforeach
                                 </select>
@@ -271,6 +274,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="reportForm">
+                @csrf
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="report_type" class="form-label">Report Type</label>

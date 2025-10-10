@@ -306,7 +306,7 @@ class AttendanceAnalytics extends Model
     // Bulk calculation for all teachers
     public static function calculateAllTeachersAnalytics($year, $month)
     {
-        $teachers = Teacher::all();
+        $teachers = Teacher::with(['user', 'subjects', 'classes'])->get();
         $results = [];
         
         foreach ($teachers as $teacher) {

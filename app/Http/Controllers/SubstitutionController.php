@@ -34,12 +34,18 @@ class SubstitutionController extends Controller
         $todaySubstitutions = TeacherSubstitution::getTodaySubstitutions();
         $emergencySubstitutions = TeacherSubstitution::getEmergencySubstitutions();
         $upcomingSubstitutions = TeacherSubstitution::getUpcomingSubstitutions(null, 7);
+        
+        // Pass classes and teachers data to avoid N+1 queries in modals
+        $classes = ClassModel::with(['students'])->get();
+        $teachers = Teacher::with(['user'])->where('is_active', true)->get();
 
         return view('substitution.dashboard', compact(
             'stats',
             'todaySubstitutions',
             'emergencySubstitutions',
-            'upcomingSubstitutions'
+            'upcomingSubstitutions',
+            'classes',
+            'teachers'
         ));
     }
 
@@ -94,7 +100,8 @@ class SubstitutionController extends Controller
                               ->paginate(20);
 
         $teachers = Teacher::where('is_active', true)->get();
-        $classes = ClassModel::all();
+        // Fix N+1 query by adding eager loading for students relationship
+        $classes = ClassModel::with(['students'])->get();
 
         return view('substitution.substitutions', compact('substitutions', 'teachers', 'classes'));
     }

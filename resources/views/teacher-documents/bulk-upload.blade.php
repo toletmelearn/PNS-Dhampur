@@ -214,7 +214,7 @@ $(document).ready(function() {
         if (dropZone && fileInput && previewContainer) {
             fileUploaders[index - 1] = new EnhancedFileUpload({
                 maxFileSize: {{ config('fileupload.max_file_size') }},
-                allowedTypes: {!! json_encode(config('fileupload.allowed_types.documents')) !!},
+                allowedTypes: @json(config('fileupload.allowed_types.documents')),
                 dropZone: dropZone,
                 fileInput: fileInput,
                 previewContainer: previewContainer,

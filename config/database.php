@@ -60,7 +60,22 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                PDO::MYSQL_ATTR_SSL_CERT => env('MYSQL_ATTR_SSL_CERT'),
+                PDO::MYSQL_ATTR_SSL_KEY => env('MYSQL_ATTR_SSL_KEY'),
+                PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => env('MYSQL_ATTR_SSL_VERIFY_SERVER_CERT', false),
+                PDO::MYSQL_ATTR_SSL_CIPHER => env('MYSQL_ATTR_SSL_CIPHER'),
+                PDO::ATTR_TIMEOUT => env('DB_TIMEOUT', 30),
+                PDO::ATTR_PERSISTENT => env('DB_PERSISTENT', false),
+                PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::ATTR_STRINGIFY_FETCHES => false,
+                PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true,
+                PDO::MYSQL_ATTR_LOCAL_INFILE => false,
             ]) : [],
+            'dump' => [
+                'dump_binary_path' => env('DB_DUMP_PATH', '/usr/bin'),
+                'use_single_transaction' => true,
+                'timeout' => 60 * 5, // 5 minute timeout
+            ],
         ],
 
         'pgsql' => [

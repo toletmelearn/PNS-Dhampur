@@ -11,6 +11,13 @@ class PerformanceMetric extends Model
     use HasFactory;
 
     protected $fillable = [
+        'metric_type',
+        'metric_name',
+        'value',
+        'unit',
+        'metadata',
+        'recorded_at',
+        // Legacy fields for backward compatibility
         'endpoint',
         'method',
         'user_agent',
@@ -23,10 +30,11 @@ class PerformanceMetric extends Model
         'database_time',
         'status_code',
         'additional_data',
-        'recorded_at',
     ];
 
     protected $casts = [
+        'value' => 'decimal:4',
+        'metadata' => 'array',
         'additional_data' => 'array',
         'recorded_at' => 'datetime',
         'response_time' => 'decimal:2',
@@ -74,6 +82,22 @@ class PerformanceMetric extends Model
         return $query->whereDate('recorded_at', Carbon::today());
     }
 
+    // New scopes for enhanced monitoring
+    public function scopeOfType($query, $type)
+    {
+        return $query->where('metric_type', $type);
+    }
+
+    public function scopeOfName($query, $name)
+    {
+        return $query->where('metric_name', $name);
+    }
+
+    public function scopeBetweenDates($query, $startDate, $endDate)
+    {
+        return $query->whereBetween('recorded_at', [$startDate, $endDate]);
+    }
+
     // Helper methods
     public function isSlowRequest($threshold = 1000)
     {
@@ -107,5 +131,147 @@ class PerformanceMetric extends Model
         }
         
         return round($bytes, 2) . ' ' . $units[$i];
+    }
+
+    /**
+     * Get the average value for a specific metric over a time period
+     */
+    public static function getAverageValue($metricType, $metricName, $minutes = 60)
+    {
+        return static::ofType($metricType)
+            ->ofName($metricName)
+            ->recent($minutes)
+            ->avg('value');
+    }
+
+    /**
+     * Get the latest value for a specific metric
+     */
+    public static function getLatestValue($metricType, $metricName)
+    {
+        $metric = static::ofType($metricType)
+            ->ofName($metricName)
+            ->latest('recorded_at')
+            ->first();
+
+        return $metric ? $metric->value : null;
+    }
+
+    /**
+     * Record a new metric
+     */
+    public static function record($type, $name, $value, $unit = null, $metadata = null)
+    {
+        return static::create([
+            'metric_type' => $type,
+            'metric_name' => $name,
+            'value' => $value,
+            'unit' => $unit,
+            'metadata' => $metadata,
+            'recorded_at' => Carbon::now(),
+        ]);
+    }
+
+    /**
+     * Get metrics for dashboard charts
+     */
+    public static function getChartData($metricType, $metricName, $hours = 24, $interval = 'hour')
+    {
+        $startDate = Carbon::now()->subHours($hours);
+        
+        $query = static::ofType($metricType)
+            ->ofName($metricName)
+            ->where('recorded_at', '>=', $startDate)
+            ->orderBy('recorded_at');
+
+        if ($interval === 'hour') {
+            return $query->selectRaw('
+                DATE_FORMAT(recorded_at, "%Y-%m-%d %H:00:00") as period,
+                AVG(value) as avg_value,
+                MAX(value) as max_value,
+                MIN(value) as min_value,
+                COUNT(*) as count
+            ')
+            ->groupBy('period')
+            ->get();
+        } elseif ($interval === 'minute') {
+            return $query->selectRaw('
+                DATE_FORMAT(recorded_at, "%Y-%m-%d %H:%i:00") as period,
+                AVG(value) as avg_value,
+                MAX(value) as max_value,
+                MIN(value) as min_value,
+                COUNT(*) as count
+            ')
+            ->groupBy('period')
+            ->get();
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * Clean up old metrics
+     */
+    public static function cleanup($days = 30)
+    {
+        $cutoffDate = Carbon::now()->subDays($days);
+        
+        return static::where('recorded_at', '<', $cutoffDate)->delete();
+    }
+
+    /**
+     * Get system health summary
+     */
+    public static function getSystemHealthSummary()
+    {
+        $recentMetrics = static::recent(5)->get()->groupBy('metric_name');
+        
+        $summary = [];
+        
+        foreach ($recentMetrics as $metricName => $metrics) {
+            $latestMetric = $metrics->first();
+            $summary[$metricName] = [
+                'current_value' => $latestMetric->value,
+                'unit' => $latestMetric->unit,
+                'recorded_at' => $latestMetric->recorded_at,
+                'avg_last_hour' => static::getAverageValue($latestMetric->metric_type, $metricName, 60),
+                'trend' => static::getTrend($latestMetric->metric_type, $metricName),
+            ];
+        }
+        
+        return $summary;
+    }
+
+    /**
+     * Get trend for a metric (up, down, stable)
+     */
+    public static function getTrend($metricType, $metricName, $minutes = 30)
+    {
+        $recent = static::ofType($metricType)
+            ->ofName($metricName)
+            ->recent($minutes)
+            ->orderBy('recorded_at')
+            ->pluck('value')
+            ->toArray();
+
+        if (count($recent) < 2) {
+            return 'stable';
+        }
+
+        $firstHalf = array_slice($recent, 0, ceil(count($recent) / 2));
+        $secondHalf = array_slice($recent, floor(count($recent) / 2));
+
+        $firstAvg = array_sum($firstHalf) / count($firstHalf);
+        $secondAvg = array_sum($secondHalf) / count($secondHalf);
+
+        $threshold = 0.05; // 5% change threshold
+
+        if ($secondAvg > $firstAvg * (1 + $threshold)) {
+            return 'up';
+        } elseif ($secondAvg < $firstAvg * (1 - $threshold)) {
+            return 'down';
+        }
+
+        return 'stable';
     }
 }

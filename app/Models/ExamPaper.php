@@ -129,40 +129,75 @@ class ExamPaper extends Model
         return $query->where('exam_id', $examId);
     }
 
-    // Accessors
-    public function getStatusBadgeAttribute()
+    // Accessors - Return safe CSS classes instead of HTML
+    public function getStatusBadgeClassAttribute()
     {
-        $badges = [
-            'draft' => '<span class="badge badge-secondary">Draft</span>',
-            'submitted' => '<span class="badge badge-info">Submitted</span>',
-            'published' => '<span class="badge badge-success">Published</span>',
-            'approved' => '<span class="badge badge-primary">Approved</span>',
-            'rejected' => '<span class="badge badge-danger">Rejected</span>'
+        $classes = [
+            'draft' => 'badge-secondary',
+            'submitted' => 'badge-info',
+            'published' => 'badge-success',
+            'approved' => 'badge-primary',
+            'rejected' => 'badge-danger'
         ];
 
-        return $badges[$this->status] ?? '<span class="badge badge-secondary">Unknown</span>';
+        return $classes[$this->status] ?? 'badge-secondary';
     }
 
-    public function getDifficultyBadgeAttribute()
+    public function getStatusBadgeTextAttribute()
     {
-        $badges = [
-            'easy' => '<span class="badge badge-success">Easy</span>',
-            'medium' => '<span class="badge badge-warning">Medium</span>',
-            'hard' => '<span class="badge badge-danger">Hard</span>'
+        $texts = [
+            'draft' => 'Draft',
+            'submitted' => 'Submitted',
+            'published' => 'Published',
+            'approved' => 'Approved',
+            'rejected' => 'Rejected'
         ];
 
-        return $badges[$this->difficulty_level] ?? '<span class="badge badge-secondary">Unknown</span>';
+        return $texts[$this->status] ?? 'Unknown';
     }
 
-    public function getPaperTypeBadgeAttribute()
+    public function getDifficultyBadgeClassAttribute()
     {
-        $badges = [
-            'objective' => '<span class="badge badge-info">Objective</span>',
-            'subjective' => '<span class="badge badge-primary">Subjective</span>',
-            'mixed' => '<span class="badge badge-secondary">Mixed</span>'
+        $classes = [
+            'easy' => 'badge-success',
+            'medium' => 'badge-warning',
+            'hard' => 'badge-danger'
         ];
 
-        return $badges[$this->paper_type] ?? '<span class="badge badge-secondary">Unknown</span>';
+        return $classes[$this->difficulty_level] ?? 'badge-secondary';
+    }
+
+    public function getDifficultyBadgeTextAttribute()
+    {
+        $texts = [
+            'easy' => 'Easy',
+            'medium' => 'Medium',
+            'hard' => 'Hard'
+        ];
+
+        return $texts[$this->difficulty_level] ?? 'Unknown';
+    }
+
+    public function getPaperTypeBadgeClassAttribute()
+    {
+        $classes = [
+            'objective' => 'badge-info',
+            'subjective' => 'badge-primary',
+            'mixed' => 'badge-secondary'
+        ];
+
+        return $classes[$this->paper_type] ?? 'badge-secondary';
+    }
+
+    public function getPaperTypeBadgeTextAttribute()
+    {
+        $texts = [
+            'objective' => 'Objective',
+            'subjective' => 'Subjective',
+            'mixed' => 'Mixed'
+        ];
+
+        return $texts[$this->paper_type] ?? 'Unknown';
     }
 
     public function getFormattedDurationAttribute()

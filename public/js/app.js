@@ -467,6 +467,17 @@
                 config.headers['X-CSRF-TOKEN'] = csrfToken.getAttribute('content');
             }
 
+            // For form data requests, handle CSRF token differently
+            if (config.data instanceof FormData) {
+                // Remove JSON content type for FormData
+                delete config.headers['Content-Type'];
+                
+                // Add CSRF token to FormData if not already present
+                if (csrfToken && !config.data.has('_token')) {
+                    config.data.append('_token', csrfToken.getAttribute('content'));
+                }
+            }
+
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
                 
@@ -484,6 +495,16 @@
                                 resolve(xhr.responseText);
                             }
                         } else {
+                            // Enhanced error handling for authentication issues
+                            if (xhr.status === 401) {
+                                console.error('Authentication failed - redirecting to login');
+                                window.location.href = '/login';
+                                return;
+                            } else if (xhr.status === 419) {
+                                console.error('CSRF token mismatch - refreshing page');
+                                window.location.reload();
+                                return;
+                            }
                             reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
                         }
                     }
@@ -498,7 +519,11 @@
 
                 // Send request
                 if (config.data) {
-                    xhr.send(typeof config.data === 'string' ? config.data : JSON.stringify(config.data));
+                    if (config.data instanceof FormData) {
+                        xhr.send(config.data);
+                    } else {
+                        xhr.send(typeof config.data === 'string' ? config.data : JSON.stringify(config.data));
+                    }
                 } else {
                     xhr.send();
                 }

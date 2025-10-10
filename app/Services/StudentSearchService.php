@@ -16,7 +16,28 @@ class StudentSearchService
      */
     public function search(Request $request): Builder
     {
-        $query = Student::with(['classModel', 'user', 'attendance']);
+        // Eager load all necessary relationships to prevent N+1 queries
+        $query = Student::with([
+            'classModel:id,name,section,is_active',
+            'user:id,name,email,phone,address,gender',
+            'attendance' => function($query) {
+                $query->select('student_id', 'date', 'status', 'marked_at')
+                      ->latest('date')
+                      ->limit(5); // Only load recent attendance records
+            }
+        ])
+        // Add aggregated data to prevent N+1 queries
+        ->withCount([
+            'attendance as total_attendance_count',
+            'attendance as present_count' => function($query) {
+                $query->where('status', 'present');
+            },
+            'attendance as absent_count' => function($query) {
+                $query->where('status', 'absent');
+            }
+        ])
+        ->withSum('fees as total_fees_sum', 'amount')
+        ->withSum('fees as paid_fees_sum', 'paid_amount');
 
         // Basic text search across multiple fields
         if ($request->filled('search')) {

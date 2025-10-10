@@ -20,13 +20,13 @@ return new class extends Migration
             }
             
             // Composite index for status and class_id (common filter combination)
-            if (!$this->indexExists('students', 'students_status_class_id_index')) {
-                $table->index(['status', 'class_id'], 'students_status_class_id_index');
+            if (!$this->indexExists('students', 'students_is_active_class_id_index')) {
+                $table->index(['is_active', 'class_id'], 'students_is_active_class_id_index');
             }
             
-            // Index for admission_no (often used in searches)
-            if (!$this->indexExists('students', 'students_admission_no_index')) {
-                $table->index('admission_no', 'students_admission_no_index');
+            // Index for admission_number (often used in searches)
+            if (!$this->indexExists('students', 'students_admission_number_index')) {
+                $table->index('admission_number', 'students_admission_number_index');
             }
         });
 
@@ -133,8 +133,8 @@ return new class extends Migration
         // Drop indexes for students table
         Schema::table('students', function (Blueprint $table) {
             $table->dropIndex('students_class_id_index');
-            $table->dropIndex('students_status_class_id_index');
-            $table->dropIndex('students_admission_no_index');
+            $table->dropIndex('students_is_active_class_id_index');
+            $table->dropIndex('students_admission_number_index');
         });
 
         // Drop indexes for attendances table

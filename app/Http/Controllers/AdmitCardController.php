@@ -18,7 +18,8 @@ class AdmitCardController extends Controller
             ->orderBy('exam_date', 'asc')
             ->get();
         
-        $classes = ClassModel::all();
+        // Fix N+1 query by adding eager loading for students relationship
+        $classes = ClassModel::with(['students'])->get();
         
         return view('admit-cards.index', compact('exams', 'classes'));
     }

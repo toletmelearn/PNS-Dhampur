@@ -8,10 +8,13 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Helpers\SecurityHelper;
 use App\Http\Traits\EmailValidationTrait;
+use App\Http\Traits\VendorValidationTrait;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class VendorController extends Controller
 {
-    use EmailValidationTrait;
+    use EmailValidationTrait, VendorValidationTrait;
     /**
      * Display a listing of vendors
      */
@@ -76,29 +79,10 @@ class VendorController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            ...$this->getEmailValidationRules('vendors'),
-            'phone' => 'required|string|max:20',
-            'address' => 'required|string',
-            'city' => 'required|string|max:100',
-            'state' => 'required|string|max:100',
-            'postal_code' => 'required|string|max:20',
-            'country' => 'required|string|max:100',
-            'contact_person' => 'required|string|max:255',
-            'contact_phone' => 'nullable|string|max:20',
-            'contact_email' => 'nullable|email',
-            'website' => 'nullable|url',
-            'tax_id' => 'nullable|string|max:50',
-            'business_license' => 'nullable|string|max:100',
-            'payment_terms' => 'nullable|string|max:100',
-            'credit_limit' => 'nullable|numeric|min:0',
-            'currency' => 'nullable|string|max:3',
-            'bank_name' => 'nullable|string|max:255',
-            'bank_account' => 'nullable|string|max:100',
-            'notes' => 'nullable|string',
-            'is_active' => 'boolean',
-        ], $this->getEmailValidationMessages());
+        $validated = $request->validate(
+            $this->getVendorCreateRules(),
+            $this->getVendorValidationMessages()
+        );
 
         $vendor = Vendor::create($validated);
 
@@ -144,30 +128,10 @@ class VendorController extends Controller
     {
         $vendor = Vendor::findOrFail($id);
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            ...$this->getEmailValidationRulesForUpdate($vendor->id, 'vendors'),
-            'phone' => 'sometimes|string|max:20',
-            'address' => 'sometimes|string',
-            'city' => 'sometimes|string|max:100',
-            'state' => 'sometimes|string|max:100',
-            'postal_code' => 'sometimes|string|max:20',
-            'country' => 'sometimes|string|max:100',
-            'contact_person' => 'sometimes|string|max:255',
-            'contact_phone' => 'nullable|string|max:20',
-            'contact_email' => 'nullable|email',
-            'website' => 'nullable|url',
-            'tax_id' => 'nullable|string|max:50',
-            'business_license' => 'nullable|string|max:100',
-            'payment_terms' => 'nullable|string|max:100',
-            'credit_limit' => 'nullable|numeric|min:0',
-            'currency' => 'nullable|string|max:3',
-            'bank_name' => 'nullable|string|max:255',
-            'bank_account' => 'nullable|string|max:100',
-            'notes' => 'nullable|string',
-            'is_active' => 'boolean',
-            'rating' => 'nullable|numeric|min:0|max:5',
-        ], $this->getEmailValidationMessages());
+        $validated = $request->validate(
+            $this->getVendorUpdateRules($vendor->id),
+            $this->getVendorValidationMessages()
+        );
 
         $vendor->update($validated);
 

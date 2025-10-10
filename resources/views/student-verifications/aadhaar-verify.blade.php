@@ -59,7 +59,11 @@
                                         Aadhaar Number <span class="text-danger">*</span>
                                     </label>
                                     <input type="text" class="form-control" id="aadhaarNumber" 
-                                           placeholder="XXXX XXXX XXXX" maxlength="14" required>
+                                           placeholder="XXXX XXXX XXXX" 
+                                           maxlength="14" 
+                                           required
+                                           pattern="[0-9\s]{12,14}"
+                                           title="Enter 12-digit Aadhaar number (spaces optional)">
                                     <div class="form-text">Enter 12-digit Aadhaar number (spaces optional)</div>
                                 </div>
                             </div>

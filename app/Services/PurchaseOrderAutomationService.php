@@ -22,21 +22,15 @@ class PurchaseOrderAutomationService
      */
     public function getDashboardData()
     {
-        return Cache::remember('po_automation_dashboard', 300, function () {
-            $summary = $this->getPurchaseOrderSummary();
-            $pendingApprovals = $this->getPendingApprovals();
-            $automationStats = $this->getAutomationStats();
-            $vendorPerformance = $this->getVendorPerformance();
-            $recentActivity = $this->getRecentActivity();
-            $lowStockItems = $this->getLowStockItems();
-            
+        // Cache dashboard data for 5 minutes
+        return Cache::remember('po_dashboard_data', Constants::PO_CACHE_DURATION, function () {
             return [
-                'summary' => $summary,
-                'pending_approvals' => $pendingApprovals,
-                'automation_stats' => $automationStats,
-                'vendor_performance' => $vendorPerformance,
-                'recent_activity' => $recentActivity,
-                'low_stock_items' => $lowStockItems
+                'summary' => $this->getPurchaseOrderSummary(),
+                'pending_approvals' => $this->getPendingApprovals(),
+                'automation_stats' => $this->getAutomationStats(),
+                'vendor_performance' => $this->getVendorPerformance(),
+                'recent_activity' => $this->getRecentActivity(),
+                'low_stock_items' => $this->getLowStockItems()
             ];
         });
     }
@@ -90,7 +84,7 @@ class PurchaseOrderAutomationService
                 'vendor_id' => $vendor->id,
                 'requested_by' => $this->getSystemUserId(),
                 'order_date' => now(),
-                'expected_delivery_date' => now()->addDays($vendor->lead_time_days ?? 7),
+                'expected_delivery_date' => now()->addDays($vendor->lead_time_days ?? Constants::DEFAULT_LEAD_TIME_DAYS),
                 'status' => 'pending',
                 'priority' => $this->calculatePriority($items),
                 'delivery_address' => $this->getDefaultDeliveryAddress(),
@@ -105,7 +99,7 @@ class PurchaseOrderAutomationService
 
             foreach ($items as $item) {
                 $reorderQuantity = $this->calculateReorderQuantity($item);
-                $unitPrice = $item->last_purchase_price ?? $item->unit_cost ?? 0;
+                $unitPrice = $item->last_purchase_price ?? $item->unit_cost ?? Constants::ZERO_COUNT;
 
                 $po->addItem(
                     $item->id,
@@ -116,8 +110,8 @@ class PurchaseOrderAutomationService
             }
 
             // Apply vendor-specific discount if available
-            if ($vendor->discount_percentage > 0) {
-                $po->discount_amount = $po->subtotal * ($vendor->discount_percentage / 100);
+            if ($vendor->discount_percentage > Constants::ZERO_COUNT) {
+                $po->discount_amount = $po->subtotal * ($vendor->discount_percentage / Constants::PERCENTAGE_DIVISOR);
                 $po->calculateTotals();
             }
 
@@ -396,7 +390,7 @@ class PurchaseOrderAutomationService
             $vendors = $this->findSuitableVendors($item);
             $recommendations[$item->id] = [
                 'item' => $item,
-                'recommended_vendors' => $vendors->take(3),
+                'recommended_vendors' => $vendors->take(Constants::VENDOR_RECOMMENDATION_LIMIT),
                 'preferred_vendor' => $item->preferredVendor
             ];
         }
@@ -464,7 +458,7 @@ class PurchaseOrderAutomationService
         return PurchaseOrder::pending()
             ->with(['vendor', 'requestedBy'])
             ->orderBy('created_at', 'desc')
-            ->limit(10)
+            ->limit(Constants::PENDING_APPROVALS_LIMIT)
             ->get();
     }
 
@@ -475,10 +469,10 @@ class PurchaseOrderAutomationService
             ->where('notes', 'like', '%Auto-generated%')->count();
 
         return [
-            'automation_rate' => $totalPOs > 0 ? round(($autoPOs / $totalPOs) * 100, 2) : 0,
+            'automation_rate' => $totalPOs > Constants::ZERO_COUNT ? round(($autoPOs / $totalPOs) * Constants::PERCENTAGE_DIVISOR, 2) : Constants::ZERO_COUNT,
             'auto_generated_count' => $autoPOs,
             'manual_count' => $totalPOs - $autoPOs,
-            'time_saved_hours' => $autoPOs * 0.5 // Assuming 30 minutes saved per auto PO
+            'time_saved_hours' => $autoPOs * Constants::TIME_SAVED_PER_AUTO_PO // Assuming 30 minutes saved per auto PO
         ];
     }
 
@@ -490,14 +484,14 @@ class PurchaseOrderAutomationService
                 DB::raw('(SELECT COUNT(*) FROM purchase_orders WHERE vendor_id = vendors.id AND status = "completed" AND actual_delivery_date <= expected_delivery_date) as on_time_deliveries'),
                 DB::raw('(SELECT COUNT(*) FROM purchase_orders WHERE vendor_id = vendors.id AND status = "completed") as total_completed_orders')
             ])
-            ->having('total_orders', '>', 0)
+            ->having('total_orders', '>', Constants::ZERO_COUNT)
             ->orderBy('rating', 'desc')
-            ->limit(5)
+            ->limit(Constants::TOP_VENDORS_LIMIT)
             ->get()
             ->map(function ($vendor) {
-                $vendor->on_time_percentage = $vendor->total_completed_orders > 0 
-                    ? round(($vendor->on_time_deliveries / $vendor->total_completed_orders) * 100, 2) 
-                    : 0;
+                $vendor->on_time_percentage = $vendor->total_completed_orders > Constants::ZERO_COUNT 
+                    ? round(($vendor->on_time_deliveries / $vendor->total_completed_orders) * Constants::PERCENTAGE_DIVISOR, 2) 
+                    : Constants::ZERO_COUNT;
                 return $vendor;
             });
     }
@@ -506,7 +500,7 @@ class PurchaseOrderAutomationService
     {
         return PurchaseOrder::with(['vendor', 'requestedBy', 'approvedBy'])
             ->orderBy('updated_at', 'desc')
-            ->limit(10)
+            ->limit(Constants::RECENT_ACTIVITY_LIMIT)
             ->get();
     }
 
@@ -516,19 +510,19 @@ class PurchaseOrderAutomationService
             ->where('is_active', true)
             ->with(['preferredVendor'])
             ->orderBy('current_stock', 'asc')
-            ->limit(10)
+            ->limit(Constants::LOW_STOCK_ITEMS_LIMIT)
             ->get();
     }
 
     private function calculatePriority($items)
     {
-        $criticalCount = $items->where('current_stock', '<=', 0)->count();
-        $lowStockCount = $items->where('current_stock', '>', 0)
-            ->where('current_stock', '<=', DB::raw('reorder_point * 0.5'))->count();
+        $criticalCount = $items->where('current_stock', '<=', Constants::ZERO_COUNT)->count();
+        $lowStockCount = $items->where('current_stock', '>', Constants::ZERO_COUNT)
+            ->where('current_stock', '<=', DB::raw('reorder_point * ' . Constants::REORDER_POINT_THRESHOLD))->count();
 
-        if ($criticalCount > 0) {
+        if ($criticalCount > Constants::ZERO_COUNT) {
             return 'urgent';
-        } elseif ($lowStockCount > 0) {
+        } elseif ($lowStockCount > Constants::ZERO_COUNT) {
             return 'high';
         } else {
             return 'medium';
@@ -538,16 +532,16 @@ class PurchaseOrderAutomationService
     private function calculateReorderQuantity($item)
     {
         // Use economic order quantity if available, otherwise use max stock level
-        if ($item->economic_order_quantity > 0) {
+        if ($item->economic_order_quantity > Constants::ZERO_COUNT) {
             return $item->economic_order_quantity;
         }
         
-        if ($item->max_stock_level > 0) {
+        if ($item->max_stock_level > Constants::ZERO_COUNT) {
             return $item->max_stock_level - $item->current_stock;
         }
         
         // Default to 3 months of average consumption
-        return max($item->reorder_point * 2, 10);
+        return max($item->reorder_point * Constants::REORDER_POINT_MULTIPLIER, Constants::MIN_REORDER_QUANTITY);
     }
 
     private function hasApprovalAuthority($user, $amount)
@@ -555,13 +549,13 @@ class PurchaseOrderAutomationService
         // Define approval limits based on user role
         $approvalLimits = [
             'admin' => PHP_INT_MAX,
-            'manager' => 100000,
-            'supervisor' => 50000,
-            'team_lead' => 25000,
-            'employee' => 5000
+            'manager' => Constants::APPROVAL_LIMIT_MANAGER,
+            'supervisor' => Constants::APPROVAL_LIMIT_SUPERVISOR,
+            'team_lead' => Constants::APPROVAL_LIMIT_TEAM_LEAD,
+            'employee' => Constants::APPROVAL_LIMIT_EMPLOYEE
         ];
 
-        $userLimit = $approvalLimits[$user->role] ?? 0;
+        $userLimit = $approvalLimits[$user->role] ?? Constants::ZERO_COUNT;
         return $amount <= $userLimit;
     }
 
@@ -585,13 +579,13 @@ class PurchaseOrderAutomationService
     private function shouldAutoSendToVendor($po)
     {
         // Auto-send for low-value orders or trusted vendors
-        return $po->total_amount <= 10000 || $po->vendor->rating >= 4.5;
+        return $po->total_amount <= Constants::AUTO_SEND_AMOUNT_THRESHOLD || $po->vendor->rating >= Constants::AUTO_SEND_VENDOR_RATING;
     }
 
     private function getSystemUserId()
     {
         // Return system user ID or admin user ID for auto-generated POs
-        return User::where('email', 'system@company.com')->first()->id ?? 1;
+        return User::where('email', 'system@company.com')->first()->id ?? Constants::DEFAULT_SYSTEM_USER_ID;
     }
 
     private function getDefaultDeliveryAddress()
@@ -628,7 +622,7 @@ class PurchaseOrderAutomationService
     {
         // Find vendors that can supply this item
         return Vendor::active()
-            ->where('rating', '>=', 3.0)
+            ->where('rating', '>=', Constants::MIN_VENDOR_RATING)
             ->orderBy('rating', 'desc')
             ->get();
     }

@@ -265,9 +265,9 @@
                                             @endif
                                         </td>
                                         <td>{{ $paper->formatted_duration }}</td>
-                                        <td>{!! $paper->paper_type_badge !!}</td>
-                                        <td>{!! $paper->difficulty_badge !!}</td>
-                                        <td>{!! $paper->status_badge !!}</td>
+                                        <td><span class="badge {{ $paper->paper_type_badge_class }}">{{ $paper->paper_type_badge_text }}</span></td>
+                                        <td><span class="badge {{ $paper->difficulty_badge_class }}">{{ $paper->difficulty_badge_text }}</span></td>
+                                        <td><span class="badge {{ $paper->status_badge_class }}">{{ $paper->status_badge_text }}</span></td>
                                         <td>
                                             @if($paper->currentVersion && $paper->currentVersion->latestApproval)
                                                 @php

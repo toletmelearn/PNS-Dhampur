@@ -54,7 +54,8 @@ class ClassTeacherPermissionController extends Controller
         $permissions = $query->orderBy('created_at', 'desc')->paginate(15);
 
         $teachers = User::role('teacher')->get();
-        $classes = ClassModel::all();
+        // Fix N+1 query by adding eager loading for students relationship
+        $classes = ClassModel::with(['students'])->get();
         $subjects = Subject::all();
         $academicYears = ClassTeacherPermission::distinct()->pluck('academic_year');
 
@@ -66,7 +67,8 @@ class ClassTeacherPermissionController extends Controller
     public function create()
     {
         $teachers = User::role('teacher')->get();
-        $classes = ClassModel::all();
+        // Fix N+1 query by adding eager loading for students relationship
+        $classes = ClassModel::with(['students'])->get();
         $subjects = Subject::all();
 
         return view('class-teacher-permissions.create', compact('teachers', 'classes', 'subjects'));
@@ -139,7 +141,8 @@ class ClassTeacherPermissionController extends Controller
         }
 
         $teachers = User::role('teacher')->get();
-        $classes = ClassModel::all();
+        // Fix N+1 query by adding eager loading for students relationship
+        $classes = ClassModel::with(['students'])->get();
         $subjects = Subject::all();
 
         return view('class-teacher-permissions.edit', compact('classTeacherPermission', 'teachers', 'classes', 'subjects'));
@@ -267,7 +270,8 @@ class ClassTeacherPermissionController extends Controller
 
         // Get filter options
         $teachers = User::role('teacher')->get();
-        $classes = ClassModel::all();
+        // Fix N+1 query by adding eager loading for students relationship
+        $classes = ClassModel::with(['students'])->get();
         $subjects = Subject::all();
         $students = Student::select('id', 'name', 'admission_number')->get();
         $events = AuditTrail::distinct()->pluck('event');
