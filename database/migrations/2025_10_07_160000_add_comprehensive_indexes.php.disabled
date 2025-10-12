@@ -14,17 +14,37 @@ class AddComprehensiveIndexes extends Migration
     public function up()
     {
         // Students table indexes for performance optimization
-        Schema::table('students', function (Blueprint $table) {
-            $table->index(['class_id', 'status'], 'idx_students_class_status');
-            $table->index('admission_no', 'idx_students_admission_no');
-            $table->index('aadhaar', 'idx_students_aadhaar');
-            $table->index('email', 'idx_students_email');
-            $table->index(['created_at', 'status'], 'idx_students_created_status');
-            $table->index('date_of_birth', 'idx_students_dob');
-            $table->index('verification_status', 'idx_students_verification');
-            $table->index('verified', 'idx_students_verified');
-            $table->index(['father_name', 'mother_name'], 'idx_students_parents');
-        });
+        if (Schema::hasTable('students')) {
+            Schema::table('students', function (Blueprint $table) {
+                if (Schema::hasColumn('students', 'class_id') && Schema::hasColumn('students', 'status')) {
+                    $table->index(['class_id', 'status'], 'idx_students_class_status');
+                }
+                if (Schema::hasColumn('students', 'admission_no')) {
+                    $table->index('admission_no', 'idx_students_admission_no');
+                }
+                if (Schema::hasColumn('students', 'aadhaar')) {
+                    $table->index('aadhaar', 'idx_students_aadhaar');
+                }
+                if (Schema::hasColumn('students', 'email')) {
+                    $table->index('email', 'idx_students_email');
+                }
+                if (Schema::hasColumn('students', 'created_at') && Schema::hasColumn('students', 'status')) {
+                    $table->index(['created_at', 'status'], 'idx_students_created_status');
+                }
+                if (Schema::hasColumn('students', 'date_of_birth')) {
+                    $table->index('date_of_birth', 'idx_students_dob');
+                }
+                if (Schema::hasColumn('students', 'verification_status')) {
+                    $table->index('verification_status', 'idx_students_verification');
+                }
+                if (Schema::hasColumn('students', 'verified')) {
+                    $table->index('verified', 'idx_students_verified');
+                }
+                if (Schema::hasColumn('students', 'father_name') && Schema::hasColumn('students', 'mother_name')) {
+                    $table->index(['father_name', 'mother_name'], 'idx_students_parents');
+                }
+            });
+        }
 
         // Attendance table indexes for efficient queries
         Schema::table('attendances', function (Blueprint $table) {

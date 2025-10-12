@@ -892,8 +892,11 @@ class BiometricAttendanceController extends Controller
             // Frequent absentees (if not filtering by teacher)
             if (!$teacherId) {
                 $absenteeCount = $absences->groupBy('teacher_id')->map->count()->sortDesc();
+                $topAbsenteeIds = $absenteeCount->take(10)->keys()->toArray();
+                $teachers = Teacher::whereIn('id', $topAbsenteeIds)->get()->keyBy('id');
+                
                 foreach ($absenteeCount->take(10) as $tId => $count) {
-                    $teacher = Teacher::find($tId);
+                    $teacher = $teachers->get($tId);
                     $patterns['frequent_absentees'][] = [
                         'teacher' => $teacher,
                         'absence_count' => $count,

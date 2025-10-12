@@ -27,94 +27,9 @@ use App\Http\Controllers\FileUploadController;
 |
 */
 
-// Health check endpoint for monitoring
-Route::get('/health', function (): JsonResponse {
-    $checks = [];
-    $overallStatus = 'healthy';
-    
-    try {
-        // Database check
-        $start = microtime(true);
-        DB::connection()->getPdo();
-        $dbTime = round((microtime(true) - $start) * 1000, 2);
-        
-        $checks['database'] = [
-            'status' => 'healthy',
-            'response_time' => $dbTime . 'ms'
-        ];
-        
-        if ($dbTime > 1000) {
-            $checks['database']['status'] = 'warning';
-            $overallStatus = 'warning';
-        }
-    } catch (Exception $e) {
-        $checks['database'] = [
-            'status' => 'critical',
-            'error' => 'Connection failed'
-        ];
-        $overallStatus = 'critical';
-    }
-    
-    try {
-        // Cache check
-        $testKey = 'health_check_' . time();
-        Cache::put($testKey, 'test', 60);
-        $cached = Cache::get($testKey);
-        Cache::forget($testKey);
-        
-        $checks['cache'] = [
-            'status' => $cached === 'test' ? 'healthy' : 'warning'
-        ];
-        
-        if ($cached !== 'test' && $overallStatus !== 'critical') {
-            $overallStatus = 'warning';
-        }
-    } catch (Exception $e) {
-        $checks['cache'] = [
-            'status' => 'critical',
-            'error' => 'Cache failed'
-        ];
-        $overallStatus = 'critical';
-    }
-    
-    // System info
-    $checks['system'] = [
-        'status' => 'healthy',
-        'php_version' => PHP_VERSION,
-        'laravel_version' => app()->version(),
-        'environment' => config('app.env'),
-        'debug_mode' => config('app.debug'),
-        'memory_usage' => round(memory_get_usage(true) / 1024 / 1024, 2) . 'MB'
-    ];
-    
-    // Security check
-    if (config('app.debug') && config('app.env') === 'production') {
-        $checks['security'] = [
-            'status' => 'critical',
-            'error' => 'Debug mode enabled in production'
-        ];
-        $overallStatus = 'critical';
-    } else {
-        $checks['security'] = [
-            'status' => 'healthy'
-        ];
-    }
-    
-    $response = [
-        'status' => $overallStatus,
-        'timestamp' => now()->toISOString(),
-        'checks' => $checks
-    ];
-    
-    $httpStatus = match($overallStatus) {
-        'healthy' => 200,
-        'warning' => 200,
-        'critical' => 503,
-        default => 200
-    };
-    
-    return response()->json($response, $httpStatus);
-})->name('health.check');
+// Health check endpoints for monitoring
+Route::get('/health', [App\Http\Controllers\HealthCheckController::class, 'check']);
+Route::get('/ping', [App\Http\Controllers\HealthCheckController::class, 'ping']);
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -127,11 +42,11 @@ Route::get('/login', function () {
 
 Route::post('/login', function () {
     // Login logic here
-})->name('login.post');
+})->name('login.post')->middleware('web');
 
 Route::post('/logout', function () {
     // Logout logic here
-})->name('logout');
+})->name('logout')->middleware('web');
 
 // Registration should be restricted to admins only
 Route::middleware(['auth', 'role:admin,super_admin'])->group(function () {
@@ -141,7 +56,7 @@ Route::middleware(['auth', 'role:admin,super_admin'])->group(function () {
 
     Route::post('/register', function () {
         // Registration logic here
-    })->name('register.post');
+    })->name('register.post')->middleware('web');
 });
 
 // Protected routes that require authentication

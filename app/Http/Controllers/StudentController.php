@@ -31,11 +31,11 @@ class StudentController extends Controller
 {
     use HandlesApiResponses, FileUploadValidationTrait, StudentValidationTrait;
 
-    protected $searchService;
+    protected $studentSearchService;
 
     public function __construct(StudentSearchService $searchService)
     {
-        $this->searchService = $searchService;
+        $this->studentSearchService = $searchService;
     }
 
     // GET /api/students or /students - Enhanced with comprehensive search
@@ -94,18 +94,18 @@ class StudentController extends Controller
             'export_fields.*' => 'string|in:admission_no,name,father_name,mother_name,dob,gender,aadhaar,class,status,contact_number,email,address'
         ]);
 
-        $results = $this->searchService->search($request);
+        $results = $this->studentSearchService->search($request);
         
         if ($request->filled('export_format')) {
-            return $this->searchService->exportResults(
+            return $this->studentSearchService->exportResults(
                 $results, 
                 $request->export_format, 
                 $request->export_fields ?? []
             );
         }
 
-        $filterOptions = $this->searchService->getFilterOptions();
-        $searchStats = $this->searchService->getSearchStatistics($request);
+        $filterOptions = $this->studentSearchService->getFilterOptions();
+        $searchStats = $this->studentSearchService->getSearchStatistics($request);
 
         if ($request->expectsJson() || $request->is('api/*')) {
             return response()->json([
@@ -232,8 +232,7 @@ public function getSearchSuggestions(Request $request)
 
     // Use parameter binding to prevent SQL injection
     $suggestions = Student::select($field)
-                         ->where($field, 'LIKE', DB::raw('?'))
-                         ->setBindings(["%{$query}%"])
+                         ->where($field, 'LIKE', "%{$query}%")
                          ->whereNotNull($field)
                          ->where($field, '!=', '')
                          ->distinct()

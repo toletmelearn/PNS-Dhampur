@@ -166,6 +166,10 @@ Route::middleware(['auth:sanctum', 'rate.limit'])->group(function () {
             // Delete attendance - admin and principal only
             Route::delete('/{attendance}', [AttendanceController::class, 'destroy'])
                 ->middleware(['role:admin,principal', 'permission:delete_attendance']);
+            
+            // Bulk update attendance - requires mark permission
+            Route::post('/bulk-update', [AttendanceController::class, 'bulkUpdate'])
+                ->middleware('permission:mark_attendance');
         });
 
     // Fee Management (Admin/Principal only)

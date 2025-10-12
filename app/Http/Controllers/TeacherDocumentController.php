@@ -179,18 +179,21 @@ class TeacherDocumentController extends Controller
         $uploadedDocuments = [];
         $errors = [];
 
+        // Pre-fetch existing documents to avoid N+1 queries
+        $documentTypes = collect($request->document_types)->unique();
+        $existingDocs = TeacherDocument::where('teacher_id', $teacher->id)
+                                     ->whereIn('document_type', $documentTypes)
+                                     ->where('status', '!=', 'rejected')
+                                     ->get()
+                                     ->keyBy('document_type');
+
         foreach ($request->file('documents') as $index => $file) {
             try {
                 $documentType = $request->document_types[$index];
                 $expiryDate = $request->expiry_dates[$index] ?? null;
 
                 // Check if document type already exists for this teacher
-                $existingDoc = TeacherDocument::where('teacher_id', $teacher->id)
-                                            ->where('document_type', $documentType)
-                                            ->where('status', '!=', 'rejected')
-                                            ->first();
-
-                if ($existingDoc) {
+                if ($existingDocs->has($documentType)) {
                     $errors[] = "Document type '{$documentType}' already exists.";
                     continue;
                 }
