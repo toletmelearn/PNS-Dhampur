@@ -109,9 +109,19 @@ class RateLimitingMiddleware
         $path = $request->path();
         $method = $request->method();
 
+        // Skip rate limiting for static asset requests
+        if ($this->isStaticAssetRequest($request)) {
+            return 'none';
+        }
+
         // Check for exact matches first
         foreach ($this->routeMapping as $route => $limitType) {
             if ($this->matchesRoute($path, $route)) {
+                // Throttle auth endpoints only on POST to avoid 429 on GET pages
+                if (in_array($limitType, ['login', 'register', 'password_reset']) && $method !== 'POST') {
+                    // Skip special auth rate limit for non-POST methods
+                    continue;
+                }
                 return $limitType;
             }
         }
@@ -124,6 +134,11 @@ class RateLimitingMiddleware
         // API requests
         if (str_starts_with($path, 'api/')) {
             return 'api_general';
+        }
+
+        // For normal GET web page requests (non-AJAX, non-API), disable rate limiting
+        if ($method === 'GET' && !$request->expectsJson() && strtolower($request->header('X-Requested-With', '')) !== 'xmlhttprequest' && !str_starts_with($path, 'api/')) {
+            return 'none';
         }
 
         return 'default';
@@ -154,6 +169,11 @@ class RateLimitingMiddleware
      */
     protected function applyRateLimit(Request $request, string $limitType): void
     {
+        // No-op for requests explicitly marked as not rate limited
+        if ($limitType === 'none') {
+            return;
+        }
+
         $config = $this->rateLimits[$limitType] ?? $this->rateLimits['default'];
         
         // Create rate limiter key
@@ -219,6 +239,11 @@ class RateLimitingMiddleware
      */
     protected function checkSuspiciousActivity(Request $request): void
     {
+        // Skip monitoring for static assets and normal GET page loads
+        if ($this->shouldSkipMonitoring($request)) {
+            return;
+        }
+
         $ip = $request->ip();
         $userId = auth()->id();
         
@@ -235,10 +260,40 @@ class RateLimitingMiddleware
     }
 
     /**
+     * Determine if monitoring (rapid/suspicious checks) should be skipped.
+     * Mirrors the same logic used to skip rate limiting for safe requests.
+     */
+    protected function shouldSkipMonitoring(Request $request): bool
+    {
+        if ($this->isStaticAssetRequest($request)) {
+            return true;
+        }
+
+        $path = $request->path();
+        $method = $request->method();
+
+        // For normal GET web page requests (non-AJAX, non-API), skip monitoring
+        if ($method === 'GET'
+            && !$request->expectsJson()
+            && strtolower($request->header('X-Requested-With', '')) !== 'xmlhttprequest'
+            && !str_starts_with($path, 'api/')
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Check for rapid requests pattern
      */
     protected function checkRapidRequests(string $ip, Request $request): void
     {
+        // Do not count static assets toward rapid requests to avoid false positives
+        if ($this->isStaticAssetRequest($request)) {
+            return;
+        }
+
         $key = "rapid_requests:{$ip}";
         $count = Cache::get($key, 0);
         
@@ -421,5 +476,32 @@ class RateLimitingMiddleware
     {
         $this->routeMapping[$route] = $limitType;
         return $this;
+    }
+
+    /**
+     * Detect if request targets static assets to bypass rate limiting
+     */
+    protected function isStaticAssetRequest(Request $request): bool
+    {
+        $path = ltrim($request->path(), '/');
+        $lower = strtolower($path);
+
+        // Common asset directories
+        $assetDirs = ['assets/', 'css/', 'js/', 'images/', 'img/', 'vendor/', 'fonts/', 'storage/', 'build/', 'dist/'];
+        foreach ($assetDirs as $dir) {
+            if (str_starts_with($lower, $dir)) {
+                return true;
+            }
+        }
+
+        // File extension check
+        $exts = ['.css', '.js', '.mjs', '.map', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.ico', '.bmp', '.tif', '.tiff', '.woff', '.woff2', '.ttf', '.eot'];
+        foreach ($exts as $ext) {
+            if (str_ends_with($lower, $ext)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -428,6 +428,34 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
 <script>
+// Lightweight throttle polyfill (fallback if global util not available)
+function throttle(fn, wait) {
+    let last = 0, timeout;
+    return function(...args) {
+        const now = Date.now();
+        const remaining = wait - (now - last);
+        if (remaining <= 0) {
+            last = now;
+            return fn.apply(this, args);
+        }
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            last = Date.now();
+            fn.apply(this, args);
+        }, remaining);
+    };
+}
+
+const useThrottle = (window.PNS && window.PNS.Utils && typeof window.PNS.Utils.throttle === 'function')
+    ? window.PNS.Utils.throttle
+    : throttle;
+
+let isLoadingDashboardStats = false;
+let isLoadingAssignments = false;
+let isLoadingSyllabus = false;
+let isLoadingPerformance = false;
+let isGeneratingReport = false;
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize dashboard
     initializeDashboard();
@@ -438,8 +466,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize charts
     initializeCharts();
     
-    // Set up real-time updates
-    setInterval(loadDashboardStats, 30000); // Update every 30 seconds
+    // Set up real-time updates (guarded + throttled)
+    const throttledLoadDashboardStats = useThrottle(loadDashboardStats, 10000);
+    setInterval(throttledLoadDashboardStats, 30000); // Update every 30 seconds
 });
 
 function initializeDashboard() {
@@ -460,6 +489,8 @@ function initializeDashboard() {
 }
 
 function loadDashboardStats() {
+    if (isLoadingDashboardStats) return;
+    isLoadingDashboardStats = true;
     fetch('/learning/api/dashboard-stats')
         .then(response => response.json())
         .then(data => {
@@ -467,7 +498,8 @@ function loadDashboardStats() {
                 updateStatsCards(data.data);
             }
         })
-        .catch(error => console.error('Error loading stats:', error));
+        .catch(error => console.error('Error loading stats:', error))
+        .finally(() => { isLoadingDashboardStats = false; });
 }
 
 function updateStatsCards(stats) {
@@ -562,6 +594,8 @@ function loadTabContent(target) {
 }
 
 function loadAssignmentAnalytics() {
+    if (isLoadingAssignments) return;
+    isLoadingAssignments = true;
     // Load assignment-specific charts and data
     fetch('/learning/admin/analytics/assignments-data')
         .then(response => response.json())
@@ -569,10 +603,13 @@ function loadAssignmentAnalytics() {
             // Update assignment charts
             updateAssignmentCharts(data);
         })
-        .catch(error => console.error('Error loading assignment analytics:', error));
+        .catch(error => console.error('Error loading assignment analytics:', error))
+        .finally(() => { isLoadingAssignments = false; });
 }
 
 function loadSyllabusAnalytics() {
+    if (isLoadingSyllabus) return;
+    isLoadingSyllabus = true;
     // Load syllabus-specific charts and data
     fetch('/learning/admin/analytics/syllabus-data')
         .then(response => response.json())
@@ -580,10 +617,13 @@ function loadSyllabusAnalytics() {
             // Update syllabus charts
             updateSyllabusCharts(data);
         })
-        .catch(error => console.error('Error loading syllabus analytics:', error));
+        .catch(error => console.error('Error loading syllabus analytics:', error))
+        .finally(() => { isLoadingSyllabus = false; });
 }
 
 function loadPerformanceAnalytics() {
+    if (isLoadingPerformance) return;
+    isLoadingPerformance = true;
     // Load performance-specific charts and data
     fetch('/learning/admin/analytics/performance-data')
         .then(response => response.json())
@@ -591,13 +631,18 @@ function loadPerformanceAnalytics() {
             // Update performance charts
             updatePerformanceCharts(data);
         })
-        .catch(error => console.error('Error loading performance analytics:', error));
+        .catch(error => console.error('Error loading performance analytics:', error))
+        .finally(() => { isLoadingPerformance = false; });
 }
 
 function generateReport(formData) {
+    if (isGeneratingReport) return; // Prevent double-submit
+    isGeneratingReport = true;
     const submitBtn = document.querySelector('#reportForm button[type="submit"]');
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating...';
+    }
     
     fetch('/learning/admin/export/generate-report', {
         method: 'POST',
@@ -618,18 +663,19 @@ function generateReport(formData) {
         a.click();
         window.URL.revokeObjectURL(url);
         
-        // Reset button
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="fas fa-download me-2"></i>Generate Report';
-        
         // Show success message
         showAlert('Report generated successfully!', 'success');
     })
     .catch(error => {
         console.error('Error generating report:', error);
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<i class="fas fa-download me-2"></i>Generate Report';
         showAlert('Error generating report. Please try again.', 'error');
+    })
+    .finally(() => {
+        isGeneratingReport = false;
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-download me-2"></i>Generate Report';
+        }
     });
 }
 

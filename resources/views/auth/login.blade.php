@@ -14,13 +14,33 @@
                 </div>
                 <div class="card-body p-4">
                     @if ($errors->any())
-                        <div class="alert alert-danger">
-                            <ul class="mb-0">
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
+                        @php
+                            $verificationMessage = 'Please verify your email to activate your account';
+                            $allErrors = $errors->all();
+                            $hasVerificationMsg = in_array($verificationMessage, $allErrors, true);
+                        @endphp
+
+                        @if ($hasVerificationMsg)
+                            <div class="alert alert-warning" role="alert">
+                                {{ $verificationMessage }}
+                            </div>
+                            @php
+                                // Remove the verification message from the list to avoid duplicate display
+                                $allErrors = array_filter($allErrors, function($msg) use ($verificationMessage) {
+                                    return $msg !== $verificationMessage;
+                                });
+                            @endphp
+                        @endif
+
+                        @if (count($allErrors))
+                            <div class="alert alert-danger">
+                                <ul class="mb-0">
+                                    @foreach ($allErrors as $error)
+                                        <li>{{ $error }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
                     @endif
 
                     @if (session('error'))
@@ -29,7 +49,7 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('login.post') }}">
+                    <form method="POST" action="{{ route('login.submit') }}" id="loginForm">
                         @csrf
                         
                         <div class="mb-3">
@@ -82,13 +102,45 @@
 
                     <div class="text-center mt-3">
                         <p class="mb-0">
-                            Don't have an account? 
-                            <a href="{{ route('register') }}" class="text-decoration-none">Register here</a>
+                            Don't have an account? Contact your administrator to create one.
                         </p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    <script>
+    // Prevent double-submit of login form and show loading state
+    (function() {
+        const form = document.getElementById('loginForm');
+        if (!form) return;
+        let inFlight = false;
+        form.addEventListener('submit', function(e) {
+            if (inFlight) {
+                e.preventDefault();
+                return false;
+            }
+            inFlight = true;
+            const btn = form.querySelector('button[type="submit"]');
+            if (btn) {
+                btn.disabled = true;
+                const original = btn.innerHTML;
+                btn.setAttribute('data-original-html', original);
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Signing in...';
+            }
+        }, { capture: true });
+
+        // Re-enable submit button on page show (e.g., validation error returns)
+        window.addEventListener('pageshow', function() {
+            const btn = form.querySelector('button[type="submit"]');
+            if (btn && btn.disabled) {
+                const original = btn.getAttribute('data-original-html');
+                if (original) btn.innerHTML = original;
+                btn.disabled = false;
+            }
+            inFlight = false;
+        });
+    })();
+    </script>
 </div>
 @endsection

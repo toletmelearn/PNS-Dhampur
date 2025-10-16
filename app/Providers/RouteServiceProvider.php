@@ -35,6 +35,10 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
+
+            // Load additional authenticated web routes
+            Route::middleware('web')
+                ->group(base_path('routes/auth.php'));
         });
     }
 
@@ -46,7 +50,21 @@ class RouteServiceProvider extends ServiceProvider
     protected function configureRateLimiting()
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            $user = $request->user();
+            $key = $user?->id ?: $request->ip();
+
+            // Detect Super Admin role or Super Admin API namespace
+            $isSuperAdmin = $user && method_exists($user, 'hasRole') ? $user->hasRole('super_admin') : false;
+            $path = ltrim($request->path(), '/'); // e.g., "api/super-admin/users"
+            $isSuperAdminApi = str_starts_with($path, 'api/super-admin');
+
+            // Provide significantly higher thresholds to Super Admins and their API namespace
+            if ($isSuperAdmin || $isSuperAdminApi) {
+                return Limit::perMinute(600)->by($key);
+            }
+
+            // Default API limit
+            return Limit::perMinute(60)->by($key);
         });
     }
 }

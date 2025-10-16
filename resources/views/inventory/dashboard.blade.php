@@ -423,6 +423,30 @@
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Lightweight throttle polyfill (fallback if global util not available)
+function throttle(fn, wait) {
+    let last = 0, timeout;
+    return function(...args) {
+        const now = Date.now();
+        const remaining = wait - (now - last);
+        if (remaining <= 0) {
+            last = now;
+            return fn.apply(this, args);
+        }
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            last = Date.now();
+            fn.apply(this, args);
+        }, remaining);
+    };
+}
+
+const useThrottle = (window.PNS && window.PNS.Utils && typeof window.PNS.Utils.throttle === 'function')
+    ? window.PNS.Utils.throttle
+    : throttle;
+
+let isDashboardLoading = false;
+
 $(document).ready(function() {
     // Initialize dashboard
     loadDashboardData();
@@ -430,7 +454,8 @@ $(document).ready(function() {
     initializeCharts();
     
     // Auto-refresh every 5 minutes
-    setInterval(loadDashboardData, 300000);
+    const throttledLoadDashboardData = useThrottle(loadDashboardData, 5000);
+    setInterval(throttledLoadDashboardData, 300000);
 });
 
 let inventoryChart, categoryChart;
@@ -489,24 +514,33 @@ function initializeCharts() {
 }
 
 function loadDashboardData() {
+    if (isDashboardLoading) return;
+    isDashboardLoading = true;
+    const requests = [];
+
     // Load summary data
-    $.get('/api/inventory/dashboard/summary')
+    const summaryReq = $.get('/api/inventory/dashboard/summary')
         .done(function(data) {
             updateSummaryCards(data);
         })
         .fail(function() {
             console.error('Failed to load dashboard summary');
         });
+    requests.push(summaryReq);
 
-    // Load chart data
-    loadChartData(currentChartType);
+    // Load chart data (returns combined deferred)
+    requests.push(loadChartData(currentChartType));
 
     // Load alerts and activities
-    loadAlerts();
-    loadRecentActivities();
-    loadWarrantyExpiring();
-    loadAssetPerformance();
-    loadQuickStats();
+    requests.push(loadAlerts());
+    requests.push(loadRecentActivities());
+    requests.push(loadWarrantyExpiring());
+    requests.push(loadAssetPerformance());
+    requests.push(loadQuickStats());
+
+    $.when.apply($, requests).always(function() {
+        isDashboardLoading = false;
+    });
 }
 
 function updateSummaryCards(data) {
@@ -517,7 +551,7 @@ function updateSummaryCards(data) {
 }
 
 function loadChartData(type) {
-    $.get(`/api/inventory/dashboard/chart/${type}`)
+    const chartReq = $.get(`/api/inventory/dashboard/chart/${type}`)
         .done(function(data) {
             updateInventoryChart(data, type);
         })
@@ -525,14 +559,16 @@ function loadChartData(type) {
             console.error('Failed to load chart data');
         });
 
-    // Load category distribution
-    $.get('/api/inventory/dashboard/categories')
+    const categoryReq = $.get('/api/inventory/dashboard/categories')
         .done(function(data) {
             updateCategoryChart(data);
         })
         .fail(function() {
             console.error('Failed to load category data');
         });
+
+    // Return combined deferred to allow guarding
+    return $.when(chartReq, categoryReq);
 }
 
 function updateInventoryChart(data, type) {
@@ -577,7 +613,7 @@ function switchChart(type) {
 
 function loadAlerts() {
     // Load low stock items
-    $.get('/api/inventory/dashboard/low-stock')
+    const lowReq = $.get('/api/inventory/dashboard/low-stock')
         .done(function(data) {
             renderLowStockItems(data);
         })
@@ -586,7 +622,7 @@ function loadAlerts() {
         });
 
     // Load overdue returns
-    $.get('/api/inventory/dashboard/overdue-returns')
+    const overdueReq = $.get('/api/inventory/dashboard/overdue-returns')
         .done(function(data) {
             renderOverdueReturns(data);
         })
@@ -595,13 +631,15 @@ function loadAlerts() {
         });
 
     // Load upcoming maintenance
-    $.get('/api/inventory/dashboard/upcoming-maintenance')
+    const maintReq = $.get('/api/inventory/dashboard/upcoming-maintenance')
         .done(function(data) {
             renderUpcomingMaintenance(data);
         })
         .fail(function() {
             $('#upcomingMaintenance').html('<div class="text-center text-muted">Failed to load data</div>');
         });
+
+    return $.when(lowReq, overdueReq, maintReq);
 }
 
 function renderLowStockItems(data) {
@@ -676,7 +714,7 @@ function renderUpcomingMaintenance(data) {
 }
 
 function loadRecentActivities() {
-    $.get('/api/inventory/dashboard/recent-activities')
+    return $.get('/api/inventory/dashboard/recent-activities')
         .done(function(data) {
             renderRecentActivities(data);
         })
@@ -713,7 +751,7 @@ function renderRecentActivities(data) {
 }
 
 function loadWarrantyExpiring() {
-    $.get('/api/inventory/dashboard/warranty-expiring')
+    return $.get('/api/inventory/dashboard/warranty-expiring')
         .done(function(data) {
             renderWarrantyExpiring(data);
         })
@@ -746,7 +784,7 @@ function renderWarrantyExpiring(data) {
 }
 
 function loadAssetPerformance() {
-    $.get('/api/inventory/dashboard/asset-performance')
+    return $.get('/api/inventory/dashboard/asset-performance')
         .done(function(data) {
             renderAssetPerformance(data);
         })
@@ -781,7 +819,7 @@ function renderAssetPerformance(data) {
 }
 
 function loadQuickStats() {
-    $.get('/api/inventory/dashboard/quick-stats')
+    return $.get('/api/inventory/dashboard/quick-stats')
         .done(function(data) {
             $('#monthlyItems').text(data.monthlyItems || 0);
             $('#weeklyAllocations').text(data.weeklyAllocations || 0);
@@ -812,9 +850,16 @@ function refreshDashboard() {
     showToast('Dashboard refreshed successfully!', 'success');
 }
 
-// Add Item Form Submission
+// Add Item Form Submission with double-submit guard
+let isAddingItem = false;
 $('#addItemForm').on('submit', function(e) {
     e.preventDefault();
+    if (isAddingItem) return;
+    isAddingItem = true;
+
+    const $submitBtn = $(this).find('button[type="submit"]');
+    const originalBtnHtml = $submitBtn.html();
+    $submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm mr-1"></span> Saving...');
     
     const formData = new FormData(this);
     
@@ -832,6 +877,8 @@ $('#addItemForm').on('submit', function(e) {
             $('#addItemForm')[0].reset();
             loadDashboardData();
             showToast('Item added successfully!', 'success');
+            isAddingItem = false;
+            $submitBtn.prop('disabled', false).html(originalBtnHtml);
         },
         error: function(xhr) {
             let errorMessage = 'Failed to add item';
@@ -839,6 +886,8 @@ $('#addItemForm').on('submit', function(e) {
                 errorMessage = xhr.responseJSON.message;
             }
             showToast(errorMessage, 'error');
+            isAddingItem = false;
+            $submitBtn.prop('disabled', false).html(originalBtnHtml);
         }
     });
 });

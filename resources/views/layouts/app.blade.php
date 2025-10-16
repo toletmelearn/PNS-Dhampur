@@ -14,6 +14,19 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
+    <!-- Critical CSS -->
+    @if(config('assets.optimization.critical_css'))
+        <style>
+            {!! asset_manager()->getCriticalCSS() !!}
+        </style>
+    @endif
+
+    <!-- Preload Critical Assets -->
+    @if(config('assets.optimization.preload.enabled'))
+        {!! preload_asset('css/app.css', 'style') !!}
+        {!! preload_asset('js/app.js', 'script') !!}
+    @endif
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
@@ -269,7 +282,7 @@
                     <div class="position-sticky pt-3">
                         <ul class="nav flex-column">
                             <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
+                                <a class="nav-link {{ request()->routeIs('dashboard.*') ? 'active' : '' }}" href="{{ route('dashboard.redirect') }}">
                                     <i class="fas fa-tachometer-alt me-2"></i>Dashboard
                                 </a>
                             </li>
@@ -298,6 +311,13 @@
                                     <i class="fas fa-id-card"></i> Admit Cards
                                 </a>
                             </li>
+                            @if(auth()->user() && auth()->user()->hasPermission('view-class-audit'))
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('class-data-audit.*') ? 'active' : '' }}" href="{{ route('class-data-audit.index') }}">
+                                    <i class="fas fa-clipboard-list me-2"></i>Class Data Audit
+                                </a>
+                            </li>
+                            @endif
                             @can('teacher-access')
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('teacher-documents.*') ? 'active' : '' }}" href="{{ route('teacher-documents.index') }}">
@@ -419,6 +439,17 @@
     
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script>
+        // Fallback: if CDN jQuery fails, try local copy
+        (function() {
+            if (!window.jQuery) {
+                var s = document.createElement('script');
+                s.src = '{{ asset('vendor/jquery/jquery-3.7.0.min.js') }}';
+                s.async = true;
+                document.head.appendChild(s);
+            }
+        })();
+    </script>
     
     <!-- DataTables JS -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -430,14 +461,64 @@
     <!-- Custom App JS -->
     <script src="{{ asset('js/app.js') }}"></script>
     
+    <!-- Validation System -->
+    <script src="{{ asset('js/validation.js') }}"></script>
+    
     <!-- Global AJAX CSRF Setup -->
     <script>
-        // Setup CSRF token for all AJAX requests
-        $.ajaxSetup({
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        (function() {
+            var csrfTokenEl = document.querySelector('meta[name="csrf-token"]');
+            var csrfToken = csrfTokenEl ? csrfTokenEl.getAttribute('content') : null;
+
+            if (window.jQuery) {
+                // Setup CSRF token for all AJAX requests (jQuery)
+                $.ajaxSetup({
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                });
+
+                // Initialize validation system when document is ready
+                $(function() {
+                    if (window.validationSystem) {
+                        // Add custom validation rules for the school management system
+                        window.validationSystem.addValidator('indian_phone', function(value) {
+                            if (!value) return true;
+                            const cleaned = value.replace(/\D/g, '');
+                            return /^[6-9]\d{9}$/.test(cleaned);
+                        }, 'Please enter a valid Indian mobile number (10 digits starting with 6-9).');
+
+                        window.validationSystem.addValidator('academic_year', function(value) {
+                            if (!value) return true;
+                            return /^\d{4}-\d{4}$/.test(value);
+                        }, 'Please enter academic year in format YYYY-YYYY (e.g., 2023-2024).');
+
+                        window.validationSystem.addValidator('roll_number', function(value) {
+                            if (!value) return true;
+                            return /^[A-Z0-9]{1,10}$/.test(value);
+                        }, 'Roll number must contain only uppercase letters and numbers (max 10 characters).');
+
+                        window.validationSystem.addValidator('admission_number', function(value) {
+                            if (!value) return true;
+                            return /^ADM\d{4,8}$/.test(value);
+                        }, 'Admission number must start with "ADM" followed by 4-8 digits.');
+
+                        window.validationSystem.addValidator('class_section', function(value) {
+                            if (!value) return true;
+                            return /^(1[0-2]|[1-9])-[A-Z]$/.test(value);
+                        }, 'Class section must be in format like "10-A", "12-B", etc.');
+
+                        // Initialize all forms with validation
+                        $('form[data-validate="true"]').each(function() {
+                            window.validationSystem.initializeForm(this);
+                        });
+                    }
+                });
+            } else {
+                // Minimal fallback: expose CSRF token for fetch APIs
+                window.CSRF_TOKEN = csrfToken;
             }
-        });
+        })();
     </script>
     
     <!-- Attendance System JavaScript -->
@@ -450,14 +531,19 @@
     <script src="{{ asset('js/attendance-integration-test.js') }}"></script>
     @endif
     <script>
-        // Auto-hide alerts after 5 seconds
+        // Auto-hide alerts after 5 seconds (works without jQuery)
         setTimeout(function() {
-            $('.alert').fadeOut('slow');
+            document.querySelectorAll('.alert').forEach(function(el) {
+                el.style.transition = 'opacity 0.5s';
+                el.style.opacity = '0';
+                setTimeout(function() { el.style.display = 'none'; }, 600);
+            });
         }, 5000);
 
-        // Sidebar toggle for mobile
+        // Sidebar toggle for mobile (vanilla JS)
         function toggleSidebar() {
-            $('.sidebar').toggleClass('show');
+            var sidebar = document.querySelector('.sidebar');
+            if (sidebar) sidebar.classList.toggle('show');
         }
 
         // Initialize tooltips
@@ -468,130 +554,150 @@
 
         // Notification System
         @auth
-        let notificationPollingInterval;
-        
-        $(document).ready(function() {
-            loadNotifications();
-            startNotificationPolling();
-        });
+        if (window.jQuery) {
+            let notificationPollingInterval;
+            let isLoadingNotifications = false;
+            let isMarkingAllRead = false;
 
-        function loadNotifications() {
-            $.ajax({
-                url: '#',
-                method: 'GET',
-                success: function(response) {
-                    if (response.success) {
-                        updateNotificationDropdown(response.notifications);
-                        updateNotificationBadge(response.unread_count);
-                    }
-                },
-                error: function() {
-                    console.error('Failed to load notifications');
-                }
-            });
-        }
-
-        function updateNotificationDropdown(notifications) {
-            const notificationList = $('#notificationList');
-            
-            if (notifications.length === 0) {
-                notificationList.html(`
-                    <div class="text-center py-3 text-muted">
-                        <i class="fas fa-bell-slash"></i>
-                        <p class="mb-0">No notifications</p>
-                    </div>
-                `);
-                return;
-            }
-
-            let html = '';
-            notifications.forEach(function(notification) {
-                const isRead = notification.is_read;
-                const timeAgo = moment(notification.created_at).fromNow();
-                
-                html += `
-                    <div class="dropdown-item notification-item ${isRead ? '' : 'unread'}" data-id="${notification.id}">
-                        <div class="d-flex">
-                            <div class="flex-shrink-0">
-                                <i class="fas ${getNotificationIcon(notification.type)} text-primary"></i>
-                            </div>
-                            <div class="flex-grow-1 ms-2">
-                                <h6 class="mb-1 fw-bold">${notification.title}</h6>
-                                <p class="mb-1 small text-muted">${notification.message}</p>
-                                <small class="text-muted">${timeAgo}</small>
-                            </div>
-                            <div class="flex-shrink-0">
-                                ${!isRead ? '<span class="badge bg-primary rounded-pill">New</span>' : ''}
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            notificationList.html(html);
-        }
-
-        function updateNotificationBadge(count) {
-            const badge = $('#notificationBadge');
-            if (count > 0) {
-                badge.text(count > 99 ? '99+' : count).show();
-            } else {
-                badge.hide();
-            }
-        }
-
-        function getNotificationIcon(type) {
-            const icons = {
-                'assignment_deadline': 'fa-clock',
-                'assignment_created': 'fa-plus-circle',
-                'assignment_graded': 'fa-check-circle',
-                'syllabus_uploaded': 'fa-file-upload',
-                'system_announcement': 'fa-bullhorn'
-            };
-            return icons[type] || 'fa-bell';
-        }
-
-        function markAllAsRead() {
-            $.ajax({
-                url: '#',
-                method: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}'
-                },
-                success: function(response) {
-                    if (response.success) {
-                        loadNotifications();
-                    }
-                }
-            });
-        }
-
-        function startNotificationPolling() {
-            notificationPollingInterval = setInterval(function() {
+            $(function() {
                 loadNotifications();
-            }, 30000); // Poll every 30 seconds
-        }
+                startNotificationPolling();
+            });
 
-        // Handle notification item clicks
-        $(document).on('click', '.notification-item', function() {
-            const notificationId = $(this).data('id');
-            
-            // Mark as read if unread
-            if ($(this).hasClass('unread')) {
+            function loadNotifications() {
+                if (isLoadingNotifications) return;
+                isLoadingNotifications = true;
+                $.ajax({
+                    url: '#',
+                    method: 'GET',
+                    success: function(response) {
+                        if (response && response.success) {
+                            updateNotificationDropdown(response.notifications || []);
+                            updateNotificationBadge(response.unread_count || 0);
+                        }
+                    },
+                    complete: function() {
+                        isLoadingNotifications = false;
+                    }
+                });
+            }
+
+            function updateNotificationDropdown(notifications) {
+                const notificationList = $('#notificationList');
+                if (!notificationList.length) return;
+                
+                if (!notifications || notifications.length === 0) {
+                    notificationList.html(
+                        '<div class="text-center py-3 text-muted">\n' +
+                        '  <i class="fas fa-bell-slash"></i>\n' +
+                        '  <p class="mb-0">No notifications</p>\n' +
+                        '</div>'
+                    );
+                    return;
+                }
+
+                let html = '';
+                notifications.forEach(function(notification) {
+                    const isRead = notification.is_read;
+                    const timeAgo = window.moment ? moment(notification.created_at).fromNow() : '';
+                    
+                    html += (
+                        '<div class="dropdown-item notification-item ' + (isRead ? '' : 'unread') + '" data-id="' + notification.id + '">' +
+                        '  <div class="d-flex">' +
+                        '    <div class="flex-shrink-0">' +
+                        '      <i class="fas ' + getNotificationIcon(notification.type) + ' text-primary"></i>' +
+                        '    </div>' +
+                        '    <div class="flex-grow-1 ms-2">' +
+                        '      <h6 class="mb-1 fw-bold">' + (notification.title || '') + '</h6>' +
+                        '      <p class="mb-1 small text-muted">' + (notification.message || '') + '</p>' +
+                        '      <small class="text-muted">' + timeAgo + '</small>' +
+                        '    </div>' +
+                        '    <div class="flex-shrink-0">' + (isRead ? '' : '<span class="badge bg-primary rounded-pill">New</span>') + '</div>' +
+                        '  </div>' +
+                        '</div>'
+                    );
+                });
+                
+                notificationList.html(html);
+            }
+
+            function updateNotificationBadge(count) {
+                const badge = $('#notificationBadge');
+                if (!badge.length) return;
+                if (count > 0) {
+                    badge.text(count > 99 ? '99+' : count).show();
+                } else {
+                    badge.hide();
+                }
+            }
+
+            function getNotificationIcon(type) {
+                const icons = {
+                    'assignment_deadline': 'fa-clock',
+                    'assignment_created': 'fa-plus-circle',
+                    'assignment_graded': 'fa-check-circle',
+                    'syllabus_uploaded': 'fa-file-upload',
+                    'system_announcement': 'fa-bullhorn'
+                };
+                return icons[type] || 'fa-bell';
+            }
+
+            function markAllAsRead() {
+                if (isMarkingAllRead) return;
+                isMarkingAllRead = true;
                 $.ajax({
                     url: '#',
                     method: 'POST',
                     data: {
                         _token: '{{ csrf_token() }}'
                     },
-                    success: function() {
-                        loadNotifications();
+                    success: function(response) {
+                        if (response && response.success) {
+                            loadNotifications();
+                        }
+                    },
+                    complete: function() {
+                        isMarkingAllRead = false;
                     }
                 });
             }
-        });
+
+            function startNotificationPolling() {
+                notificationPollingInterval = setInterval(function() {
+                    loadNotifications();
+                }, 30000); // Poll every 30 seconds; in-flight guard prevents overlap
+            }
+
+            // Handle notification item clicks
+            $(document).on('click', '.notification-item', function() {
+                const notificationId = $(this).data('id');
+                
+                // Mark as read if unread
+                if ($(this).hasClass('unread')) {
+                    // Prevent rapid double clicks from firing duplicate requests
+                    if ($(this).data('marking')) return;
+                    $(this).data('marking', true);
+                    $.ajax({
+                        url: '#',
+                        method: 'POST',
+                        data: {
+                            _token: '{{ csrf_token() }}'
+                        },
+                        success: function() {
+                            loadNotifications();
+                        },
+                        complete: () => {
+                            $(this).data('marking', false);
+                        }
+                    });
+                }
+            });
+        }
         @endauth
     </script>
+
+    <!-- Vite Assets -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     @stack('scripts')
 </body>

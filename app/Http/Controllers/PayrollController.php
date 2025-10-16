@@ -7,6 +7,8 @@ use App\Models\SalaryStructure;
 use App\Models\PayrollDeduction;
 use App\Services\SalaryCalculationService;
 use App\Services\UserFriendlyErrorService;
+use App\Http\Requests\CalculateSalaryRequest;
+use App\Http\Requests\ProcessPayrollRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -140,13 +142,10 @@ class PayrollController extends Controller
     /**
      * Calculate salary for a specific employee
      */
-    public function calculateSalary(Request $request, User $employee)
+    public function calculateSalary(CalculateSalaryRequest $request, User $employee)
     {
-        $request->validate([
-            'month' => 'required|date_format:Y-m'
-        ]);
-
-        $period = Carbon::createFromFormat('Y-m', $request->month)->startOfMonth();
+        $validated = $request->validated();
+        $period = Carbon::createFromFormat('Y-m', $validated['month'])->startOfMonth();
 
         try {
             $salaryData = $this->salaryService->calculateMonthlySalary($employee, $period);
@@ -173,16 +172,11 @@ class PayrollController extends Controller
     /**
      * Process bulk payroll for all employees
      */
-    public function processBulkPayroll(Request $request)
+    public function processBulkPayroll(ProcessPayrollRequest $request)
     {
-        $request->validate([
-            'month' => 'required|date_format:Y-m',
-            'employee_ids' => 'array',
-            'employee_ids.*' => 'exists:users,id'
-        ]);
-
-        $period = Carbon::createFromFormat('Y-m', $request->month)->startOfMonth();
-        $employeeIds = $request->employee_ids ?? [];
+        $validated = $request->validated();
+        $period = Carbon::createFromFormat('Y-m', $validated['month'])->startOfMonth();
+        $employeeIds = $validated['employee_ids'] ?? [];
 
         try {
             $results = $this->salaryService->processBulkPayroll($employeeIds, $period);

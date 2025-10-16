@@ -5,7 +5,7 @@ namespace App\Rules;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Facades\Hash;
-use App\Models\PasswordHistory;
+use App\Models\PasswordHistory as PasswordHistoryModel;
 
 class PasswordHistory implements ValidationRule
 {
@@ -33,7 +33,7 @@ class PasswordHistory implements ValidationRule
         $historyCount = $rolePolicy['history_count'] ?? $policy['history']['remember_count'];
 
         // Get user's password history
-        $passwordHistories = PasswordHistory::where('user_id', $this->user->id)
+        $passwordHistories = PasswordHistoryModel::where('user_id', $this->user->id)
             ->orderBy('created_at', 'desc')
             ->limit($historyCount)
             ->get();

@@ -83,14 +83,35 @@ return [
             'url' => env('DATABASE_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
-            'database' => env('DB_DATABASE', 'forge'),
-            'username' => env('DB_USERNAME', 'forge'),
+            'database' => env('DB_DATABASE', 'pns_dhampur'),
+            'username' => env('DB_USERNAME', 'postgres'),
             'password' => env('DB_PASSWORD', ''),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
             'search_path' => 'public',
-            'sslmode' => 'prefer',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'options' => extension_loaded('pdo_pgsql') ? array_filter([
+                PDO::ATTR_TIMEOUT => env('DB_TIMEOUT', 30),
+                PDO::ATTR_PERSISTENT => env('DB_PERSISTENT', true),
+                PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::ATTR_STRINGIFY_FETCHES => false,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            ]) : [],
+            'dump' => [
+                'dump_binary_path' => env('PGSQL_DUMP_PATH', '/usr/bin'),
+                'use_single_transaction' => true,
+                'timeout' => 60 * 10, // 10 minute timeout for PostgreSQL
+            ],
+            // Connection pooling settings
+            'pool' => [
+                'min_connections' => env('DB_POOL_MIN', 5),
+                'max_connections' => env('DB_POOL_MAX', 20),
+                'acquire_timeout' => env('DB_POOL_ACQUIRE_TIMEOUT', 30),
+                'idle_timeout' => env('DB_POOL_IDLE_TIMEOUT', 300),
+                'max_lifetime' => env('DB_POOL_MAX_LIFETIME', 3600),
+            ],
         ],
 
         'sqlsrv' => [

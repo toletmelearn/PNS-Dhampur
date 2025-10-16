@@ -1,20 +1,21 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Http\JsonResponse;
-use App\Http\Controllers\ClassTeacherPermissionController;
-use App\Http\Controllers\SRRegisterController;
-use App\Http\Controllers\BiometricAttendanceController;
-use App\Http\Controllers\ExamController;
-use App\Http\Controllers\ExamPaperController;
-use App\Http\Controllers\ReportsController;
-use App\Http\Controllers\UserController;
+use App\Http\Controllers\Auth\NewAuthController;
+use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\Api\PerformanceApiController;
+use App\Http\Controllers\StudentController;
+use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\SubjectController;
-use App\Http\Controllers\StudentController;
-use App\Http\Controllers\FileUploadController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\ExamController;
+use App\Http\Controllers\FeeController;
+use App\Http\Controllers\NotificationController;
+// ReportsController routes are defined in routes/auth.php with role-based middleware
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\ClassDataAuditController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,161 +28,229 @@ use App\Http\Controllers\FileUploadController;
 |
 */
 
-// Health check endpoints for monitoring
-Route::get('/health', [App\Http\Controllers\HealthCheckController::class, 'check']);
-Route::get('/ping', [App\Http\Controllers\HealthCheckController::class, 'ping']);
-
+// Public routes
 Route::get('/', function () {
-    return redirect()->route('dashboard');
+    return redirect()->route('login');
 });
 
-// Authentication Routes (manual implementation)
-Route::get('/login', function () {
-    return view('auth.login');
-})->name('login');
+// Authentication routes
+Route::get('/login', [NewAuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [NewAuthController::class, 'login'])->name('login.post');
+Route::post('/logout', [NewAuthController::class, 'logout'])->name('logout');
 
-Route::post('/login', function () {
-    // Login logic here
-})->name('login.post')->middleware('web');
+// Email verification routes
+Route::get('/email/verify', [EmailVerificationController::class, 'show'])
+    ->middleware(['auth'])
+    ->name('verification.notice');
 
-Route::post('/logout', function () {
-    // Logout logic here
-})->name('logout')->middleware('web');
+Route::get('/email/verify/{id}/{hash}', [EmailVerificationController::class, 'verify'])
+    ->middleware(['signed', 'throttle:6,1'])
+    ->name('verification.verify');
 
-// Registration should be restricted to admins only
-Route::middleware(['auth', 'role:admin,super_admin'])->group(function () {
-    Route::get('/register', function () {
-        return view('auth.register');
-    })->name('register');
+Route::post('/email/verification-notification', [EmailVerificationController::class, 'send'])
+    ->middleware(['throttle:6,1'])
+    ->name('verification.send');
 
-    Route::post('/register', function () {
-        // Registration logic here
-    })->name('register.post')->middleware('web');
-});
+// Named dashboard route bound to controller (available for views)
+Route::get('/dashboard', [NewAuthController::class, 'redirectToDashboard'])
+    ->middleware(['auth'])
+    ->name('dashboard');
 
-// Protected routes that require authentication
+// Protected routes
 Route::middleware(['auth'])->group(function () {
-    
-    // Dashboard routes
-    Route::get('/dashboard', [ClassTeacherPermissionController::class, 'dashboard'])->name('dashboard');
-    
-    // Class Teacher Permissions Management
-    Route::prefix('class-teacher-permissions')->name('class-teacher-permissions.')->group(function () {
-        Route::get('/', [ClassTeacherPermissionController::class, 'index'])->name('index');
-        Route::get('/create', [ClassTeacherPermissionController::class, 'create'])->name('create');
-        Route::post('/', [ClassTeacherPermissionController::class, 'store'])->name('store');
-        Route::get('/{classTeacherPermission}', [ClassTeacherPermissionController::class, 'show'])->name('show');
-        Route::get('/{classTeacherPermission}/edit', [ClassTeacherPermissionController::class, 'edit'])->name('edit');
-        Route::put('/{classTeacherPermission}', [ClassTeacherPermissionController::class, 'update'])->name('update');
-        Route::patch('/{classTeacherPermission}/revoke', [ClassTeacherPermissionController::class, 'revoke'])->name('revoke');
-        
-        // Audit Trail routes
-        Route::get('/audit-trail', [ClassTeacherPermissionController::class, 'auditTrail'])->name('audit-trail');
-        Route::patch('/audit-trail/{auditTrail}/approve', [ClassTeacherPermissionController::class, 'approveCorrection'])->name('audit-trail.approve');
-        Route::patch('/audit-trail/{auditTrail}/reject', [ClassTeacherPermissionController::class, 'rejectCorrection'])->name('audit-trail.reject');
-        Route::post('/audit-trail/bulk-approve', [ClassTeacherPermissionController::class, 'bulkApproveCorrections'])->name('audit-trail.bulk-approve');
-        Route::get('/audit-trail/export', [ClassTeacherPermissionController::class, 'exportAuditReport'])->name('audit-trail.export');
-    });
-    
-    // SR Register routes with permission middleware
-    Route::prefix('sr-register')->name('sr-register.')->middleware('class.teacher.permission')->group(function () {
-        Route::get('/', [SRRegisterController::class, 'index'])->name('index');
-        Route::get('/create', [SRRegisterController::class, 'create'])->name('create')->middleware('class.teacher.permission:can_add_records');
-        Route::post('/', [SRRegisterController::class, 'store'])->name('store')->middleware('class.teacher.permission:can_add_records');
-        Route::get('/{srRegister}', [SRRegisterController::class, 'show'])->name('show');
-        Route::get('/{srRegister}/edit', [SRRegisterController::class, 'edit'])->name('edit')->middleware('class.teacher.permission:can_edit_records');
-        Route::put('/{srRegister}', [SRRegisterController::class, 'update'])->name('update')->middleware('class.teacher.permission:can_edit_records');
-        Route::delete('/{srRegister}', [SRRegisterController::class, 'destroy'])->name('destroy')->middleware('class.teacher.permission:can_delete_records');
-        
-        // Bulk operations
-        Route::get('/bulk-entry', [SRRegisterController::class, 'bulkEntry'])->name('bulk-entry')->middleware('class.teacher.permission:can_bulk_operations');
-        Route::post('/bulk-entry', [SRRegisterController::class, 'storeBulkEntry'])->name('bulk-entry.store')->middleware('class.teacher.permission:can_bulk_operations');
-        
-        // Reports and exports
-        Route::get('/export/report', [SRRegisterController::class, 'exportReport'])->name('export.report')->middleware('class.teacher.permission:can_export_reports');
-        Route::get('/student/{student}/profile', [SRRegisterController::class, 'studentProfile'])->name('student.profile');
-        Route::get('/class/{class}/report', [SRRegisterController::class, 'classReport'])->name('class.report');
-        
-        // AJAX routes
-        Route::get('/ajax/students-by-class', [SRRegisterController::class, 'getStudentsByClass'])->name('ajax.students-by-class');
-    });
-    
-    // Biometric Attendance routes with permission middleware
-    Route::prefix('biometric-attendance')->name('biometric-attendance.')->middleware('class.teacher.permission')->group(function () {
-        Route::get('/', [BiometricAttendanceController::class, 'index'])->name('index');
-        Route::post('/check-in', [BiometricAttendanceController::class, 'checkIn'])->name('check-in')->middleware('class.teacher.permission:can_mark_attendance');
-        Route::post('/check-out', [BiometricAttendanceController::class, 'checkOut'])->name('check-out')->middleware('class.teacher.permission:can_mark_attendance');
-        Route::post('/bulk-check-in', [BiometricAttendanceController::class, 'bulkCheckIn'])->name('bulk-check-in')->middleware('class.teacher.permission:can_bulk_operations');
-        Route::post('/mark-absent', [BiometricAttendanceController::class, 'markAbsent'])->name('mark-absent')->middleware('class.teacher.permission:can_mark_attendance');
-        Route::get('/export', [BiometricAttendanceController::class, 'exportReport'])->name('export')->middleware('class.teacher.permission:can_export_reports');
-    });
-    
-    // Reports routes - require appropriate permissions
-    Route::middleware(['role:admin,principal,exam_incharge,class_teacher'])->group(function () {
-        Route::get('/reports', [ReportsController::class, 'index'])->name('reports.index');
-        Route::get('/api/reports/academic', [ReportsController::class, 'academicReports'])->name('api.reports.academic');
-        Route::get('/api/reports/financial', [ReportsController::class, 'financialReports'])->name('api.reports.financial');
-        Route::get('/api/reports/attendance', [ReportsController::class, 'attendanceReports'])->name('api.reports.attendance');
-        Route::get('/api/reports/performance', [ReportsController::class, 'performanceReports'])->name('api.reports.performance');
-        Route::get('/api/reports/administrative', [ReportsController::class, 'administrativeReports'])->name('api.reports.administrative');
-        Route::post('/api/reports/export', [ReportsController::class, 'exportPdf'])->name('api.reports.export');
-    });
+    // Dashboard routes are defined in routes/auth.php with role-based middleware.
+    // Keep web.php focused on feature modules and avoid duplicate route bindings.
 
-    // Exam Management routes - require exam management permissions
-    Route::middleware(['role:admin,principal,exam_incharge,teacher'])->group(function () {
-        Route::prefix('exams')->name('exams.')->group(function () {
-            Route::get('/', [ExamController::class, 'index'])->name('index');
-            Route::get('/api/classes', [ExamController::class, 'getClasses']);
-        });
-    });
     
-    // Exam Papers routes with permission middleware
-    Route::prefix('exam-papers')->name('exam-papers.')->middleware('class.teacher.permission')->group(function () {
-        Route::get('/', [ExamPaperController::class, 'index'])->name('index');
-        Route::get('/create', [ExamPaperController::class, 'create'])->name('create')->middleware('class.teacher.permission:can_add_records');
-        Route::post('/', [ExamPaperController::class, 'store'])->name('store')->middleware('class.teacher.permission:can_add_records');
-        Route::get('/{examPaper}', [ExamPaperController::class, 'show'])->name('show');
-        Route::get('/{examPaper}/edit', [ExamPaperController::class, 'edit'])->name('edit')->middleware('class.teacher.permission:can_edit_records');
-        Route::put('/{examPaper}', [ExamPaperController::class, 'update'])->name('update')->middleware('class.teacher.permission:can_edit_records');
-        Route::delete('/{examPaper}', [ExamPaperController::class, 'destroy'])->name('destroy')->middleware('class.teacher.permission:can_delete_records');
-        
-        // Paper workflow
-        Route::patch('/{examPaper}/publish', [ExamPaperController::class, 'publish'])->name('publish')->middleware('class.teacher.permission:can_approve_corrections');
-        Route::patch('/{examPaper}/submit', [ExamPaperController::class, 'submit'])->name('submit');
-        Route::patch('/{examPaper}/approve', [ExamPaperController::class, 'approve'])->name('approve')->middleware('class.teacher.permission:can_approve_corrections');
-        Route::patch('/{examPaper}/reject', [ExamPaperController::class, 'reject'])->name('reject')->middleware('class.teacher.permission:can_approve_corrections');
-        Route::post('/{examPaper}/duplicate', [ExamPaperController::class, 'duplicate'])->name('duplicate')->middleware('class.teacher.permission:can_add_records');
-        
-        // Export and question bank
-        Route::get('/{examPaper}/export-pdf', [ExamPaperController::class, 'exportPdf'])->name('export-pdf')->middleware('class.teacher.permission:can_export_reports');
-        Route::get('/question-bank/{subject}', [ExamPaperController::class, 'getQuestionBank'])->name('question-bank');
-    });
+    // Students
+    Route::resource('students', StudentController::class);
+    Route::get('/students/{student}/profile', [StudentController::class, 'profile'])->name('students.profile');
     
-    // Admin-only routes for permission management
-    Route::middleware(['role:admin,super_admin'])->group(function () {
-        Route::resource('users', UserController::class);
-        Route::resource('classes', ClassController::class);
-        Route::resource('subjects', SubjectController::class);
-        Route::resource('students', StudentController::class);
-        
-        // System audit and reports
-        Route::get('/system/audit-report', [ClassTeacherPermissionController::class, 'systemAuditReport'])->name('system.audit-report');
-        Route::get('/system/permissions-report', [ClassTeacherPermissionController::class, 'permissionsReport'])->name('system.permissions-report');
+    // Teachers
+    Route::resource('teachers', TeacherController::class);
+    Route::get('/teachers/{teacher}/profile', [TeacherController::class, 'profile'])->name('teachers.profile');
+    
+    // Classes
+    Route::resource('classes', ClassController::class);
+    Route::get('/classes/{class}/students', [ClassController::class, 'students'])->name('classes.students');
+    
+    // Subjects
+    Route::resource('subjects', SubjectController::class);
+    
+    // Attendance
+    Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
+    Route::get('/attendance/create', [AttendanceController::class, 'create'])->name('attendance.create');
+    Route::post('/attendance', [AttendanceController::class, 'store'])->name('attendance.store');
+    Route::get('/attendance/{date}', [AttendanceController::class, 'show'])->name('attendance.show');
+    Route::get('/attendance/student/{student}', [AttendanceController::class, 'studentAttendance'])->name('attendance.student');
+    
+    // Exams
+    Route::resource('exams', ExamController::class);
+    Route::get('/exams/{exam}/results', [ExamController::class, 'results'])->name('exams.results');
+    
+    // Grades
+    // Removed invalid GradeController routes; grades are handled via reports and results APIs.
+    
+    // Fees
+    Route::resource('fees', FeeController::class);
+    Route::get('/fees/student/{student}', [FeeController::class, 'studentFees'])->name('fees.student');
+    Route::post('/fees/{fee}/pay', [FeeController::class, 'pay'])->name('fees.pay');
+    
+    // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    
+    // Reports routes are provided in routes/auth.php (role-aware).
+    // Keeping web.php clean avoids duplicate bindings and undefined controllers.
+    
+    // Settings
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
+    Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    
+    // Users
+    Route::resource('users', UserController::class)->middleware('can:manage-users');
+
+    // Sidebar feature routes (placeholders to satisfy layout links)
+    Route::get('/class-teacher-permissions', function () {
+        return view('layouts.app');
+    })->name('class-teacher-permissions.index');
+
+    Route::get('/sr-register', function () {
+        return view('layouts.app');
+    })->name('sr-register.index');
+
+    Route::get('/biometric-attendance', function () {
+        return view('layouts.app');
+    })->name('biometric-attendance.index');
+
+    Route::get('/exam-papers', function () {
+        return view('layouts.app');
+    })->name('exam-papers.index');
+
+    Route::get('/teacher-documents', function () {
+        return view('layouts.app');
+    })->middleware('can:teacher-access')->name('teacher-documents.index');
+
+    // Class Data Audit routes
+    Route::prefix('class-data-audit')->name('class-data-audit.')->group(function () {
+        // Dashboard index
+        Route::get('/', [ClassDataAuditController::class, 'index'])
+            ->middleware('permission:view-class-audit')
+            ->name('index');
+
+        // Detailed audit view
+        Route::get('/{audit}', [ClassDataAuditController::class, 'show'])
+            ->middleware('permission:view-class-audit')
+            ->name('show');
+
+        // Analytics dashboard
+        Route::get('/analytics', [ClassDataAuditController::class, 'analytics'])
+            ->middleware('permission:view_audit_statistics')
+            ->name('analytics');
+
+        // Export operations
+        Route::post('/export', [ClassDataAuditController::class, 'export'])
+            ->middleware('permission:export_audit_reports')
+            ->name('export');
+        Route::get('/download-export/{token}', [ClassDataAuditController::class, 'downloadExport'])
+            ->middleware('permission:export_audit_reports')
+            ->name('download-export');
+
+        // Approval actions
+        Route::post('/{audit}/approve', [ClassDataAuditController::class, 'approve'])
+            ->middleware('permission:approve_audit_changes')
+            ->name('approve');
+        Route::post('/reject', [ClassDataAuditController::class, 'reject'])
+            ->middleware('permission:approve_audit_changes')
+            ->name('reject');
+        Route::post('/delegate', [ClassDataAuditController::class, 'delegate'])
+            ->middleware('permission:delegate_audit_approvals')
+            ->name('delegate');
+        Route::post('/bulk-approve', [ClassDataAuditController::class, 'bulkApprove'])
+            ->middleware('permission:bulk_approve_audits')
+            ->name('bulk-approve');
+        Route::post('/bulk-action', [ClassDataAuditController::class, 'bulkAction'])
+            ->middleware('permission:manage-class-audit')
+            ->name('bulk-action');
+
+        // Rollback operations
+        Route::post('/{audit}/rollback', [ClassDataAuditController::class, 'rollback'])
+            ->middleware('permission:manage-class-audit')
+            ->name('rollback');
+        Route::get('/{audit}/versions', [ClassDataAuditController::class, 'versionHistory'])
+            ->middleware('permission:view-class-audit')
+            ->name('versions');
+        Route::post('/{audit}/compare-versions', [ClassDataAuditController::class, 'compareVersions'])
+            ->middleware('permission:view-class-audit')
+            ->name('compare-versions');
+        Route::post('/{audit}/rollback-to-version', [ClassDataAuditController::class, 'rollbackToVersion'])
+            ->middleware('permission:manage-class-audit')
+            ->name('rollback-to-version');
+
+        // Approval status
+        Route::get('/{audit}/approval-status', [ClassDataAuditController::class, 'approvalStatus'])
+            ->middleware('permission:view-class-audit')
+            ->name('approval-status');
     });
 });
 
-// File Upload API Routes
-Route::prefix('api/files')->name('api.files.')->middleware(['auth', 'sanitize'])->group(function () {
-    Route::post('/upload', [App\Http\Controllers\FileUploadController::class, 'uploadFile'])->name('upload');
-    Route::post('/upload-multiple', [App\Http\Controllers\FileUploadController::class, 'uploadMultipleFiles'])->name('upload.multiple');
-    Route::get('/progress/{uploadId}', [App\Http\Controllers\FileUploadController::class, 'getUploadProgress'])->name('progress');
-    Route::delete('/delete', [App\Http\Controllers\FileUploadController::class, 'deleteFile'])->name('delete');
-    Route::get('/info', [App\Http\Controllers\FileUploadController::class, 'getFileInfo'])->name('info');
-    Route::post('/download-url', [App\Http\Controllers\FileUploadController::class, 'generateDownloadUrl'])->name('download.url');
-    Route::get('/allowed-types', [App\Http\Controllers\FileUploadController::class, 'getAllowedFileTypes'])->name('allowed.types');
-    Route::post('/validate', [App\Http\Controllers\FileUploadController::class, 'validateFile'])->name('validate');
+// API routes for AJAX requests
+Route::middleware(['auth'])->prefix('api')->group(function () {
+    Route::get('/dashboard/stats', [PerformanceApiController::class, 'dashboardStats'])->name('api.dashboard.stats');
+    Route::get('/notifications/unread', [NotificationController::class, 'unread']);
+    Route::post('/attendance/bulk', [AttendanceController::class, 'bulkStore']);
 });
 
-// Test route removed for security - should not be in production
+// Asset optimization routes
+Route::get('/assets/{path}', function ($path) {
+    $fullPath = public_path('build/assets/' . $path);
+    
+    if (!file_exists($fullPath)) {
+        abort(404);
+    }
+    
+    $mimeType = mime_content_type($fullPath);
+    $lastModified = filemtime($fullPath);
+    
+    return response()->file($fullPath, [
+        'Content-Type' => $mimeType,
+        'Cache-Control' => 'public, max-age=31536000, immutable',
+        'Last-Modified' => gmdate('D, d M Y H:i:s', $lastModified) . ' GMT',
+        'ETag' => '"' . md5_file($fullPath) . '"',
+    ]);
+})->where('path', '.*');
+
+// Test routes for error handling and validation
+Route::prefix('test')->name('test.')->group(function () {
+    Route::get('/error-pages', function () {
+        return view('test.error-pages');
+    })->name('error.pages');
+    
+    Route::get('/validation-demo', function () {
+        return view('test.validation-demo');
+    })->name('validation.demo');
+    
+    // Error page tests
+    Route::get('/404', [App\Http\Controllers\TestController::class, 'test404'])->name('404');
+    Route::get('/403', [App\Http\Controllers\TestController::class, 'test403'])->name('403');
+    Route::get('/500', [App\Http\Controllers\TestController::class, 'test500'])->name('500');
+    
+    // Validation and security tests
+    Route::get('/auth-error', [App\Http\Controllers\TestController::class, 'testAuthError'])->name('auth.error');
+    Route::post('/validation-error', [App\Http\Controllers\TestController::class, 'testValidationError'])->name('validation.error');
+    Route::get('/rate-limit', [App\Http\Controllers\TestController::class, 'testRateLimit'])->name('rate.limit');
+    Route::post('/csrf', [App\Http\Controllers\TestController::class, 'testCsrf'])->name('csrf');
+    Route::post('/sanitization', [App\Http\Controllers\TestController::class, 'testSanitization'])->name('sanitization');
+    Route::post('/logging', [App\Http\Controllers\TestController::class, 'testLogging'])->name('logging');
+    Route::get('/performance', [App\Http\Controllers\TestController::class, 'testPerformance'])->name('performance');
+    
+    // Form submission test
+    Route::post('/validation-demo', [App\Http\Controllers\TestController::class, 'submitValidationDemo'])->name('validation.demo.submit');
+});
+
+// Fallback route for SPA-like behavior (if needed)
+Route::fallback(function () {
+    return view('layouts.app');
+});
 
 

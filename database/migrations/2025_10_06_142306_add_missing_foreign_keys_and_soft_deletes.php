@@ -15,23 +15,31 @@ return new class extends Migration
     {
         // Add soft deletes to critical tables
         Schema::table('students', function (Blueprint $table) {
-            $table->softDeletes();
+            if (!Schema::hasColumn('students', 'deleted_at')) {
+                $table->softDeletes();
+            }
         });
 
         Schema::table('teachers', function (Blueprint $table) {
-            $table->softDeletes();
+            if (!Schema::hasColumn('teachers', 'deleted_at')) {
+                $table->softDeletes();
+            }
             // Add foreign key constraint for user_id
             $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
         });
 
         Schema::table('class_models', function (Blueprint $table) {
-            $table->softDeletes();
+            if (!Schema::hasColumn('class_models', 'deleted_at')) {
+                $table->softDeletes();
+            }
             // Add foreign key constraint for class_teacher_id
             $table->foreign('class_teacher_id')->references('id')->on('teachers')->onDelete('set null');
         });
 
         Schema::table('users', function (Blueprint $table) {
-            $table->softDeletes();
+            if (!Schema::hasColumn('users', 'deleted_at')) {
+                $table->softDeletes();
+            }
         });
 
         // Add missing foreign key constraints

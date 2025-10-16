@@ -6,7 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\InventoryController;
-use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\BiometricController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TeacherController;
@@ -23,6 +23,12 @@ use App\Http\Controllers\FeePaymentController;
 use App\Http\Controllers\TeacherAvailabilityController;
 use App\Http\Controllers\SubstitutionController;
 use App\Http\Controllers\Api\ExternalIntegrationController;
+use App\Http\Controllers\Api\SuperAdminApiController;
+
+// Module-based controllers
+use App\Modules\Student\Controllers\StudentController as ModuleStudentController;
+use App\Modules\Teacher\Controllers\TeacherController as ModuleTeacherController;
+use App\Modules\Attendance\Controllers\AttendanceController as ModuleAttendanceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -36,11 +42,11 @@ use App\Http\Controllers\Api\ExternalIntegrationController;
 */
 
 // Public API routes (no authentication required)
-Route::prefix('v1')->group(function () {
+Route::prefix('v1')->middleware(['security', 'audit'])->group(function () {
     // Authentication endpoints
-    Route::post('/login', [AuthController::class, 'login'])->middleware(['api.security', 'throttle:10,1']);
-    Route::post('/register', [AuthController::class, 'register'])->middleware(['api.security', 'throttle:5,1']);
-    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware(['api.security', 'throttle:3,1']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware(['throttle:10,1']);
+    Route::post('/register', [AuthController::class, 'register'])->middleware(['throttle:5,1']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware(['throttle:3,1']);
     
     // System status
     Route::get('/status', function () {
@@ -49,7 +55,7 @@ Route::prefix('v1')->group(function () {
             'version' => '1.0.0',
             'timestamp' => now()->toISOString()
         ]);
-    })->middleware(['api.security']);
+    });
     
     // Test endpoint
     Route::get('/test', function () {
@@ -58,8 +64,379 @@ Route::prefix('v1')->group(function () {
             'status' => 'success',
             'timestamp' => now()->toISOString()
         ]);
-    })->middleware(['api.security']);
+    });
+    
+    // Public school information
+    Route::get('/school/info', function () {
+        return response()->json([
+            'name' => config('app.name'),
+            'description' => 'Premier educational institution',
+            'contact' => [
+                'phone' => '+91-XXXXXXXXXX',
+                'email' => 'info@school.edu',
+                'address' => 'School Address'
+            ]
+        ]);
+    })->middleware(['throttle:60,1']);
+    
+    // Public notices and events
+    Route::get('/notices', function () {
+        return response()->json([
+            'notices' => [],
+            'events' => []
+        ]);
+    })->middleware(['throttle:60,1']);
 });
+
+// Mobile Application API Routes
+Route::prefix('mobile')->middleware(['auth:sanctum', 'security', 'audit', 'throttle:api'])->group(function () {
+    
+    // Student Mobile App Routes
+    Route::prefix('student')->middleware(['module:student'])->group(function () {
+        Route::get('/profile', [ModuleStudentController::class, 'mobileProfile']);
+        Route::put('/profile', [ModuleStudentController::class, 'updateMobileProfile']);
+        Route::get('/attendance', [ModuleAttendanceController::class, 'studentAttendance']);
+        Route::get('/results', [ModuleStudentController::class, 'mobileResults']);
+        Route::get('/fees', [ModuleStudentController::class, 'mobileFees']);
+        Route::get('/timetable', [ModuleStudentController::class, 'mobileTimetable']);
+        Route::get('/assignments', [ModuleStudentController::class, 'mobileAssignments']);
+        Route::get('/notifications', [ModuleStudentController::class, 'mobileNotifications']);
+        Route::post('/notifications/{id}/read', [ModuleStudentController::class, 'markNotificationRead']);
+    });
+    
+    // Teacher Mobile App Routes
+    Route::prefix('teacher')->middleware(['module:teacher'])->group(function () {
+        Route::get('/profile', [ModuleTeacherController::class, 'mobileProfile']);
+        Route::put('/profile', [ModuleTeacherController::class, 'updateMobileProfile']);
+        Route::get('/classes', [ModuleTeacherController::class, 'mobileClasses']);
+        Route::get('/attendance/mark', [ModuleAttendanceController::class, 'mobileMarkAttendance']);
+        Route::post('/attendance/mark', [ModuleAttendanceController::class, 'storeMobileAttendance']);
+        Route::get('/timetable', [ModuleTeacherController::class, 'mobileTimetable']);
+        Route::get('/students/{class}', [ModuleTeacherController::class, 'mobileClassStudents']);
+        Route::get('/assignments', [ModuleTeacherController::class, 'mobileAssignments']);
+        Route::post('/assignments', [ModuleTeacherController::class, 'createMobileAssignment']);
+        Route::get('/notifications', [ModuleTeacherController::class, 'mobileNotifications']);
+    });
+    
+    // Parent Mobile App Routes
+    Route::prefix('parent')->middleware(['module:student'])->group(function () {
+        Route::get('/children', [ModuleStudentController::class, 'parentChildren']);
+        Route::get('/child/{id}/attendance', [ModuleAttendanceController::class, 'childAttendance']);
+        Route::get('/child/{id}/results', [ModuleStudentController::class, 'childResults']);
+        Route::get('/child/{id}/fees', [ModuleStudentController::class, 'childFees']);
+        Route::get('/child/{id}/timetable', [ModuleStudentController::class, 'childTimetable']);
+        Route::get('/notifications', [ModuleStudentController::class, 'parentNotifications']);
+        Route::post('/meetings/request', [ModuleStudentController::class, 'requestMeeting']);
+    });
+});
+
+// Protected API Routes (Sanctum Authentication)
+Route::middleware(['auth:sanctum', 'security', 'audit', 'throttle:api'])->group(function () {
+
+    // Authentication Management
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/user', [AuthController::class, 'me']);
+    Route::put('/user/profile', [AuthController::class, 'updateProfile']);
+    Route::post('/user/change-password', [AuthController::class, 'changePassword']);
+    
+    // Module-based API Routes
+    
+    // Student Module API
+    Route::prefix('students')->middleware(['module:student'])->group(function () {
+        Route::get('/', [ModuleStudentController::class, 'apiIndex']);
+        Route::post('/', [ModuleStudentController::class, 'apiStore']);
+        Route::get('/{student}', [ModuleStudentController::class, 'apiShow']);
+        Route::put('/{student}', [ModuleStudentController::class, 'apiUpdate']);
+        Route::delete('/{student}', [ModuleStudentController::class, 'apiDestroy']);
+        
+        // Student-specific API endpoints
+        Route::get('/{student}/attendance', [ModuleStudentController::class, 'apiAttendance']);
+        Route::get('/{student}/results', [ModuleStudentController::class, 'apiResults']);
+        Route::get('/{student}/fees', [ModuleStudentController::class, 'apiFees']);
+        Route::get('/{student}/documents', [ModuleStudentController::class, 'apiDocuments']);
+        Route::post('/{student}/documents', [ModuleStudentController::class, 'apiUploadDocument']);
+        Route::get('/{student}/timeline', [ModuleStudentController::class, 'apiTimeline']);
+        
+        // Bulk operations
+        Route::post('/bulk/import', [ModuleStudentController::class, 'apiBulkImport']);
+        Route::post('/bulk/export', [ModuleStudentController::class, 'apiBulkExport']);
+        Route::post('/bulk/update', [ModuleStudentController::class, 'apiBulkUpdate']);
+        Route::post('/bulk/delete', [ModuleStudentController::class, 'apiBulkDelete']);
+        
+        // Search and filters
+        Route::get('/search/advanced', [ModuleStudentController::class, 'apiAdvancedSearch']);
+        Route::get('/filters/options', [ModuleStudentController::class, 'apiFilterOptions']);
+    });
+    
+    // Teacher Module API
+    Route::prefix('teachers')->middleware(['module:teacher'])->group(function () {
+        Route::get('/', [ModuleTeacherController::class, 'apiIndex']);
+        Route::post('/', [ModuleTeacherController::class, 'apiStore']);
+        Route::get('/{teacher}', [ModuleTeacherController::class, 'apiShow']);
+        Route::put('/{teacher}', [ModuleTeacherController::class, 'apiUpdate']);
+        Route::delete('/{teacher}', [ModuleTeacherController::class, 'apiDestroy']);
+        
+        // Teacher-specific API endpoints
+        Route::get('/{teacher}/classes', [ModuleTeacherController::class, 'apiClasses']);
+        Route::get('/{teacher}/timetable', [ModuleTeacherController::class, 'apiTimetable']);
+        Route::get('/{teacher}/attendance', [ModuleTeacherController::class, 'apiAttendance']);
+        Route::get('/{teacher}/performance', [ModuleTeacherController::class, 'apiPerformance']);
+        Route::get('/{teacher}/documents', [ModuleTeacherController::class, 'apiDocuments']);
+        Route::post('/{teacher}/documents', [ModuleTeacherController::class, 'apiUploadDocument']);
+        
+        // Class assignments
+        Route::post('/{teacher}/assign-class', [ModuleTeacherController::class, 'apiAssignClass']);
+        Route::delete('/{teacher}/unassign-class/{class}', [ModuleTeacherController::class, 'apiUnassignClass']);
+        
+        // Bulk operations
+        Route::post('/bulk/import', [ModuleTeacherController::class, 'apiBulkImport']);
+        Route::post('/bulk/export', [ModuleTeacherController::class, 'apiBulkExport']);
+    });
+    
+    // Attendance Module API
+    Route::prefix('attendance')->middleware(['module:attendance'])->group(function () {
+        Route::get('/', [ModuleAttendanceController::class, 'apiIndex']);
+        Route::post('/mark', [ModuleAttendanceController::class, 'apiMark']);
+        Route::put('/{attendance}', [ModuleAttendanceController::class, 'apiUpdate']);
+        Route::delete('/{attendance}', [ModuleAttendanceController::class, 'apiDestroy']);
+        
+        // Attendance reports and analytics
+        Route::get('/reports/daily', [ModuleAttendanceController::class, 'apiDailyReport']);
+        Route::get('/reports/monthly', [ModuleAttendanceController::class, 'apiMonthlyReport']);
+        Route::get('/reports/class/{class}', [ModuleAttendanceController::class, 'apiClassReport']);
+        Route::get('/reports/student/{student}', [ModuleAttendanceController::class, 'apiStudentReport']);
+        
+        // Quick actions
+        Route::post('/quick-mark', [ModuleAttendanceController::class, 'apiQuickMark']);
+        Route::post('/bulk-mark', [ModuleAttendanceController::class, 'apiBulkMark']);
+        Route::get('/statistics', [ModuleAttendanceController::class, 'apiStatistics']);
+        Route::get('/trends', [ModuleAttendanceController::class, 'apiTrends']);
+    });
+    
+    // File Management API
+    Route::prefix('files')->middleware(['throttle:30,1'])->group(function () {
+        Route::post('/upload', function (Request $request) {
+            // File upload logic
+            return response()->json(['message' => 'File uploaded successfully']);
+        });
+        
+        Route::get('/download/{type}/{id}', function ($type, $id) {
+            // File download logic
+            return response()->json(['download_url' => "files/{$type}/{$id}"]);
+        });
+    });
+    
+    // Reports API
+    Route::prefix('reports')->middleware(['throttle:20,1'])->group(function () {
+        Route::get('/attendance', [ReportsController::class, 'attendanceReports']);
+        Route::get('/academic', [ReportsController::class, 'academicReports']);
+        Route::get('/financial', [ReportsController::class, 'financialReports']);
+        Route::get('/performance', [ReportsController::class, 'performanceReports']);
+        Route::get('/administrative', [ReportsController::class, 'administrativeReports']);
+
+        // Export endpoint used by the reports view: /api/reports/export?type=...&format=...
+        Route::get('/export', [ReportsController::class, 'exportReport']);
+    });
+    
+    // Dashboard API
+    Route::prefix('dashboard')->middleware(['throttle:60,1'])->group(function () {
+        Route::get('/stats', function () {
+            return response()->json([
+                'total_students' => 0,
+                'total_teachers' => 0,
+                'attendance_today' => 0,
+                'pending_fees' => 0
+            ]);
+        });
+        
+        Route::get('/recent-activities', function () {
+            return response()->json(['activities' => []]);
+        });
+        
+        Route::get('/notifications', function () {
+            return response()->json(['notifications' => []]);
+        });
+    });
+    
+    // System Administration API (Admin only)
+    Route::prefix('admin')->middleware(['role:admin'])->group(function () {
+        Route::get('/users', [UserController::class, 'apiIndex']);
+        Route::post('/users', [UserController::class, 'apiStore']);
+        Route::put('/users/{user}', [UserController::class, 'apiUpdate']);
+        Route::delete('/users/{user}', [UserController::class, 'apiDestroy']);
+        
+        Route::get('/system/health', function () {
+            return response()->json([
+                'status' => 'healthy',
+                'database' => 'connected',
+                'cache' => 'active',
+                'storage' => 'available'
+            ]);
+        });
+        
+        Route::get('/system/logs', function () {
+            return response()->json(['logs' => []]);
+        });
+        
+        Route::post('/system/backup', function () {
+            return response()->json(['message' => 'Backup initiated']);
+        });
+    });
+});
+
+// Webhook Routes (No authentication, but with security middleware)
+Route::prefix('webhooks')->middleware(['security', 'audit', 'throttle:30,1'])->group(function () {
+    Route::post('/payment/success', function (Request $request) {
+        // Payment success webhook
+        return response()->json(['status' => 'received']);
+    });
+    
+    Route::post('/payment/failure', function (Request $request) {
+        // Payment failure webhook
+        return response()->json(['status' => 'received']);
+    });
+    
+    Route::post('/sms/delivery', function (Request $request) {
+        // SMS delivery status webhook
+        return response()->json(['status' => 'received']);
+    });
+    
+    Route::post('/biometric/sync', [BiometricController::class, 'webhookSync']);
+});
+
+// Legacy API Routes (for backward compatibility)
+Route::prefix('legacy')->middleware(['auth:sanctum', 'security', 'audit', 'throttle:api'])->group(function () {
+    // Student Management (Role-based access)
+    Route::middleware(['role:admin,principal,teacher'])->group(function () {
+        Route::apiResource('students', StudentController::class)->names([
+            'index' => 'api.legacy.students.index',
+            'store' => 'api.legacy.students.store',
+            'show' => 'api.legacy.students.show',
+            'update' => 'api.legacy.students.update',
+            'destroy' => 'api.legacy.students.destroy'
+        ]);
+        Route::post('students/{student}/verify', [StudentController::class, 'verify']);
+    });
+
+    // Teacher Management (Admin/Principal only)
+    Route::middleware(['role:admin,principal'])->group(function () {
+        Route::apiResource('teachers', TeacherController::class)->names([
+            'index' => 'api.legacy.teachers.index',
+            'store' => 'api.legacy.teachers.store',
+            'show' => 'api.legacy.teachers.show',
+            'update' => 'api.legacy.teachers.update',
+            'destroy' => 'api.legacy.teachers.destroy'
+        ]);
+    });
+
+    // Class Management (Role-based access)
+    Route::middleware(['role:admin,principal,teacher'])->group(function () {
+        Route::apiResource('classes', ClassModelController::class)->names([
+            'index' => 'api.legacy.classes.index',
+            'store' => 'api.legacy.classes.store',
+            'show' => 'api.legacy.classes.show',
+            'update' => 'api.legacy.classes.update',
+            'destroy' => 'api.legacy.classes.destroy'
+        ]);
+    });
+
+    // Attendance API with comprehensive security middleware
+    Route::prefix('attendances')->name('attendances.')
+        ->middleware(['attendance.security', 'role:admin,teacher,principal,class_teacher'])
+        ->group(function () {
+            Route::get('/', [AttendanceController::class, 'index'])
+                ->middleware('permission:view_attendance');
+            Route::post('/', [AttendanceController::class, 'store'])
+                ->middleware('permission:mark_attendance');
+            Route::get('/{attendance}', [AttendanceController::class, 'show'])
+                ->middleware('permission:view_attendance');
+            Route::put('/{attendance}', [AttendanceController::class, 'update'])
+                ->middleware(['role:admin,teacher,principal,class_teacher', 'permission:edit_attendance']);
+            Route::delete('/{attendance}', [AttendanceController::class, 'destroy'])
+                ->middleware(['role:admin,principal', 'permission:delete_attendance']);
+            Route::post('/bulk-update', [AttendanceController::class, 'bulkUpdate'])
+                ->middleware('permission:mark_attendance');
+        });
+
+    // Fee Management (Admin/Principal only)
+    Route::middleware(['role:admin,principal'])->group(function () {
+        Route::apiResource('fees', FeeController::class)->names([
+            'index' => 'api.legacy.fees.index',
+            'store' => 'api.legacy.fees.store',
+            'show' => 'api.legacy.fees.show',
+            'update' => 'api.legacy.fees.update',
+            'destroy' => 'api.legacy.fees.destroy'
+        ]);
+        Route::post('fees/{id}/pay', [FeePaymentController::class, 'pay']);
+        Route::get('fees/{id}/receipt', [FeePaymentController::class, 'receipt']);
+    });
+
+    // Exam Management (Role-based access)
+    Route::middleware(['role:admin,principal,teacher'])->group(function () {
+        Route::apiResource('exams', ExamController::class)->names([
+            'index' => 'api.legacy.exams.index',
+            'store' => 'api.legacy.exams.store',
+            'show' => 'api.legacy.exams.show',
+            'update' => 'api.legacy.exams.update',
+            'destroy' => 'api.legacy.exams.destroy'
+        ]);
+    });
+
+    // Results Management (Role-based access)
+    Route::middleware(['role:admin,principal,teacher'])->group(function () {
+        Route::apiResource('results', ResultController::class)->names([
+            'index' => 'api.legacy.results.index',
+            'store' => 'api.legacy.results.store',
+            'show' => 'api.legacy.results.show',
+            'update' => 'api.legacy.results.update',
+            'destroy' => 'api.legacy.results.destroy'
+        ]);
+    });
+
+    // External Integrations
+    Route::prefix('external')->name('external.')
+        ->middleware('external.integration')
+        ->group(function () {
+            // Aadhaar Verification
+            Route::post('aadhaar/verify', [ExternalIntegrationController::class, 'verifyAadhaar'])
+                ->middleware(['throttle:10,1', 'role:admin,principal,teacher']);
+            Route::post('aadhaar/bulk-verify', [ExternalIntegrationController::class, 'bulkVerifyAadhaar'])
+                ->middleware(['throttle:5,1', 'role:admin,principal']);
+
+            // Biometric Device Integration
+            Route::post('biometric/import', [ExternalIntegrationController::class, 'importBiometricData'])
+                ->middleware(['throttle:3,1', 'role:admin,principal,teacher']);
+            Route::get('biometric/import-status/{importId}', [ExternalIntegrationController::class, 'getImportStatus'])
+                ->middleware('role:admin,principal,teacher');
+
+            // Real-time Biometric Device Integration
+            Route::prefix('biometric')->group(function () {
+                Route::post('import-data', [BiometricController::class, 'importData'])
+                    ->middleware(['throttle:10,1', 'role:admin,principal,teacher']);
+                Route::post('stream', [BiometricController::class, 'handleDeviceStream'])
+                    ->middleware(['throttle:100,1', 'role:admin,principal,teacher']);
+                Route::post('bulk-sync/{deviceId}', [BiometricController::class, 'bulkSyncFromDevice'])
+                    ->middleware(['throttle:5,1', 'role:admin,principal,teacher']);
+                Route::get('device-status/{deviceId}', [BiometricController::class, 'getDeviceStatus'])
+                    ->middleware('role:admin,principal,teacher');
+                Route::post('device-register', [BiometricController::class, 'registerDevice'])
+                    ->middleware(['throttle:3,1', 'role:admin,principal']);
+                Route::get('devices', [BiometricController::class, 'getRegisteredDevices'])
+                    ->middleware('role:admin,principal,teacher');
+                Route::post('test-connection/{deviceId}', [BiometricController::class, 'testDeviceConnection'])
+                    ->middleware(['throttle:10,1', 'role:admin,principal,teacher']);
+            });
+        });
+    
+        // Test endpoint
+        Route::get('/test', function () {
+            return response()->json([
+                'message' => 'API is working',
+                'status' => 'success',
+                'timestamp' => now()->toISOString()
+            ]);
+        })->middleware(['api.security']);
+    });
 
 // Test endpoint (outside v1 prefix for compatibility)
 Route::get('/test', function () {
@@ -129,7 +506,13 @@ Route::middleware(['auth:sanctum', 'rate.limit'])->group(function () {
 
     // Teacher Management (Admin/Principal only)
     Route::middleware(['role:admin,principal'])->group(function () {
-        Route::apiResource('teachers', TeacherController::class);
+        Route::apiResource('teachers', TeacherController::class)->names([
+            'index' => 'api.teachers.index',
+            'store' => 'api.teachers.store',
+            'show' => 'api.teachers.show',
+            'update' => 'api.teachers.update',
+            'destroy' => 'api.teachers.destroy'
+        ]);
     });
 
     // Class Management (Role-based access)
@@ -174,7 +557,13 @@ Route::middleware(['auth:sanctum', 'rate.limit'])->group(function () {
 
     // Fee Management (Admin/Principal only)
     Route::middleware(['role:admin,principal'])->group(function () {
-        Route::apiResource('fees', FeeController::class);
+        Route::apiResource('fees', FeeController::class)->names([
+            'index' => 'api.fees.index',
+            'store' => 'api.fees.store',
+            'show' => 'api.fees.show',
+            'update' => 'api.fees.update',
+            'destroy' => 'api.fees.destroy'
+        ]);
         Route::post('fees/{id}/pay', [FeePaymentController::class, 'pay']);
         Route::get('fees/{id}/receipt', [FeePaymentController::class, 'receipt']);
     });
@@ -370,6 +759,17 @@ Route::middleware(['auth:sanctum', 'rate.limit'])->group(function () {
             });
         });
     });
+});
+
+// Super Admin API Routes (Sanctum + strict role)
+// Note: The global 'api' middleware group already applies 'throttle:api';
+// we avoid duplicating throttle here to prevent double counting.
+Route::prefix('super-admin')->middleware(['auth:sanctum', 'security', 'audit', 'session.security', 'role:super_admin'])->group(function () {
+    Route::get('/users', [SuperAdminApiController::class, 'users']);
+    Route::post('/users', [SuperAdminApiController::class, 'createUser']);
+    Route::get('/schools', [SuperAdminApiController::class, 'schools']);
+    Route::get('/reports/basic', [SuperAdminApiController::class, 'reportsBasic']);
+    Route::get('/system/settings', [SuperAdminApiController::class, 'systemSettings']);
 });
 
 

@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pns-dhampur-app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/supervisord.conf:/etc/supervisor/conf.d/supervisord.conf
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - APP_URL=https://your-production-domain.com
+    depends_on:
+      - db
+      - redis
+    networks:
+      - pns-network
+    ports:
+      - "8000:80"
+
+  db:
+    image: mysql:8.0
+    container_name: pns-dhampur-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/mysql/conf.d:/etc/mysql/conf.d
+    networks:
+      - pns-network
+    ports:
+      - "3306:3306"
+
+  redis:
+    image: redis:7-alpine
+    container_name: pns-dhampur-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - pns-network
+    ports:
+      - "6379:6379"
+
+  nginx:
+    image: nginx:alpine
+    container_name: pns-dhampur-nginx
+    restart: unless-stopped
+    volumes:
+      - .:/var/www/html
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/ssl:/etc/ssl/certs
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - app
+    networks:
+      - pns-network
+
+volumes:
+  db_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  pns-network:
+    driver: bridge

@@ -68,9 +68,9 @@ class SecurityHeadersMiddleware
             $response->headers->set('Content-Security-Policy', $csp);
         }
 
-        // Strict Transport Security (HTTPS only)
-        if ($this->isHttps($request)) {
-            $response->headers->set('Strict-Transport-Security', 
+        // Strict Transport Security (HTTPS only in production)
+        if (app()->environment('production') && $this->isHttps($request)) {
+            $response->headers->set('Strict-Transport-Security',
                 $headers['strict_transport_security'] ?? 'max-age=31536000; includeSubDomains; preload'
             );
         }
@@ -138,10 +138,9 @@ class SecurityHeadersMiddleware
      */
     private function isHttps($request): bool
     {
-        return $request->secure() || 
+        return $request->secure() ||
                $request->header('X-Forwarded-Proto') === 'https' ||
-               config('app.force_https', false) ||
-               app()->environment('production');
+               (app()->environment('production') && config('security.force_https', false));
     }
 
     /**

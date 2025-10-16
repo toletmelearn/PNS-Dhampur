@@ -157,4 +157,73 @@ class AuthController extends Controller
             'user' => $request->user()
         ]);
     }
+
+    // -----------------------------
+    // REGISTER
+    // -----------------------------
+    public function register(Request $request)
+    {
+        // Basic validation for registration
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email:rfc,dns|max:255|unique:users,email',
+            'password' => 'required|string|min:8',
+        ]);
+
+        // Use NewUser model to support email verification while using same users table
+        try {
+            $userModelClass = \App\Models\NewUser::class;
+            /** @var \App\Models\NewUser $user */
+            $user = $userModelClass::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'status' => defined($userModelClass.'::STATUS_PENDING_VERIFICATION') ? $userModelClass::STATUS_PENDING_VERIFICATION : 'pending_verification',
+                'is_active' => true,
+            ]);
+        } catch (\Throwable $e) {
+            // Fallback to legacy User model if NewUser fails
+            Log::warning('NewUser registration failed, falling back to User model: '.$e->getMessage());
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'role' => config('auth.default_role', 'student'),
+            ]);
+        }
+
+        // Attempt to send email verification if supported
+        try {
+            if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && method_exists($user, 'sendEmailVerificationNotification')) {
+                $user->sendEmailVerificationNotification();
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to send verification email: '.$e->getMessage());
+        }
+
+        // Log registration in audit trail (if available)
+        try {
+            AuditTrail::logActivity(
+                $user,
+                'registration_success',
+                [],
+                [
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                ],
+                ['tags' => ['authentication', 'registration', 'api']]
+            );
+        } catch (\Throwable $e) {
+            Log::debug('AuditTrail logActivity failed on register: '.$e->getMessage());
+        }
+
+        return response()->json([
+            'message' => 'Registration successful. Please verify your email to activate your account.',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]
+        ], 201);
+    }
 }

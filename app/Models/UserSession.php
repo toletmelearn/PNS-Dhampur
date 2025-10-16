@@ -37,10 +37,34 @@ class UserSession extends Model
         'additional_data' => 'array'
     ];
 
+    // Login method constants
+    const LOGIN_METHOD_PASSWORD = 'password';
+    const LOGIN_METHOD_TWO_FACTOR = 'two_factor';
+    const LOGIN_METHOD_REMEMBER_TOKEN = 'remember_token';
+    const LOGIN_METHOD_SSO = 'sso';
+    const LOGIN_METHOD_API_TOKEN = 'api_token';
+
+    // Device type constants
+    const DEVICE_TYPE_DESKTOP = 'desktop';
+    const DEVICE_TYPE_MOBILE = 'mobile';
+    const DEVICE_TYPE_TABLET = 'tablet';
+    const DEVICE_TYPE_UNKNOWN = 'unknown';
+
+    // Logout reason constants
+    const LOGOUT_REASON_USER = 'user_logout';
+    const LOGOUT_REASON_TIMEOUT = 'session_timeout';
+    const LOGOUT_REASON_ADMIN = 'admin_logout';
+    const LOGOUT_REASON_SECURITY = 'security_logout';
+    const LOGOUT_REASON_REVOKED = 'revoked_by_system';
+    const LOGOUT_REASON_EXPIRED = 'session_expired';
+    // Added for middleware references
+    const LOGOUT_REASON_CONCURRENT_LIMIT = 'concurrent_limit';
+    const LOGOUT_REASON_SECURITY_VIOLATION = 'security_violation';
+
     // Relationships
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(NewUser::class, 'user_id');
     }
 
     // Scopes
@@ -100,6 +124,37 @@ class UserSession extends Model
                 'robot' => $agent->robot(),
                 'languages' => $agent->languages(),
             ]
+        ]);
+    }
+
+    /**
+     * Create session from provided data (used by middleware/controllers)
+     */
+    public static function createSession(array $data): self
+    {
+        $agent = new Agent();
+        $ua = $data['user_agent'] ?? Request::userAgent();
+        if (method_exists($agent, 'setUserAgent')) {
+            $agent->setUserAgent($ua);
+        }
+
+        return self::create([
+            'user_id' => $data['user_id'],
+            'session_id' => $data['session_id'] ?? session()->getId(),
+            'ip_address' => $data['ip_address'] ?? Request::ip(),
+            'user_agent' => $ua,
+            'login_at' => now(),
+            'last_activity' => now(),
+            'login_method' => $data['login_method'] ?? self::LOGIN_METHOD_PASSWORD,
+            'device_type' => $agent->isMobile() ? self::DEVICE_TYPE_MOBILE : ($agent->isTablet() ? self::DEVICE_TYPE_TABLET : self::DEVICE_TYPE_DESKTOP),
+            'browser' => $agent->browser(),
+            'platform' => $agent->platform(),
+            'is_active' => true,
+            'additional_data' => array_merge([
+                'device' => $agent->device(),
+                'robot' => $agent->robot(),
+                'languages' => $agent->languages(),
+            ], $data['additional_data'] ?? []),
         ]);
     }
 

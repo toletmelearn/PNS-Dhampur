@@ -243,12 +243,12 @@ class EnhancedTeacherRequest extends FormRequest
             'photo' => [
                 'nullable',
                 'file',
-                new EnhancedFileValidation::image(2048), // 2MB max
+                EnhancedFileValidation::images(2048), // 2MB max
             ],
             'resume' => [
                 'nullable',
                 'file',
-                new EnhancedFileValidation::document(5120), // 5MB max
+                EnhancedFileValidation::documents(5120), // 5MB max
             ],
             'qualification_certificates' => [
                 'nullable',
@@ -257,7 +257,7 @@ class EnhancedTeacherRequest extends FormRequest
             ],
             'qualification_certificates.*' => [
                 'file',
-                new EnhancedFileValidation::document(5120), // 5MB max
+                EnhancedFileValidation::documents(5120), // 5MB max
             ],
             'experience_certificates' => [
                 'nullable',
@@ -266,17 +266,17 @@ class EnhancedTeacherRequest extends FormRequest
             ],
             'experience_certificates.*' => [
                 'file',
-                new EnhancedFileValidation::document(5120), // 5MB max
+                EnhancedFileValidation::documents(5120), // 5MB max
             ],
             'aadhaar_card' => [
                 'nullable',
                 'file',
-                new EnhancedFileValidation::document(5120), // 5MB max
+                EnhancedFileValidation::documents(5120), // 5MB max
             ],
             'pan_card' => [
                 'nullable',
                 'file',
-                new EnhancedFileValidation::document(5120), // 5MB max
+                EnhancedFileValidation::documents(5120), // 5MB max
             ],
             
             // Medical Information

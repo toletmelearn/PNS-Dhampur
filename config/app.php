@@ -194,6 +194,14 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
+        
+        /*
+         * Custom Service Providers...
+         */
+        App\Providers\ModuleServiceProvider::class,
+        App\Providers\SecurityServiceProvider::class,
+        App\Providers\AuditServiceProvider::class,
+        App\Providers\AssetServiceProvider::class,
 
     ],
 

@@ -202,21 +202,33 @@ class SecurityValidationMiddleware
      */
     protected function validateSuspiciousPatterns(Request $request): void
     {
+        // Skip checks on common safe routes to avoid false positives from normal query separators
+        if ($request->is('login') || $request->is('logout') || $request->is('register')) {
+            return;
+        }
+
+        // Skip checks for static assets and Vite client
+        $path = ltrim($request->decodedPath(), '/');
+        if (
+            $request->is('@vite/*') ||
+            preg_match('#^(css|js|images|img|fonts|vendor|assets)/#i', $path)
+        ) {
+            return;
+        }
         $suspiciousPatterns = [
             // Path traversal
             '/\.\.[\/\\\\]/i',
             '/\.\.[%2f%5c]/i',
             // Command injection
             '/[;&|`$(){}[\]]/i',
-            // LDAP injection
-            '/[()=*!&|]/i',
             // XML injection
             '/<\?xml/i',
             '/<!DOCTYPE/i',
             '/<!ENTITY/i',
         ];
 
-        $url = $request->fullUrl();
+        // Inspect only the path to avoid flagging normal query separators
+        $url = $request->decodedPath();
         $userAgent = $request->userAgent();
 
         // Check URL for suspicious patterns

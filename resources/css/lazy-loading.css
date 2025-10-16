@@ -1,0 +1,349 @@
+/**
+ * Lazy Loading CSS Styles
+ * Provides visual feedback during lazy loading states
+ */
+
+/* Base lazy loading styles */
+[data-lazy-src],
+[data-lazy-component],
+[data-lazy-bg] {
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+/* Loading state */
+.lazy-loading {
+    opacity: 0.6;
+    position: relative;
+    overflow: hidden;
+}
+
+.lazy-loading::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.4),
+        transparent
+    );
+    animation: lazy-shimmer 1.5s infinite;
+    z-index: 1;
+}
+
+@keyframes lazy-shimmer {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+/* Loaded state */
+.lazy-loaded {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Error state */
+.lazy-error {
+    opacity: 0.5;
+    background-color: #f8f9fa;
+    border: 2px dashed #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+    position: relative;
+}
+
+.lazy-error::after {
+    content: '⚠️ Failed to load';
+    color: #6c757d;
+    font-size: 14px;
+    text-align: center;
+}
+
+/* Image specific styles */
+img[data-lazy-src] {
+    background-color: #f8f9fa;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill='%23dee2e6'%3E%3Cpath d='M20 3C10.6 3 3 10.6 3 20s7.6 17 17 17 17-7.6 17-17S29.4 3 20 3zm0 30c-7.2 0-13-5.8-13-13S12.8 7 20 7s13 5.8 13 13-5.8 13-13 13z'/%3E%3Cpath d='M15 14h10v2H15zm0 4h10v2H15zm0 4h7v2h-7z'/%3E%3C/g%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 40px 40px;
+}
+
+img.lazy-loading {
+    filter: blur(2px);
+}
+
+img.lazy-loaded {
+    filter: none;
+}
+
+img.lazy-error {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Cg fill='%23dc3545'%3E%3Cpath d='M20 3C10.6 3 3 10.6 3 20s7.6 17 17 17 17-7.6 17-17S29.4 3 20 3zm0 30c-7.2 0-13-5.8-13-13S12.8 7 20 7s13 5.8 13 13-5.8 13-13 13z'/%3E%3Cpath d='M19 10h2v12h-2zm0 16h2v2h-2z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* Background image lazy loading */
+[data-lazy-bg] {
+    background-color: #f8f9fa;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='%23dee2e6'%3E%3Cpath d='M30 5C16.2 5 5 16.2 5 30s11.2 25 25 25 25-11.2 25-25S43.8 5 30 5zm0 45c-11 0-20-9-20-20s9-20 20-20 20 9 20 20-9 20-20 20z'/%3E%3Cpath d='M22 20h16v3H22zm0 6h16v3H22zm0 6h12v3H22z'/%3E%3C/g%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 60px 60px;
+}
+
+[data-lazy-bg].lazy-loaded {
+    background-size: cover;
+}
+
+/* Component lazy loading */
+[data-lazy-component] {
+    min-height: 100px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+[data-lazy-component].lazy-loading::after {
+    content: 'Loading component...';
+    color: #6c757d;
+    font-size: 14px;
+}
+
+/* Table lazy loading */
+.lazy-loading-row td {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    font-style: italic;
+    position: relative;
+}
+
+.lazy-loading-row td::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.6),
+        transparent
+    );
+    animation: lazy-shimmer 2s infinite;
+}
+
+/* Skeleton loading for cards */
+.lazy-skeleton {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    position: relative;
+    overflow: hidden;
+}
+
+.lazy-skeleton::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.8),
+        transparent
+    );
+    animation: lazy-shimmer 1.8s infinite;
+}
+
+.lazy-skeleton-text {
+    height: 16px;
+    margin-bottom: 8px;
+    background-color: #dee2e6;
+    border-radius: 2px;
+}
+
+.lazy-skeleton-text:last-child {
+    margin-bottom: 0;
+    width: 60%;
+}
+
+.lazy-skeleton-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #dee2e6;
+    margin-right: 12px;
+}
+
+.lazy-skeleton-button {
+    height: 32px;
+    width: 80px;
+    background-color: #dee2e6;
+    border-radius: 4px;
+}
+
+/* Fade in animation for loaded content */
+@keyframes lazy-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.lazy-loaded {
+    animation: lazy-fade-in 0.5s ease-out;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .lazy-loading::before {
+        animation-duration: 1s;
+    }
+    
+    .lazy-skeleton::before {
+        animation-duration: 1.2s;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .lazy-loading {
+        border: 2px solid #000;
+    }
+    
+    .lazy-error {
+        border-color: #000;
+        background-color: #fff;
+    }
+    
+    .lazy-error::after {
+        color: #000;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .lazy-loading::before,
+    .lazy-skeleton::before {
+        animation: none;
+    }
+    
+    [data-lazy-src],
+    [data-lazy-component],
+    [data-lazy-bg] {
+        transition: none;
+    }
+    
+    .lazy-loaded {
+        animation: none;
+    }
+}
+
+/* Print styles */
+@media print {
+    .lazy-loading::before,
+    .lazy-skeleton::before {
+        display: none;
+    }
+    
+    .lazy-loading,
+    .lazy-loaded {
+        opacity: 1;
+    }
+}
+
+/* Focus styles for accessibility */
+[data-lazy-src]:focus,
+[data-lazy-component]:focus,
+[data-lazy-bg]:focus {
+    outline: 2px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Loading spinner for components */
+.lazy-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: lazy-spin 1s linear infinite;
+    margin-right: 8px;
+}
+
+@keyframes lazy-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Progress bar for lazy loading */
+.lazy-progress {
+    width: 100%;
+    height: 4px;
+    background-color: #f8f9fa;
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.lazy-progress-bar {
+    height: 100%;
+    background-color: #007bff;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    animation: lazy-progress 2s infinite;
+}
+
+@keyframes lazy-progress {
+    0% {
+        width: 0%;
+        margin-left: 0%;
+    }
+    50% {
+        width: 75%;
+        margin-left: 25%;
+    }
+    100% {
+        width: 0%;
+        margin-left: 100%;
+    }
+}
+
+/* Utility classes */
+.lazy-fade-in-up {
+    transform: translateY(30px);
+    opacity: 0;
+    transition: all 0.6s ease;
+}
+
+.lazy-fade-in-up.lazy-loaded {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.lazy-scale-in {
+    transform: scale(0.8);
+    opacity: 0;
+    transition: all 0.4s ease;
+}
+
+.lazy-scale-in.lazy-loaded {
+    transform: scale(1);
+    opacity: 1;
+}

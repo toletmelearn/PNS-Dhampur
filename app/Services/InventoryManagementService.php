@@ -464,7 +464,7 @@ class InventoryManagementService
     protected function calculateRemainingUsefulLife($asset) { /* Implementation */ }
     protected function getLastMaintenanceDate($asset) { /* Implementation */ }
     protected function getNextMaintenanceDue($asset) { /* Implementation */ }
-    protected function getUpcomingMaintenance() { /* Implementation */ }
+
     protected function getOverdueMaintenance() { /* Implementation */ }
     protected function getMaintenanceCalendar() { /* Implementation */ }
     protected function getMaintenanceCosts() { /* Implementation */ }

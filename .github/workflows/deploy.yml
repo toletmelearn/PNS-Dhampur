@@ -1,0 +1,137 @@
+name: Deploy PNS-Dhampur School Management System
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: pns_dhampur_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.1'
+        extensions: mbstring, dom, fileinfo, mysql, redis
+        coverage: xdebug
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Copy environment file
+      run: cp .env.example .env
+
+    - name: Install PHP dependencies
+      run: composer install --prefer-dist --no-progress --no-interaction
+
+    - name: Install Node.js dependencies
+      run: npm ci
+
+    - name: Generate application key
+      run: php artisan key:generate
+
+    - name: Build assets
+      run: npm run build
+
+    - name: Run database migrations
+      run: php artisan migrate --force
+      env:
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: pns_dhampur_test
+        DB_USERNAME: root
+        DB_PASSWORD: root
+
+    - name: Run PHP tests
+      run: php artisan test --coverage
+      env:
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: pns_dhampur_test
+        DB_USERNAME: root
+        DB_PASSWORD: root
+
+    - name: Run security checks
+      run: |
+        composer audit
+        npm audit
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.1'
+        extensions: mbstring, dom, fileinfo, mysql
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: |
+        composer install --no-dev --optimize-autoloader --no-interaction
+        npm ci --only=production
+
+    - name: Build assets
+      run: npm run build
+
+    - name: Build Docker image
+      run: |
+        docker build -t pns-dhampur:${{ github.sha }} .
+        docker tag pns-dhampur:${{ github.sha }} pns-dhampur:latest
+
+    - name: Deploy to production
+      if: github.ref == 'refs/heads/main'
+      run: |
+        echo "Deploying to production server..."
+        # Add your deployment commands here
+        # Example: rsync, docker push, kubectl apply, etc.
+
+    - name: Health check
+      run: |
+        sleep 30
+        curl -f http://your-domain.com/health || exit 1
+
+    - name: Notify deployment
+      if: always()
+      run: |
+        if [ ${{ job.status }} == 'success' ]; then
+          echo "✅ Deployment successful"
+        else
+          echo "❌ Deployment failed"
+        fi

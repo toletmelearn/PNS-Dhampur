@@ -16,10 +16,7 @@ class UserFriendlyErrorService
     /**
      * Determine if technical error details should be shown
      */
-    private static function shouldShowTechnicalError(): bool
-    {
-        return config('app.debug') || (auth()->check() && auth()->user()->hasRole('super_admin'));
-    }
+    
 
     /**
      * Convert technical exceptions to user-friendly messages
@@ -282,3 +279,4 @@ class UserFriendlyErrorService
         return $userMessage;
     }
 }
+

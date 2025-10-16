@@ -10,6 +10,17 @@ class UserActivity extends Model
 {
     use HasFactory;
 
+    // Activity type constants used across the application
+    const TYPE_LOGIN_FAILED = 'login_failed';
+    const TYPE_PASSWORD_RESET = 'password_reset';
+    const TYPE_PASSWORD_CHANGE = 'password_change';
+    const TYPE_PAGE_ACCESS = 'page_access';
+    const TYPE_PERMISSION_ACCESS = 'permission_access';
+    const TYPE_UNAUTHORIZED_ACCESS = 'unauthorized_access';
+    const TYPE_SECURITY_EVENT = 'security_event';
+    const TYPE_LOGIN = 'login';
+    const TYPE_LOGOUT = 'logout';
+
     protected $fillable = [
         'user_id',
         'activity_type',
@@ -42,7 +53,7 @@ class UserActivity extends Model
     // Relationships
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(NewUser::class, 'user_id');
     }
 
     public function subject()
@@ -170,8 +181,98 @@ class UserActivity extends Model
             'view' => 'secondary',
             'download' => 'info',
             'upload' => 'primary',
+            'login_failed' => 'danger',
+            'password_reset' => 'warning',
+            'password_change' => 'warning',
+            'page_access' => 'info',
+            'permission_access' => 'info',
+            'unauthorized_access' => 'danger',
+            'security_event' => 'danger',
         ];
 
         return $colors[$this->activity_type] ?? 'secondary';
+    }
+
+    /**
+     * Static: Log activity with friendly keys and sensible defaults
+     */
+    public static function logActivity(array $data): self
+    {
+        $payload = [
+            'user_id' => $data['user_id'] ?? auth()->id(),
+            'activity_type' => $data['activity_type'] ?? ($data['type'] ?? 'unknown'),
+            'description' => $data['activity_description'] ?? ($data['description'] ?? ''),
+            'subject_type' => $data['subject_type'] ?? null,
+            'subject_id' => $data['subject_id'] ?? null,
+            'properties' => $data['additional_data'] ?? ($data['properties'] ?? null),
+            'url' => $data['url'] ?? request()->fullUrl(),
+            'method' => $data['method'] ?? request()->method(),
+            'ip_address' => $data['ip_address'] ?? request()->ip(),
+            'user_agent' => $data['user_agent'] ?? request()->userAgent(),
+            'session_id' => $data['session_id'] ?? (function () { try { return session()->getId(); } catch (\Throwable $e) { return null; } })(),
+            'request_data' => $data['request_data'] ?? null,
+            'response_time' => $data['response_time'] ?? null,
+            'status_code' => $data['status_code'] ?? null,
+            'performed_at' => $data['performed_at'] ?? now(),
+        ];
+
+        return self::create($payload);
+    }
+
+    /**
+     * Static: Log login event (success only; failures use TYPE_LOGIN_FAILED)
+     */
+    public static function logLogin(int $userId, bool $success = true, array $context = []): self
+    {
+        $type = $success ? self::TYPE_LOGIN : self::TYPE_LOGIN_FAILED;
+        $desc = $success ? 'Successful login' : 'Failed login';
+
+        return self::logActivity(array_merge([
+            'user_id' => $userId,
+            'activity_type' => $type,
+            'activity_description' => $desc,
+        ], $context));
+    }
+
+    /**
+     * Static: Log logout event
+     */
+    public static function logLogout(int $userId, string $reason = 'user_logout', array $context = []): self
+    {
+        return self::logActivity(array_merge([
+            'user_id' => $userId,
+            'activity_type' => self::TYPE_LOGOUT,
+            'activity_description' => "User logout: {$reason}",
+            'additional_data' => array_merge(['reason' => $reason], $context['additional_data'] ?? []),
+        ], $context));
+    }
+
+    /**
+     * Static: Log password change event
+     */
+    public static function logPasswordChange(int $userId, bool $viaResetFlow = false, array $context = []): self
+    {
+        $desc = $viaResetFlow ? 'Password changed via reset flow' : 'Password changed';
+
+        return self::logActivity(array_merge([
+            'user_id' => $userId,
+            'activity_type' => self::TYPE_PASSWORD_CHANGE,
+            'activity_description' => $desc,
+            'additional_data' => array_merge(['via_reset' => $viaResetFlow], $context['additional_data'] ?? []),
+        ], $context));
+    }
+
+    /**
+     * Static: Log security event with free-form name and context
+     */
+    public static function logSecurityEvent(string $event, string $description = '', array $context = []): self
+    {
+        $desc = $description ?: ucwords(str_replace('_', ' ', $event));
+
+        return self::logActivity(array_merge([
+            'activity_type' => self::TYPE_SECURITY_EVENT,
+            'activity_description' => $desc,
+            'additional_data' => array_merge(['event' => $event], $context['additional_data'] ?? []),
+        ], $context));
     }
 }

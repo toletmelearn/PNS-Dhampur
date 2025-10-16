@@ -7,6 +7,7 @@ use App\Models\Student;
 use App\Models\Payment;
 use App\Models\ClassModel;
 use App\Services\UserFriendlyErrorService;
+use App\Http\Requests\StoreFeeRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -89,19 +90,9 @@ class FeeController extends Controller
         return view('finance.fees.create', compact('students', 'classes'));
     }
 
-    public function store(Request $request)
+    public function store(StoreFeeRequest $request)
     {
-        $validatedData = $request->validate([
-            'student_id' => 'required|exists:students,id',
-            'fee_type' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0',
-            'due_date' => 'required|date',
-            'academic_year' => 'required|string|max:20',
-            'month' => 'nullable|string|max:20',
-            'late_fee' => 'nullable|numeric|min:0',
-            'discount' => 'nullable|numeric|min:0',
-            'remarks' => 'nullable|string|max:1000',
-        ]);
+        $validatedData = $request->validated();
 
         try {
             DB::beginTransaction();

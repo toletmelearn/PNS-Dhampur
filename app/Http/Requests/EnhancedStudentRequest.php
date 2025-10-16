@@ -229,22 +229,22 @@ class EnhancedStudentRequest extends FormRequest
             'photo' => [
                 'nullable',
                 'file',
-                new EnhancedFileValidation::image(2048), // 2MB max
+                EnhancedFileValidation::images(2048), // 2MB max
             ],
             'birth_certificate' => [
                 'nullable',
                 'file',
-                new EnhancedFileValidation::document(5120), // 5MB max
+                EnhancedFileValidation::documents(5120), // 5MB max
             ],
             'aadhaar_card' => [
                 'nullable',
                 'file',
-                new EnhancedFileValidation::document(5120), // 5MB max
+                EnhancedFileValidation::documents(5120), // 5MB max
             ],
             'transfer_certificate' => [
                 'nullable',
                 'file',
-                new EnhancedFileValidation::document(5120), // 5MB max
+                EnhancedFileValidation::documents(5120), // 5MB max
             ],
             
             // Medical Information

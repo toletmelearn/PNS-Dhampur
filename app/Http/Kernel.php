@@ -21,6 +21,8 @@ class Kernel extends HttpKernel
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        \App\Http\Middleware\GlobalErrorHandling::class,
+        \App\Http\Middleware\OptimizeAssets::class,
         \App\Http\Middleware\SecurityHeaders::class,
         \App\Http\Middleware\SecurityHeadersMiddleware::class,
         \App\Http\Middleware\ProductionSecurityMiddleware::class,
@@ -43,6 +45,7 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\SecurityValidationMiddleware::class,
             \App\Http\Middleware\RateLimitingMiddleware::class,
             \App\Http\Middleware\EnhancedInputSanitization::class,
             \App\Http\Middleware\SanitizeInput::class,
@@ -100,5 +103,12 @@ class Kernel extends HttpKernel
         'file.upload.security' => \App\Http\Middleware\FileUploadSecurity::class,
         'file.permission' => \App\Http\Middleware\FilePermissionMiddleware::class,
         'rate.limit.custom' => \App\Http\Middleware\RateLimitMiddleware::class,
+        'security.validation' => \App\Http\Middleware\SecurityValidationMiddleware::class,
+        'global.error' => \App\Http\Middleware\GlobalErrorHandling::class,
+        
+        // Custom Module and Security Middleware
+        'module' => \App\Http\Middleware\ModuleMiddleware::class,
+        'security' => \App\Http\Middleware\SecurityMiddleware::class,
+        'audit' => \App\Http\Middleware\AuditMiddleware::class,
     ];
 }
