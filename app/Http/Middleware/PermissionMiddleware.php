@@ -42,7 +42,7 @@ class PermissionMiddleware
                 ], 403);
             }
             
-            return redirect()->route('dashboard')->with('error', 'You do not have access to the attendance module.');
+            return redirect()->route('login')->with('error', 'You do not have access to the attendance module.');
         }
 
         // If no specific permissions are required, allow access
@@ -52,12 +52,19 @@ class PermissionMiddleware
 
         // Check if user has any of the required permissions
         if (!$user->hasAnyPermission($permissions)) {
+            // Safely build user's permission list for logging (supports NewUser and legacy User)
+            $userPermissionsList = method_exists($user, 'getAllPermissions')
+                ? $user->getAllPermissions()
+                : (method_exists($user, 'getAttendancePermissions')
+                    ? $user->getAttendancePermissions()
+                    : []);
+
             // Log unauthorized access attempt
             \Log::warning('Unauthorized access attempt', [
                 'user_id' => $user->id,
                 'user_role' => $user->role,
                 'required_permissions' => $permissions,
-                'user_permissions' => $user->getAttendancePermissions(),
+                'user_permissions' => $userPermissionsList,
                 'route' => $request->route()->getName(),
                 'ip' => $request->ip(),
                 'user_agent' => $request->userAgent()
@@ -72,7 +79,7 @@ class PermissionMiddleware
                 ], 403);
             }
             
-            return redirect()->route('dashboard')->with('error', 
+            return redirect()->route('login')->with('error', 
                 'Access denied. You do not have the required permissions for this action.'
             );
         }

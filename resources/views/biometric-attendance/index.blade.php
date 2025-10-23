@@ -10,7 +10,7 @@
                 <h4 class="mb-sm-0">Biometric Attendance</h4>
                 <div class="page-title-right">
                     <ol class="breadcrumb m-0">
-                        <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('dashboard.redirect') }}">Dashboard</a></li>
                         <li class="breadcrumb-item active">Biometric Attendance</li>
                     </ol>
                 </div>

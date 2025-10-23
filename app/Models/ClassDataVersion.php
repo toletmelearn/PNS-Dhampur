@@ -26,7 +26,9 @@ class ClassDataVersion extends Model
         'size_bytes',
         'compression_type',
         'metadata',
-        'tags'
+        'tags',
+        'entity_type',
+        'entity_id'
     ];
 
     protected $casts = [
@@ -181,6 +183,21 @@ class ClassDataVersion extends Model
         return $this->childVersions()->exists();
     }
 
+    // Ensure data_snapshot is always returned as an array
+    public function getDataSnapshotAttribute($value)
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE) {
+                return $decoded;
+            }
+        }
+        return $value;
+    }
+
     public function generateChecksum()
     {
         $data = [
@@ -221,6 +238,51 @@ class ClassDataVersion extends Model
         }
 
         $this->size_bytes = strlen(json_encode($this->data_snapshot));
+    }
+
+    // Create a next version linked to this as parent
+    public function createNextVersion(array $dataSnapshot, array $options = [])
+    {
+        // Mark previous versions as not current within same audit
+        static::where('audit_id', $this->audit_id)->update(['is_current_version' => false]);
+
+        $next = new static([
+            'audit_id' => $this->audit_id,
+            'version_number' => $this->getNextVersionNumber(),
+            'data_snapshot' => $dataSnapshot,
+            'changes_summary' => $options['changes_summary'] ?? [],
+            'created_by' => $options['created_by'] ?? $this->created_by,
+            'version_type' => $options['version_type'] ?? self::TYPE_MANUAL,
+            'is_current_version' => true,
+            'parent_version_id' => $this->id,
+            'compression_type' => $options['compression_type'] ?? self::COMPRESSION_NONE,
+            'metadata' => $options['metadata'] ?? [],
+            'tags' => $options['tags'] ?? [],
+        ]);
+
+        // Respect compression option if provided
+        if (!empty($options['compress'])) {
+            $next->setDataSnapshot($dataSnapshot, true);
+        } else {
+            $next->setDataSnapshot($dataSnapshot, false);
+        }
+
+        $next->checksum = $next->generateChecksum();
+        $next->save();
+
+        return $next;
+    }
+
+    // Basic rollback capability: disallow if dependencies flagged, or too recent
+    public function canRollback(): bool
+    {
+        $hasDependencies = $this->getAttribute('has_dependencies') ?? false;
+        if ($hasDependencies) {
+            return false;
+        }
+        $createdAt = $this->created_at ?? Carbon::now();
+        $ageDays = Carbon::now()->diffInDays($createdAt);
+        return $ageDays >= 2;
     }
 
     public function compareWith(ClassDataVersion $otherVersion)

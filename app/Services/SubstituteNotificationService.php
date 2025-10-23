@@ -6,16 +6,19 @@ use App\Models\TeacherSubstitution;
 use App\Models\Teacher;
 use App\Models\Notification;
 use App\Services\PushNotificationService;
+use App\Services\SmsService;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class SubstituteNotificationService
 {
     protected $pushNotificationService;
+    protected $smsService;
 
-    public function __construct(PushNotificationService $pushNotificationService)
+    public function __construct(PushNotificationService $pushNotificationService, SmsService $smsService)
     {
         $this->pushNotificationService = $pushNotificationService;
+        $this->smsService = $smsService;
     }
 
     /**
@@ -243,13 +246,14 @@ class SubstituteNotificationService
     private function sendSMSNotification(string $phoneNumber, string $message): bool
     {
         try {
-            // TODO: Integrate with SMS service (Twilio, AWS SNS, etc.)
-            Log::info('SMS notification would be sent', [
-                'phone' => $phoneNumber,
-                'message' => $message
-            ]);
-
-            return true;
+            $sent = $this->smsService->send($phoneNumber, $message);
+            if (!$sent) {
+                Log::warning('Failed to send SMS via provider', [
+                    'phone' => $phoneNumber,
+                    'message' => $message,
+                ]);
+            }
+            return $sent;
         } catch (\Exception $e) {
             Log::error('Failed to send SMS notification', [
                 'phone' => $phoneNumber,

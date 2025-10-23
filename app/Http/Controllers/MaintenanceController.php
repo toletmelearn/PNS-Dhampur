@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\MaintenanceSchedule;
 use App\Models\InventoryItem;
 use App\Models\User;
+use App\Models\MaintenanceRecord;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -283,6 +284,9 @@ class MaintenanceController extends Controller
             'work_performed' => 'nullable|string',
             'parts_replaced' => 'nullable|string',
             'notes' => 'nullable|string',
+            'warranty_claim' => 'nullable|boolean',
+            'warranty_notes' => 'nullable|string',
+            'attachments' => 'nullable|array',
         ]);
 
         if (!$maintenance->canBeCompleted()) {
@@ -300,10 +304,32 @@ class MaintenanceController extends Controller
             $validated['notes'] ?? null
         );
 
+        // Auto-create maintenance record
+        $record = MaintenanceRecord::create([
+            'inventory_item_id' => $maintenance->inventory_item_id,
+            'maintenance_schedule_id' => $maintenance->id,
+            'performed_by' => auth()->id(),
+            'maintenance_date' => now(),
+            'maintenance_type' => $maintenance->maintenance_type,
+            'issue_description' => $validated['notes'] ?? null,
+            'work_performed' => $validated['work_performed'] ?? $maintenance->work_performed ?? null,
+            'parts_replaced' => $validated['parts_replaced'] ?? $maintenance->parts_replaced ?? null,
+            'actual_cost' => $validated['actual_cost'] ?? $maintenance->actual_cost ?? null,
+            'downtime_hours' => $maintenance->requires_downtime ? (($validated['actual_duration'] ?? $maintenance->actual_duration ?? 0) / 60) : 0,
+            'status' => 'completed',
+            'warranty_claim' => $validated['warranty_claim'] ?? false,
+            'warranty_notes' => $validated['warranty_notes'] ?? null,
+            'attachments' => $validated['attachments'] ?? [],
+            'notes' => $validated['notes'] ?? null,
+            'created_by' => auth()->id(),
+            'updated_by' => auth()->id(),
+        ]);
+
         return response()->json([
             'success' => true,
             'message' => 'Maintenance completed successfully',
-            'data' => $maintenance->load(['inventoryItem', 'assignedTo', 'completedBy'])
+            'data' => $maintenance->load(['inventoryItem', 'assignedTo', 'completedBy']),
+            'record' => $record
         ]);
     }
 

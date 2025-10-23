@@ -113,20 +113,22 @@ class MismatchResolutionService
         $confidence = $this->calculateNameConfidence($expected, $extracted, $similarity);
 
         $suggestions = [];
-        if ($similarity > 0.7) {
+        $mid = $this->thresholdRatio('name_similarity.medium', 0.70);
+        $low = $this->thresholdRatio('name_similarity.low', 0.50);
+        if ($similarity >= $mid) {
             $suggestions[] = 'Names are similar - possible OCR error or spelling variation';
             if ($this->hasCommonNameVariations($expected, $extracted)) {
                 $suggestions[] = 'Common name variation detected';
                 $confidence += 0.1; // Boost confidence for known variations
             }
-        } elseif ($similarity > 0.5) {
+        } elseif ($similarity >= $low) {
             $suggestions[] = 'Partial name match - check for abbreviations or middle names';
         } else {
             $suggestions[] = 'Significant name difference - verify document belongs to correct student';
         }
 
         return [
-            'match' => $similarity > 0.9,
+            'match' => $similarity >= $this->thresholdRatio('name_similarity.high', 0.90),
             'expected' => $expected,
             'extracted' => $extracted,
             'confidence' => min($confidence, 1.0),
@@ -169,9 +171,9 @@ class MismatchResolutionService
         }
 
         $daysDifference = abs($expectedDate->diffInDays($extractedDate));
+        $tolerance = $this->dateToleranceDays();
+        $similarity = $this->calculateDateSimilarity($expectedDate, $extractedDate);
         $confidence = $this->calculateDateConfidence($daysDifference);
-        $similarity = max(0, 1 - ($daysDifference / 365)); // Normalize to 0-1 scale
-
         $suggestions = [];
         if ($daysDifference === 0) {
             $suggestions[] = 'Exact date match';
@@ -184,7 +186,7 @@ class MismatchResolutionService
         }
 
         return [
-            'match' => $daysDifference === 0,
+            'match' => $daysDifference <= $tolerance,
             'expected' => $expected,
             'extracted' => $extracted,
             'confidence' => $confidence,
@@ -218,16 +220,18 @@ class MismatchResolutionService
         $confidence = $this->calculateAddressConfidence($expected, $extracted, $similarity);
 
         $suggestions = [];
-        if ($similarity > 0.8) {
+        $high = $this->thresholdRatio('address_similarity.high', 0.80);
+        $medium = $this->thresholdRatio('address_similarity.medium', 0.65);
+        if ($similarity >= $high) {
             $suggestions[] = 'Addresses are very similar - minor differences detected';
-        } elseif ($similarity > 0.6) {
+        } elseif ($similarity >= $medium) {
             $suggestions[] = 'Addresses have significant similarities - check for abbreviations';
         } else {
             $suggestions[] = 'Addresses are quite different - verify document authenticity';
         }
 
         return [
-            'match' => $similarity > 0.9,
+            'match' => $similarity >= $this->thresholdRatio('address_similarity.high', 0.90),
             'expected' => $expected,
             'extracted' => $extracted,
             'confidence' => $confidence,
@@ -261,9 +265,10 @@ class MismatchResolutionService
         $confidence = $similarity; // For Aadhaar, similarity directly maps to confidence
 
         $suggestions = [];
+        $numericHigh = $this->thresholdRatio('numeric_similarity.high', 0.95);
         if ($similarity === 1.0) {
             $suggestions[] = 'Exact Aadhaar number match';
-        } elseif ($similarity > 0.9) {
+        } elseif ($similarity >= $numericHigh) {
             $suggestions[] = 'Minor differences in Aadhaar number - possible OCR error';
         } else {
             $suggestions[] = 'Significant Aadhaar number difference - verify document authenticity';
@@ -328,7 +333,7 @@ class MismatchResolutionService
      */
     private function generateResolution(string $field, array $analysis): ?array
     {
-        if ($analysis['confidence'] >= self::AUTO_RESOLVE_THRESHOLD) {
+        if ($analysis['confidence'] >= $this->thresholdOverallRatio('auto_resolve', self::AUTO_RESOLVE_THRESHOLD)) {
             return [
                 'field' => $field,
                 'action' => 'auto_approve',
@@ -337,7 +342,7 @@ class MismatchResolutionService
             ];
         }
 
-        if ($analysis['confidence'] >= self::MANUAL_REVIEW_THRESHOLD) {
+        if ($analysis['confidence'] >= $this->thresholdOverallRatio('manual_review', self::MANUAL_REVIEW_THRESHOLD)) {
             return [
                 'field' => $field,
                 'action' => 'manual_review',
@@ -347,7 +352,7 @@ class MismatchResolutionService
             ];
         }
 
-        if ($analysis['confidence'] <= self::REJECT_THRESHOLD) {
+        if ($analysis['confidence'] <= $this->thresholdOverallRatio('reject', self::REJECT_THRESHOLD)) {
             return [
                 'field' => $field,
                 'action' => 'auto_reject',
@@ -374,11 +379,11 @@ class MismatchResolutionService
             return 'approve';
         }
 
-        if ($overallConfidence >= self::AUTO_RESOLVE_THRESHOLD) {
+        if ($overallConfidence >= $this->thresholdOverallRatio('auto_resolve', self::AUTO_RESOLVE_THRESHOLD)) {
             return 'approve';
         }
 
-        if ($overallConfidence <= self::REJECT_THRESHOLD) {
+        if ($overallConfidence <= $this->thresholdOverallRatio('reject', self::REJECT_THRESHOLD)) {
             return 'reject';
         }
 
@@ -394,7 +399,7 @@ class MismatchResolutionService
             return true;
         }
 
-        return $overallConfidence >= self::AUTO_RESOLVE_THRESHOLD;
+        return $overallConfidence >= $this->thresholdOverallRatio('auto_resolve', self::AUTO_RESOLVE_THRESHOLD);
     }
 
     /**
@@ -402,8 +407,9 @@ class MismatchResolutionService
      */
     private function requiresManualReview(float $overallConfidence): bool
     {
-        return $overallConfidence >= self::MANUAL_REVIEW_THRESHOLD && 
-               $overallConfidence < self::AUTO_RESOLVE_THRESHOLD;
+        $manual = $this->thresholdOverallRatio('manual_review', self::MANUAL_REVIEW_THRESHOLD);
+        $auto = $this->thresholdOverallRatio('auto_resolve', self::AUTO_RESOLVE_THRESHOLD);
+        return $overallConfidence >= $manual && $overallConfidence < $auto;
     }
 
     /**
@@ -428,7 +434,7 @@ class MismatchResolutionService
                 return true;
             }
 
-            if ($recommendation === 'reject' && $resolutionData['overall_confidence'] <= self::REJECT_THRESHOLD) {
+            if ($recommendation === 'reject' && $resolutionData['overall_confidence'] <= $this->thresholdOverallRatio('reject', self::REJECT_THRESHOLD)) {
                 $verification->update([
                     'verification_status' => StudentVerification::STATUS_REJECTED,
                     'confidence_score' => $resolutionData['overall_confidence'],
@@ -442,9 +448,14 @@ class MismatchResolutionService
                 return true;
             }
 
-            // Set to manual review
+            // Set to manual review or mismatch
+            $mismatchCount = isset($resolutionData['mismatches']) ? count($resolutionData['mismatches']) : 0;
+            $status = $this->useMismatchStatus() && $mismatchCount > 0
+                ? StudentVerification::STATUS_MISMATCH
+                : StudentVerification::STATUS_MANUAL_REVIEW;
+
             $verification->update([
-                'verification_status' => StudentVerification::STATUS_MANUAL_REVIEW,
+                'verification_status' => $status,
                 'confidence_score' => $resolutionData['overall_confidence'],
                 'resolution_method' => 'pending_manual',
                 'resolution_notes' => 'Requires manual review due to moderate confidence',
@@ -645,9 +656,11 @@ class MismatchResolutionService
      */
     private function getNameMismatchType(string $expected, string $extracted, float $similarity): string
     {
-        if ($similarity > 0.8) {
+        $mid = $this->thresholdRatio('name_similarity.medium', 0.70);
+        $low = $this->thresholdRatio('name_similarity.low', 0.50);
+        if ($similarity >= $mid) {
             return 'minor_variation';
-        } elseif ($similarity > 0.5) {
+        } elseif ($similarity >= $low) {
             return 'partial_match';
         } else {
             return 'major_difference';

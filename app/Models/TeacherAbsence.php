@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
+use Carbon\CarbonPeriod;
 
 class TeacherAbsence extends Model
 {
@@ -97,6 +98,100 @@ class TeacherAbsence extends Model
     public function substitutions()
     {
         return $this->hasMany(TeacherSubstitution::class, 'absence_id');
+    }
+
+    /**
+     * Get monthly CL/ML summary (counts by day) for a date range.
+     * Maps reason_category to CL (personal_leave) and ML (sick_leave, medical_appointment).
+     * Defaults to last 6 months up to current month.
+     */
+    public static function getMonthlyCLMLSummary($startDate = null, $endDate = null, $teacherId = null)
+    {
+        $end = $endDate ? Carbon::parse($endDate)->endOfDay() : Carbon::now()->endOfMonth();
+        $start = $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->subMonths(6)->startOfMonth();
+
+        $query = self::whereBetween('absence_date', [$start->copy()->startOfDay(), $end->copy()->endOfDay()])
+            ->where('status', self::STATUS_APPROVED);
+
+        if ($teacherId) {
+            $query->where('teacher_id', $teacherId);
+        }
+
+        $records = $query->get(['teacher_id','absence_date','end_date','reason_category']);
+
+        $summary = [];
+
+        foreach ($records as $rec) {
+            $reason = $rec->reason_category;
+            $isCL = ($reason === 'personal_leave');
+            $isML = ($reason === 'sick_leave' || $reason === 'medical_appointment');
+            if (!$isCL && !$isML) {
+                continue; // skip non-CL/ML categories
+            }
+
+            $rangeStart = $rec->absence_date->copy()->startOfDay();
+            $rangeEnd = $rec->end_date ? Carbon::parse($rec->end_date)->endOfDay() : $rec->absence_date->copy()->endOfDay();
+
+            // Clip to requested window
+            if ($rangeEnd < $start || $rangeStart > $end) {
+                continue;
+            }
+            $rangeStart = $rangeStart->max($start);
+            $rangeEnd = $rangeEnd->min($end);
+
+            // Iterate per day to attribute to correct month
+            $period = CarbonPeriod::create($rangeStart, '1 day', $rangeEnd);
+            foreach ($period as $day) {
+                $monthKey = $day->format('Y-m');
+                if (!isset($summary[$monthKey])) {
+                    $summary[$monthKey] = ['CL_days' => 0, 'ML_days' => 0];
+                }
+                if ($isCL) {
+                    $summary[$monthKey]['CL_days'] += 1;
+                } elseif ($isML) {
+                    $summary[$monthKey]['ML_days'] += 1;
+                }
+            }
+        }
+
+        // Ensure months in range exist with zeros
+        $cursor = $start->copy()->startOfMonth();
+        while ($cursor <= $end) {
+            $key = $cursor->format('Y-m');
+            if (!isset($summary[$key])) {
+                $summary[$key] = ['CL_days' => 0, 'ML_days' => 0];
+            }
+            $cursor->addMonth();
+        }
+
+        ksort($summary);
+
+        return [
+            'start_date' => $start->format('Y-m-d'),
+            'end_date' => $end->format('Y-m-d'),
+            'teacher_id' => $teacherId,
+            'months' => $summary,
+        ];
+    }
+
+    /**
+     * Map a general leave_type string to this model's reason_category.
+     */
+    public static function mapLeaveTypeToReasonCategory(string $leaveType): string
+    {
+        $lt = strtolower(trim($leaveType));
+        $map = [
+            'casual' => 'personal_leave',
+            'casual_leave' => 'personal_leave',
+            'sick' => 'sick_leave',
+            'sick_leave' => 'sick_leave',
+            'earned' => 'other',
+            'maternity' => 'maternity_paternity',
+            'paternity' => 'maternity_paternity',
+            'emergency' => 'emergency',
+            'unpaid' => 'other',
+        ];
+        return $map[$lt] ?? 'other';
     }
 
     /**

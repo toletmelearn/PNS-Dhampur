@@ -14,10 +14,28 @@ class AddComprehensiveIndexesFixed extends Migration
      */
     public function up()
     {
-        // Helper function to check if index exists
-        $indexExists = function ($table, $indexName) {
-            $indexes = DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$indexName]);
-            return !empty($indexes);
+        // Detect driver and guard MySQL-specific index checks
+        $driver = Schema::getConnection()->getDriverName();
+
+        // Helper function to check if index exists (MySQL/MariaDB only)
+        $indexExists = function ($table, $indexName) use ($driver) {
+            try {
+                if (in_array($driver, ['mysql', 'mariadb'])) {
+                    $indexes = DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$indexName]);
+                    return !empty($indexes);
+                }
+                if ($driver === 'sqlite') {
+                    $indexes = DB::select(
+                        "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name = ? AND name = ?",
+                        [$table, $indexName]
+                    );
+                    return !empty($indexes);
+                }
+                // Unsupported driver: assume index does not exist
+                return false;
+            } catch (\Throwable $e) {
+                return false;
+            }
         };
 
         // Students table indexes for performance optimization

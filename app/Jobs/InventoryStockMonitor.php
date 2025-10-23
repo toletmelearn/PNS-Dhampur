@@ -13,6 +13,7 @@ use App\Notifications\LowStockAlert;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
+use App\Models\StockAlert;
 
 class InventoryStockMonitor implements ShouldQueue
 {
@@ -167,6 +168,9 @@ class InventoryStockMonitor implements ShouldQueue
                 'reorder_point' => $reorderPoint,
                 'stock_status' => $stockStatus
             ]);
+        } else {
+            // Resolve any active alerts when stock recovers
+            $this->resolveAlertsForItem($item);
         }
 
         return $stockStatus;
@@ -220,6 +224,9 @@ class InventoryStockMonitor implements ShouldQueue
                 ]);
             }
         }
+
+        // Persist alert to database for feed/history
+        $this->persistStockAlert($item, $alertType);
     }
 
     /**
@@ -419,6 +426,52 @@ class InventoryStockMonitor implements ShouldQueue
             return 'medium';
         } else {
             return 'low';
+        }
+    }
+
+    private function persistStockAlert(InventoryItem $item, string $alertType): void
+    {
+        $severity = match($alertType) {
+            'out_of_stock' => 'critical',
+            'critical_stock' => 'critical',
+            'low_stock' => 'warning',
+            default => 'warning'
+        };
+
+        StockAlert::updateOrCreate(
+            [
+                'inventory_item_id' => $item->id,
+                'alert_type' => $alertType,
+                'status' => 'active',
+            ],
+            [
+                'severity' => $severity,
+                'current_stock' => $item->current_stock,
+                'threshold' => $item->minimum_stock_level,
+                'reorder_point' => $item->reorder_point ?? $item->minimum_stock_level,
+                'unit' => $item->unit,
+                'triggered_at' => now(),
+                'message' => "{$item->name} ({$item->item_code}) {$alertType}.",
+                'suggested_action' => $alertType === 'out_of_stock' ? 'Immediate restock required' : 'Create purchase order',
+                'notified_channels' => ['database', 'mail'],
+            ]
+        );
+    }
+
+    private function resolveAlertsForItem(InventoryItem $item): void
+    {
+        $minimumLevel = $item->minimum_stock_level;
+        $reorderPoint = $item->reorder_point ?? $minimumLevel;
+        $currentStock = $item->current_stock;
+
+        // Consider recovered when above both minimum level and reorder point
+        if ($currentStock > max($minimumLevel, $reorderPoint)) {
+            StockAlert::where('inventory_item_id', $item->id)
+                ->where('status', 'active')
+                ->update([
+                    'status' => 'resolved',
+                    'resolved_at' => now(),
+                ]);
         }
     }
 }

@@ -83,6 +83,7 @@ class StudentSeeder extends Seeder
 
                 Student::create([
                     'admission_no' => $admissionNo,
+                    'admission_number' => $admissionNo,
                     'name' => $studentData['name'],
                     'father_name' => $studentData['father'],
                     'mother_name' => $studentData['mother'],

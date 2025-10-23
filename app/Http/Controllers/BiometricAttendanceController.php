@@ -529,6 +529,20 @@ class BiometricAttendanceController extends Controller
                         continue;
                     }
                     
+                    // Use configurable thresholds for attendance calculations
+                    $schoolStartTime = Carbon::createFromFormat('H:i:s', config('attendance.school_start_time', '08:00:00'));
+                    $schoolEndTime = Carbon::createFromFormat('H:i:s', config('attendance.school_end_time', '16:00:00'));
+                    $graceMinutes = (int) config('attendance.grace_minutes', 15);
+                    $minimumWorkingHours = (float) config('attendance.minimum_working_hours', 8);
+                    
+                    $checkInTimeOnly = $checkInTime ? Carbon::createFromFormat('H:i:s', $checkInTime->format('H:i:s')) : null;
+                    $checkOutTimeOnly = $checkOutTime ? Carbon::createFromFormat('H:i:s', $checkOutTime->format('H:i:s')) : null;
+                    
+                    $isLate = $checkInTimeOnly ? $checkInTimeOnly->gt($schoolStartTime->copy()->addMinutes($graceMinutes)) : false;
+                    $workingMinutes = ($checkInTime && $checkOutTime) ? $checkInTime->diffInMinutes($checkOutTime) : 0;
+                    $workingHours = round($workingMinutes / 60, 2);
+                    $isEarlyDeparture = $checkOutTimeOnly ? ($checkOutTimeOnly->lt($schoolEndTime) || ($workingHours < $minimumWorkingHours)) : false;
+                    
                     // Create or update attendance record
                     $attendance = BiometricAttendance::updateOrCreate(
                         [
@@ -539,10 +553,9 @@ class BiometricAttendanceController extends Controller
                             'check_in_time' => $checkInTime,
                             'check_out_time' => $checkOutTime,
                             'status' => $checkInTime ? 'present' : 'absent',
-                            'is_late' => $checkInTime ? $checkInTime->format('H:i:s') > '08:00:00' : false,
-                            'is_early_departure' => $checkOutTime ? $checkOutTime->format('H:i:s') < '16:00:00' : false,
-                            'working_hours' => $checkInTime && $checkOutTime ? 
-                                $checkInTime->diffInHours($checkOutTime) : 0,
+                            'is_late' => $isLate,
+                            'is_early_departure' => $isEarlyDeparture,
+                            'working_hours' => $workingHours,
                             'biometric_data' => json_encode([
                                 'import_source' => 'csv',
                                 'import_date' => now(),
@@ -956,5 +969,151 @@ class BiometricAttendanceController extends Controller
                 'data' => $attendances
             ]);
         }
+    }
+
+    public function regularizationStatistics(Request $request)
+    {
+        $from = $request->get('from', now()->subDays(30)->toDateString());
+        $to = $request->get('to', now()->toDateString());
+        $teacherId = $request->get('teacher_id');
+    
+        $query = \App\Models\AttendanceRegularization::query();
+        $query->whereBetween('attendance_date', [$from, $to]);
+        if ($teacherId) {
+            $query->where('teacher_id', $teacherId);
+        }
+    
+        $total = (clone $query)->count();
+        $pending = (clone $query)->where('status', 'pending')->count();
+        $approved = (clone $query)->where('status', 'approved')->count();
+        $rejected = (clone $query)->where('status', 'rejected')->count();
+    
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total' => $total,
+                'pending' => $pending,
+                'approved' => $approved,
+                'rejected' => $rejected,
+                'approval_rate' => $total ? round(($approved / $total) * 100, 2) : 0,
+                'pending_rate' => $total ? round(($pending / $total) * 100, 2) : 0,
+                'rejection_rate' => $total ? round(($rejected / $total) * 100, 2) : 0,
+            ],
+        ]);
+    }
+
+    public function existingAttendance(Request $request)
+    {
+        $request->validate([
+            'teacher_id' => 'required|integer',
+            'date' => 'required|date',
+        ]);
+    
+        $attendance = \App\Models\BiometricAttendance::where('teacher_id', $request->teacher_id)
+            ->whereDate('date', $request->date)
+            ->first();
+    
+        return response()->json([
+            'success' => true,
+            'data' => $attendance,
+        ]);
+    }
+
+    public function bulkApprove(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array',
+            'ids.*' => 'integer',
+        ]);
+    
+        $count = \App\Models\AttendanceRegularization::whereIn('id', $request->ids)
+            ->update(['status' => 'approved', 'admin_remarks' => $request->get('admin_remarks')]);
+    
+        return response()->json([
+            'success' => true,
+            'message' => "Bulk approved {$count} requests",
+            'data' => ['approved_count' => $count],
+        ]);
+    }
+
+    public function exportRegularization(Request $request)
+    {
+        $from = $request->get('from', now()->subDays(30)->toDateString());
+        $to = $request->get('to', now()->toDateString());
+        $teacherId = $request->get('teacher_id');
+    
+        $query = \App\Models\AttendanceRegularization::with(['teacher'])
+            ->whereBetween('attendance_date', [$from, $to]);
+        if ($teacherId) {
+            $query->where('teacher_id', $teacherId);
+        }
+        $rows = $query->orderBy('attendance_date', 'desc')->get();
+    
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="regularization_export.csv"',
+        ];
+    
+        $callback = function () use ($rows) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Teacher', 'Employee ID', 'Date', 'Type', 'Requested In', 'Requested Out', 'Status', 'Reason', 'Created At']);
+            foreach ($rows as $r) {
+                fputcsv($handle, [
+                    optional($r->teacher)->name,
+                    optional($r->teacher)->employee_id,
+                    $r->attendance_date,
+                    $r->request_type,
+                    $r->requested_check_in,
+                    $r->requested_check_out,
+                    $r->status,
+                    $r->reason,
+                    optional($r->created_at)->toDateTimeString(),
+                ]);
+            }
+            fclose($handle);
+        };
+    
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function exportAnalytics(Request $request)
+    {
+        $month = $request->get('month', now()->format('Y-m'));
+        $teacherId = $request->get('teacher_id');
+    
+        $analytics = \App\Models\AttendanceAnalytics::getMonthlyAnalytics($month, $teacherId);
+    
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="attendance_analytics_'.str_replace(':', '-', $month).'.csv"',
+        ];
+    
+        $callback = function () use ($analytics) {
+            $handle = fopen('php://output', 'w');
+            // Header
+            fputcsv($handle, [
+                'Teacher', 'Employee ID', 'Department', 'Present Days', 'Absent Days',
+                'Attendance %', 'Punctuality Score', 'Late Arrivals', 'Early Departures',
+                'Average Working Hours', 'Grade'
+            ]);
+            foreach ($analytics as $item) {
+                fputcsv($handle, [
+                    data_get($item, 'teacher.name'),
+                    data_get($item, 'teacher.employee_id'),
+                    data_get($item, 'teacher.department'),
+                    data_get($item, 'present_days'),
+                    data_get($item, 'absent_days'),
+                    data_get($item, 'attendance_percentage'),
+                    data_get($item, 'punctuality_score'),
+                    data_get($item, 'late_arrivals'),
+                    data_get($item, 'early_departures'),
+                    data_get($item, 'average_working_hours'),
+                    data_get($item, 'attendance_grade'),
+                ]);
+            }
+            fclose($handle);
+        };
+    
+        return response()->stream($callback, 200, $headers);
     }
 }

@@ -33,10 +33,26 @@ class DashboardController extends Controller
             // Safe metrics with error handling
             $stats = [
                 'total_users' => class_exists(NewUser::class) ? (int) NewUser::count() : 0,
-                'total_schools' => class_exists(School::class) ? (int) School::count() : 0, // REMOVED is_active condition
+                'total_schools' => class_exists(School::class) ? (int) School::count() : 0,
                 'attendance_today' => class_exists(Attendance::class) ? (int) Attendance::whereDate('date', now()->toDateString())->count() : 0,
                 'pending_approvals' => 0,
             ];
+
+            // Active schools (robust to missing is_active column)
+            try {
+                if (class_exists(School::class)) {
+                    if (Schema::hasColumn('schools', 'is_active')) {
+                        $stats['active_schools'] = (int) School::where('is_active', true)->count();
+                    } else {
+                        $stats['active_schools'] = $stats['total_schools'];
+                    }
+                } else {
+                    $stats['active_schools'] = 0;
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('Active schools count failed: ' . $e->getMessage());
+                $stats['active_schools'] = $stats['total_schools'] ?? 0;
+            }
 
             // Safe pending approvals calculation
             $pendingApprovals = 0;

@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\TeacherDocument;
 use App\Models\Teacher;
+use App\Models\DocumentVersion;
+use App\Models\DocumentApproval;
+use App\Models\DocumentCategory;
 use App\Services\DocumentExpiryAlertService;
 use App\Rules\SafeFileValidation;
 use Illuminate\Http\Request;
@@ -42,7 +45,7 @@ class TeacherDocumentController extends Controller
     {
         $this->documentExpiryAlertService = $documentExpiryAlertService;
         $this->middleware('auth');
-        $this->middleware('role:admin,principal')->only(['approve', 'reject', 'bulkApprove', 'adminIndex']);
+        $this->middleware('role:admin,principal')->only(['approve', 'reject', 'bulkApprove', 'bulkAction', 'adminIndex']);
     }
 
     /**
@@ -110,7 +113,7 @@ class TeacherDocumentController extends Controller
             'expiring' => TeacherDocument::expiringWithin(30)->count(),
         ];
 
-        return view('teacher-documents.admin', compact('documents', 'stats'));
+        return view('admin.teacher-documents.index', compact('documents', 'stats'));
     }
 
     /**
@@ -166,6 +169,8 @@ class TeacherDocumentController extends Controller
             'document_types.*' => 'required|in:' . implode(',', array_keys(TeacherDocument::DOCUMENT_TYPES)),
             'expiry_dates' => 'array',
             'expiry_dates.*' => 'nullable|date|after:today|before:+10 years',
+            'category_ids' => 'nullable|array',
+            'category_ids.*' => 'nullable|exists:document_categories,id'
         ], [
             'documents.max' => 'Maximum 5 documents allowed per upload.',
             'documents.*.max' => 'Each document must not exceed 5MB.',
@@ -211,6 +216,7 @@ class TeacherDocumentController extends Controller
                 $document = TeacherDocument::create([
                     'teacher_id' => $teacher->id,
                     'document_type' => $documentType,
+                    'category_id' => $request->category_ids[$index] ?? null,
                     'original_name' => $file->getClientOriginalName(),
                     'file_path' => $filePath,
                     'file_extension' => $file->getClientOriginalExtension(),
@@ -225,6 +231,22 @@ class TeacherDocumentController extends Controller
                         'security_scan' => 'passed',
                         'file_signature_valid' => true
                     ]
+                ]);
+
+                // Create initial version
+                $document->createNewVersion([
+                    'original_name' => $file->getClientOriginalName(),
+                    'file_path' => $filePath,
+                    'file_extension' => $file->getClientOriginalExtension(),
+                    'file_size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                    'change_summary' => 'Initial upload',
+                    'created_by' => $user->id,
+                    'checksum' => hash_file('sha256', $file->getPathname()),
+                    'metadata' => [
+                        'upload_ip' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                    ],
                 ]);
 
                 $uploadedDocuments[] = $document;
@@ -309,6 +331,41 @@ class TeacherDocumentController extends Controller
             'reviewed_at' => now()
         ]);
 
+        // Ensure a current version exists
+        $version = $document->currentVersion()->first();
+        if (!$version) {
+            $version = $document->createNewVersion([
+                'original_name' => $document->original_name,
+                'file_path' => $document->file_path,
+                'file_extension' => $document->file_extension,
+                'file_size' => $document->file_size,
+                'mime_type' => $document->mime_type,
+                'change_summary' => 'Backfilled initial version for approval',
+                'created_by' => $document->uploaded_by,
+            ]);
+        }
+
+        // Update version status
+        $version->update([
+            'status' => DocumentVersion::STATUS_APPROVED,
+            'approved_at' => now(),
+            'approved_by' => auth()->id(),
+            'approval_notes' => $request->admin_comments,
+        ]);
+
+        // Create approval record
+        DocumentApproval::create([
+            'document_version_id' => $version->id,
+            'approver_id' => auth()->id(),
+            'approval_level' => 'admin',
+            'status' => DocumentApproval::STATUS_APPROVED,
+            'comments' => $request->admin_comments,
+            'submitted_at' => $version->created_at,
+            'reviewed_at' => now(),
+            'priority' => 1,
+            'is_required' => true,
+        ]);
+
         // Log the approval
         \Log::info('Document approved', [
             'document_id' => $document->id,
@@ -344,6 +401,39 @@ class TeacherDocumentController extends Controller
             'admin_comments' => $request->admin_comments,
             'reviewed_by' => auth()->id(),
             'reviewed_at' => now()
+        ]);
+
+        // Ensure a current version exists
+        $version = $document->currentVersion()->first();
+        if (!$version) {
+            $version = $document->createNewVersion([
+                'original_name' => $document->original_name,
+                'file_path' => $document->file_path,
+                'file_extension' => $document->file_extension,
+                'file_size' => $document->file_size,
+                'mime_type' => $document->mime_type,
+                'change_summary' => 'Backfilled initial version for rejection',
+                'created_by' => $document->uploaded_by,
+            ]);
+        }
+
+        // Update version status
+        $version->update([
+            'status' => DocumentVersion::STATUS_REJECTED,
+            'approval_notes' => $request->admin_comments,
+        ]);
+
+        // Create approval record
+        DocumentApproval::create([
+            'document_version_id' => $version->id,
+            'approver_id' => auth()->id(),
+            'approval_level' => 'admin',
+            'status' => DocumentApproval::STATUS_REJECTED,
+            'comments' => $request->admin_comments,
+            'submitted_at' => $version->created_at,
+            'reviewed_at' => now(),
+            'priority' => 1,
+            'is_required' => true,
         ]);
 
         // Log the rejection
@@ -390,6 +480,42 @@ class TeacherDocumentController extends Controller
                 'reviewed_by' => auth()->id(),
                 'reviewed_at' => now()
             ]);
+
+            // Ensure a current version exists
+            $version = $document->currentVersion()->first();
+            if (!$version) {
+                $version = $document->createNewVersion([
+                    'original_name' => $document->original_name,
+                    'file_path' => $document->file_path,
+                    'file_extension' => $document->file_extension,
+                    'file_size' => $document->file_size,
+                    'mime_type' => $document->mime_type,
+                    'change_summary' => 'Backfilled initial version for bulk approval',
+                    'created_by' => $document->uploaded_by,
+                ]);
+            }
+
+            // Update version status
+            $version->update([
+                'status' => DocumentVersion::STATUS_APPROVED,
+                'approved_at' => now(),
+                'approved_by' => auth()->id(),
+                'approval_notes' => $request->admin_comments,
+            ]);
+
+            // Create approval record
+            DocumentApproval::create([
+                'document_version_id' => $version->id,
+                'approver_id' => auth()->id(),
+                'approval_level' => 'admin',
+                'status' => DocumentApproval::STATUS_APPROVED,
+                'comments' => $request->admin_comments,
+                'submitted_at' => $version->created_at,
+                'reviewed_at' => now(),
+                'priority' => 1,
+                'is_required' => true,
+            ]);
+
             $approvedCount++;
         }
 
@@ -506,6 +632,42 @@ class TeacherDocumentController extends Controller
                 'reviewed_by' => auth()->id(),
                 'reviewed_at' => now()
             ]);
+
+            // Ensure a current version exists
+            $version = $document->currentVersion()->first();
+            if (!$version) {
+                $version = $document->createNewVersion([
+                    'original_name' => $document->original_name,
+                    'file_path' => $document->file_path,
+                    'file_extension' => $document->file_extension,
+                    'file_size' => $document->file_size,
+                    'mime_type' => $document->mime_type,
+                    'change_summary' => 'Backfilled initial version for bulk action',
+                    'created_by' => $document->uploaded_by,
+                ]);
+            }
+
+            // Update version status based on action
+            $version->update([
+                'status' => $action === 'approve' ? DocumentVersion::STATUS_APPROVED : DocumentVersion::STATUS_REJECTED,
+                'approved_at' => $action === 'approve' ? now() : $version->approved_at,
+                'approved_by' => $action === 'approve' ? auth()->id() : $version->approved_by,
+                'approval_notes' => $comments,
+            ]);
+
+            // Create approval record
+            DocumentApproval::create([
+                'document_version_id' => $version->id,
+                'approver_id' => auth()->id(),
+                'approval_level' => 'admin',
+                'status' => $action === 'approve' ? DocumentApproval::STATUS_APPROVED : DocumentApproval::STATUS_REJECTED,
+                'comments' => $comments,
+                'submitted_at' => $version->created_at,
+                'reviewed_at' => now(),
+                'priority' => 1,
+                'is_required' => true,
+            ]);
+
             $successCount++;
         }
 
@@ -538,7 +700,9 @@ class TeacherDocumentController extends Controller
             'document_types' => 'required|array',
             'document_types.*' => 'required|in:' . implode(',', array_keys(TeacherDocument::DOCUMENT_TYPES)),
             'expiry_dates' => 'nullable|array',
-            'expiry_dates.*' => 'nullable|date|after:today|before:+10 years'
+            'expiry_dates.*' => 'nullable|date|after:today|before:+10 years',
+            'category_ids' => 'nullable|array',
+            'category_ids.*' => 'nullable|exists:document_categories,id'
         ];
         
         // Add enhanced file validation rules from trait
@@ -593,6 +757,7 @@ class TeacherDocumentController extends Controller
                 $document = TeacherDocument::create([
                     'teacher_id' => $teacher->id,
                     'document_type' => $documentType,
+                    'category_id' => $request->category_ids[$index] ?? null,
                     'original_name' => $file->getClientOriginalName(),
                     'file_path' => $filePath,
                     'file_extension' => $file->getClientOriginalExtension(),
@@ -609,6 +774,24 @@ class TeacherDocumentController extends Controller
                         'security_scan' => 'passed',
                         'file_signature_valid' => true
                     ]
+                ]);
+
+                // Create initial version
+                $document->createNewVersion([
+                    'original_name' => $file->getClientOriginalName(),
+                    'file_path' => $filePath,
+                    'file_extension' => strtolower($file->getClientOriginalExtension()),
+                    'file_size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                    'change_summary' => 'Bulk upload initial version',
+                    'created_by' => $user->id,
+                    'checksum' => hash_file('sha256', $file->getPathname()),
+                    'metadata' => [
+                        'upload_ip' => $request->ip(),
+                        'user_agent' => $request->userAgent(),
+                        'bulk_upload' => true,
+                        'batch_index' => $index,
+                    ],
                 ]);
 
                 $uploadedDocuments[] = $document;

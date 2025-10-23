@@ -35,7 +35,14 @@ class InventoryItem extends Model
         'status',
         'is_asset',
         'depreciation_rate',
-        'notes'
+        'notes',
+        'is_disposed',
+        'disposed_at',
+        'disposed_by',
+        'disposal_reason',
+        'disposal_method',
+        'disposal_value',
+        'disposal_notes',
     ];
 
     protected $casts = [
@@ -49,7 +56,10 @@ class InventoryItem extends Model
         'purchase_date' => 'date',
         'warranty_expiry' => 'date',
         'is_asset' => 'boolean',
-        'depreciation_rate' => 'decimal:2'
+        'depreciation_rate' => 'decimal:2',
+        'disposed_at' => 'datetime',
+        'is_disposed' => 'boolean',
+        'disposal_value' => 'decimal:2',
     ];
 
     // Relationships
@@ -136,6 +146,16 @@ class InventoryItem extends Model
     {
         return $query->where('warranty_expiry', '<=', now()->addDays($days))
                     ->where('warranty_expiry', '>=', now());
+    }
+
+    public function scopeDisposed($query)
+    {
+        return $query->where('is_disposed', true);
+    }
+
+    public function scopeActiveNotDisposed($query)
+    {
+        return $query->where('is_disposed', false);
     }
 
     // Accessors

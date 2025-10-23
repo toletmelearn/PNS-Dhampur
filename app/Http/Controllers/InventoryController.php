@@ -210,6 +210,38 @@ class InventoryController extends Controller
     }
 
     /**
+     * Mark the specified inventory item as disposed
+     */
+    public function dispose(Request $request, $id)
+    {
+        $item = InventoryItem::findOrFail($id);
+
+        $validated = $request->validate([
+            'disposed_at' => 'nullable|date',
+            'disposal_reason' => 'required|string|max:255',
+            'disposal_method' => 'nullable|string|max:100',
+            'disposal_value' => 'nullable|numeric|min:0',
+            'disposal_notes' => 'nullable|string',
+        ]);
+
+        $item->is_disposed = true;
+        $item->disposed_at = $validated['disposed_at'] ?? now();
+        $item->disposed_by = auth()->id();
+        $item->disposal_reason = $validated['disposal_reason'] ?? null;
+        $item->disposal_method = $validated['disposal_method'] ?? null;
+        $item->disposal_value = $validated['disposal_value'] ?? null;
+        $item->disposal_notes = $validated['disposal_notes'] ?? null;
+
+        $item->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Inventory item marked as disposed',
+            'data' => $item->fresh()
+        ]);
+    }
+
+    /**
      * Adjust stock for an inventory item
      */
     public function adjustStock(Request $request, $id)

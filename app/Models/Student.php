@@ -52,6 +52,11 @@ class Student extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function histories()
+    {
+        return $this->hasMany(\App\Models\StudentHistory::class);
+    }
+
     public function fees()
     {
         return $this->hasMany(Fee::class);
@@ -82,9 +87,19 @@ class Student extends Model
         return $this->hasMany(StudentVerification::class);
     }
 
+    public function promotionRecords()
+    {
+        return $this->hasMany(\App\Models\PromotionRecord::class);
+    }
+
     public function auditLogs()
     {
         return $this->hasMany(VerificationAuditLog::class);
+    }
+
+    public function transferCertificates()
+    {
+        return $this->hasMany(\App\Models\TransferCertificate::class);
     }
 
     // helper to get public URL for stored file
@@ -233,3 +248,4 @@ class Student extends Model
         });
     }
 }
+

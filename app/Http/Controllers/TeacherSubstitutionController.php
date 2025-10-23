@@ -67,7 +67,7 @@ class TeacherSubstitutionController extends Controller
         $validated = $request->validate([
             'absent_teacher_id' => 'required|exists:teachers,id',
             'class_id' => 'required|exists:class_models,id',
-            'date' => 'required|date|after_or_equal:today',
+            'substitution_date' => 'required|date|after_or_equal:today',
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i|after:start_time',
             'subject' => 'nullable|string|max:255',
@@ -76,6 +76,11 @@ class TeacherSubstitutionController extends Controller
             'priority' => 'in:low,medium,high',
             'is_emergency' => 'boolean',
         ]);
+
+        // Map API field to both columns for compatibility
+        $validated['date'] = $validated['substitution_date'];
+        // Keep substitution_date as well for model methods relying on it
+        $validated['substitution_date'] = $validated['date'];
 
         $validated['requested_at'] = now();
         $validated['requested_by'] = auth()->id();

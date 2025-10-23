@@ -5,9 +5,7 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\RoleController as AdminRoleController;
 use App\Http\Controllers\Admin\PermissionController as AdminPermissionController;
 use App\Http\Controllers\Admin\UserRoleController as AdminUserRoleController;
-use App\Http\Middleware\RoleBasedAccess;
-use App\Http\Middleware\PermissionCheck;
-use App\Http\Middleware\SessionSecurity;
+// Use Kernel aliases for middleware to ensure consistency
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -46,7 +44,7 @@ Route::middleware('guest')->group(function () {
 });
 
 // Authenticated routes
-Route::middleware(['auth', SessionSecurity::class])->group(function () {
+Route::middleware(['auth', 'session.security'])->group(function () {
     
     // Logout route
     Route::post('/logout', [NewAuthController::class, 'logout'])
@@ -97,73 +95,73 @@ Route::middleware(['auth', SessionSecurity::class])->group(function () {
                 case 'parent':
                     return redirect()->route('dashboard.parent');
                 default:
-                    return view('dashboard.default');
+                    return view('dashboard');
             }
         })->name('redirect');
 
         // Super Admin Dashboard
         Route::get('/super-admin', [\App\Http\Controllers\DashboardController::class, 'superAdmin'])
-            ->middleware(RoleBasedAccess::class . ':super_admin')
+            ->middleware('role:super_admin')
             ->name('super-admin');
 
         // Admin Dashboard
         Route::get('/admin', function () {
             return view('dashboard.admin');
-        })->middleware(RoleBasedAccess::class . ':admin,super_admin')
+        })->middleware('role:admin,super_admin')
           ->name('admin');
 
         // Principal Dashboard
         Route::get('/principal', function () {
             return view('dashboard.principal');
-        })->middleware(RoleBasedAccess::class . ':principal,admin,super_admin')
+        })->middleware('role:principal,admin,super_admin')
           ->name('principal');
 
         // Teacher Dashboard
         Route::get('/teacher', function () {
             return view('dashboard.teacher');
-        })->middleware(RoleBasedAccess::class . ':teacher,principal,admin,super_admin')
+        })->middleware('role:teacher,principal,admin,super_admin')
           ->name('teacher');
 
         // Student Dashboard
         Route::get('/student', function () {
             return view('dashboard.student');
-        })->middleware(RoleBasedAccess::class . ':student')
+        })->middleware('role:student')
           ->name('student');
 
         // Parent Dashboard
         Route::get('/parent', function () {
             return view('dashboard.parent');
-        })->middleware(RoleBasedAccess::class . ':parent')
+        })->middleware('role:parent')
           ->name('parent');
     });
 
     // User management routes (permission-based)
-    Route::prefix('users')->name('users.')->group(function () {
+    Route::prefix('users')->name('ui.users.')->group(function () {
         
         Route::get('/', function () {
             return view('users.index');
-        })->middleware(PermissionCheck::class . ':users.view_all')
+        })->middleware('permission:users.view_all')
           ->name('index');
 
         Route::get('/create', function () {
             return view('users.create');
-        })->middleware(PermissionCheck::class . ':users.create')
+        })->middleware('permission:users.create')
           ->name('create');
 
         Route::get('/{user}', function ($user) {
             return view('users.show', compact('user'));
-        })->middleware(PermissionCheck::class . ':users.view')
+        })->middleware('permission:users.view')
           ->name('show');
 
         Route::get('/{user}/edit', function ($user) {
             return view('users.edit', compact('user'));
-        })->middleware(PermissionCheck::class . ':users.edit')
+        })->middleware('permission:users.edit')
           ->name('edit');
 
         Route::delete('/{user}', function ($user) {
             // User deletion logic would go here
-            return redirect()->route('users.index');
-        })->middleware(PermissionCheck::class . ':users.delete')
+            return redirect()->route('ui.users.index');
+        })->middleware('permission:users.delete')
           ->name('destroy');
     });
 
@@ -172,23 +170,23 @@ Route::middleware(['auth', SessionSecurity::class])->group(function () {
         
         Route::get('/', function () {
             return view('roles.index');
-        })->middleware(PermissionCheck::class . ':roles.view_all')
+        })->middleware('permission:roles.view_all')
           ->name('index');
 
         Route::get('/create', function () {
             return view('roles.create');
-        })->middleware(PermissionCheck::class . ':roles.create')
+        })->middleware('permission:roles.create')
           ->name('create');
 
         Route::get('/{role}/edit', function ($role) {
             return view('roles.edit', compact('role'));
-        })->middleware(PermissionCheck::class . ':roles.edit')
+        })->middleware('permission:roles.edit')
           ->name('edit');
 
         Route::delete('/{role}', function ($role) {
             // Role deletion logic would go here
             return redirect()->route('roles.index');
-        })->middleware(PermissionCheck::class . ':roles.delete')
+        })->middleware('permission:roles.delete')
           ->name('destroy');
     });
 
@@ -197,12 +195,12 @@ Route::middleware(['auth', SessionSecurity::class])->group(function () {
         
         Route::get('/', function () {
             return view('permissions.index');
-        })->middleware(PermissionCheck::class . ':permissions.view_all')
+        })->middleware('permission:permissions.view_all')
           ->name('index');
 
         Route::get('/manage', function () {
             return view('permissions.manage');
-        })->middleware(PermissionCheck::class . ':permissions.manage')
+        })->middleware('permission:permissions.manage')
           ->name('manage');
     });
 
@@ -211,22 +209,22 @@ Route::middleware(['auth', SessionSecurity::class])->group(function () {
         
         Route::get('/', function () {
             return view('schools.index');
-        })->middleware(PermissionCheck::class . ':schools.view_all')
+        })->middleware('permission:schools.view_all')
           ->name('index');
 
         Route::get('/create', function () {
             return view('schools.create');
-        })->middleware(PermissionCheck::class . ':schools.create')
+        })->middleware('permission:schools.create')
           ->name('create');
 
         Route::get('/{school}', function ($school) {
             return view('schools.show', compact('school'));
-        })->middleware(PermissionCheck::class . ':schools.view')
+        })->middleware('permission:schools.view')
           ->name('show');
 
         Route::get('/{school}/edit', function ($school) {
             return view('schools.edit', compact('school'));
-        })->middleware(PermissionCheck::class . ':schools.edit')
+        })->middleware('permission:schools.edit')
           ->name('edit');
     });
 
@@ -235,22 +233,22 @@ Route::middleware(['auth', SessionSecurity::class])->group(function () {
         
         Route::get('/settings', function () {
             return view('system.settings');
-        })->middleware(PermissionCheck::class . ':system.settings.view')
+        })->middleware('permission:system.settings.view')
           ->name('settings');
 
         Route::get('/backup', function () {
             return view('system.backup');
-        })->middleware(PermissionCheck::class . ':system.backup')
+        })->middleware('permission:system.backup')
           ->name('backup');
 
         Route::get('/logs', function () {
             return view('system.logs');
-        })->middleware(PermissionCheck::class . ':system.logs.view')
+        })->middleware('permission:system.logs.view')
           ->name('logs');
 
         Route::get('/audit', function () {
             return view('system.audit');
-        })->middleware(PermissionCheck::class . ':audit.view')
+        })->middleware('permission:audit.view')
           ->name('audit');
     });
 
@@ -340,23 +338,23 @@ Route::middleware(['auth', SessionSecurity::class])->group(function () {
 });
 
 // API routes for AJAX requests
-Route::prefix('api')->middleware(['auth', SessionSecurity::class])->group(function () {
+Route::prefix('api')->name('api.')->middleware(['auth', 'session.security'])->group(function () {
     
     // User management API
     Route::apiResource('users', 'Api\UserController')
-         ->middleware(PermissionCheck::class . ':users.view_all,users.create,users.edit,users.delete');
+         ->middleware('permission:users.view_all,users.create,users.edit,users.delete');
 
     // Role management API
     Route::apiResource('roles', 'Api\RoleController')
-         ->middleware(PermissionCheck::class . ':roles.view_all,roles.create,roles.edit,roles.delete');
+         ->middleware('permission:roles.view_all,roles.create,roles.edit,roles.delete');
 
     // Permission management API
     Route::get('/permissions', 'Api\PermissionController@index')
-         ->middleware(PermissionCheck::class . ':permissions.view_all');
+         ->middleware('permission:permissions.view_all');
 
     // School management API
     Route::apiResource('schools', 'Api\SchoolController')
-         ->middleware(PermissionCheck::class . ':schools.view_all,schools.create,schools.edit,schools.delete');
+         ->middleware('permission:schools.view_all,schools.create,schools.edit,schools.delete');
 
     // Session management API
     Route::get('/sessions', 'Api\SessionController@index')

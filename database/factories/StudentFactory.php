@@ -25,6 +25,10 @@ class StudentFactory extends Factory
             'user_id' => User::factory(),
             'name' => fake()->name(),
             'admission_no' => 'ADM' . fake()->unique()->numberBetween(1000, 9999),
+            // Keep both columns in sync to satisfy DB constraints
+            'admission_number' => function (array $attributes) {
+                return $attributes['admission_no'] ?? ('ADM' . fake()->unique()->numberBetween(1000, 9999));
+            },
             'father_name' => fake()->name('male'),
             'mother_name' => fake()->name('female'),
             'dob' => fake()->dateTimeBetween('-18 years', '-5 years')->format('Y-m-d'),
@@ -78,6 +82,7 @@ class StudentFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'admission_no' => $admissionNumber,
+            'admission_number' => $admissionNumber,
         ]);
     }
 }

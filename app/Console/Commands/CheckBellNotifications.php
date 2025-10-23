@@ -4,7 +4,12 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\BellTiming;
+use App\Models\SpecialSchedule;
+use App\Models\Holiday;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection;
+use Carbon\Carbon;
+use App\Models\BellLog;
 
 class CheckBellNotifications extends Command
 {
@@ -27,30 +32,89 @@ class CheckBellNotifications extends Command
      */
     public function handle()
     {
-        $bellsToRing = BellTiming::checkBellTime();
+        // Respect holidays unless a special schedule is active
+        $isHolidayToday = Holiday::current()->exists();
+        $todaySpecial = SpecialSchedule::getTodaySpecialSchedule();
+
+        if ($isHolidayToday && !$todaySpecial) {
+            // Persist suppressed log
+            BellLog::create([
+                'bell_timing_id' => null,
+                'special_schedule_id' => null,
+                'schedule_type' => 'regular',
+                'ring_type' => 'auto',
+                'name' => 'Holiday - No Bells',
+                'time' => Carbon::now()->format('H:i'),
+                'season' => BellTiming::getCurrentSeason(),
+                'date' => now()->toDateString(),
+                'suppressed' => true,
+                'forced' => false,
+                'reason' => 'holiday',
+                'metadata' => null,
+            ]);
+
+            $this->info('Skipping bell notifications due to holiday.');
+            Log::info('Bell notifications skipped: Holiday active and no special schedule.');
+            return Command::SUCCESS;
+        }
+
+        $bellsToRing = collect();
+        $currentTimeStr = Carbon::now()->format('H:i');
+
+        if ($todaySpecial && is_array($todaySpecial->custom_timings) && count($todaySpecial->custom_timings) > 0) {
+            foreach ($todaySpecial->custom_timings as $timing) {
+                $timingStr = $timing['time'] ?? null;
+                if ($timingStr && $timingStr === $currentTimeStr) {
+                    // Create a transient BellTiming-like model for consistent handling
+                    $bell = new BellTiming([
+                        'name' => $timing['name'] ?? $todaySpecial->name,
+                        'time' => Carbon::createFromFormat('H:i', $timingStr),
+                        'season' => BellTiming::getCurrentSeason(),
+                        'type' => $timing['type'] ?? 'start',
+                        'description' => $todaySpecial->description ?? null,
+                        'is_active' => true,
+                    ]);
+                    $bellsToRing->push($bell);
+                }
+            }
+        } else {
+            // Regular schedule
+            $bellsToRing = BellTiming::checkBellTime();
+        }
 
         if ($bellsToRing->count() > 0) {
             foreach ($bellsToRing as $bell) {
-                $this->info("🔔 BELL NOTIFICATION: {$bell->name} at {$bell->time->format('H:i')}");
+                $this->info("🔔 BELL NOTIFICATION: {$bell->name} at " . Carbon::parse($bell->time)->format('H:i'));
                 
-                // Log the bell notification
-                Log::info("Bell notification triggered", [
+                // Log DB entry
+                BellLog::create([
+                    'bell_timing_id' => $bell->id,
+                    'special_schedule_id' => $todaySpecial ? $todaySpecial->id : null,
+                    'schedule_type' => $todaySpecial ? 'special' : 'regular',
+                    'ring_type' => 'auto',
+                    'name' => $bell->name,
+                    'time' => Carbon::parse($bell->time)->format('H:i'),
+                    'season' => $bell->season,
+                    'date' => now()->toDateString(),
+                    'suppressed' => false,
+                    'forced' => false,
+                    'reason' => null,
+                    'metadata' => null,
+                ]);
+                
+                // Log file entry
+                Log::info('Bell notification triggered', [
                     'bell_name' => $bell->name,
-                    'time' => $bell->time->format('H:i'),
+                    'time' => Carbon::parse($bell->time)->format('H:i'),
                     'type' => $bell->type,
-                    'season' => $bell->season
+                    'season' => $bell->season,
+                    'special_schedule' => (bool) $todaySpecial,
                 ]);
 
-                // Here you can add additional notification logic:
-                // - Send push notifications to mobile app
-                // - Trigger physical bell system
-                // - Send notifications to admin dashboard
-                // - Play sound files
-                
                 $this->triggerBellNotification($bell);
             }
         } else {
-            $this->info("No bell notifications at this time.");
+            $this->info('No bell notifications at this time.');
         }
 
         return Command::SUCCESS;
@@ -61,13 +125,6 @@ class CheckBellNotifications extends Command
      */
     private function triggerBellNotification(BellTiming $bell)
     {
-        // This method can be extended to:
-        // 1. Send notifications to connected devices
-        // 2. Update a notification queue/cache
-        // 3. Trigger external bell systems
-        // 4. Send real-time notifications via WebSockets
-        
-        // For now, we'll just log and display
         $message = match($bell->type) {
             'start' => "🟢 {$bell->name} - Classes/Activities Starting",
             'end' => "🔴 {$bell->name} - Period/Activity Ending", 
@@ -77,7 +134,7 @@ class CheckBellNotifications extends Command
 
         $this->line($message);
         
-        // You can add file-based notification for the web interface
+        // Persist lightweight notification for web interface
         $notificationFile = storage_path('app/bell_notifications.json');
         $notifications = [];
         
@@ -89,7 +146,7 @@ class CheckBellNotifications extends Command
             'id' => uniqid(),
             'bell_id' => $bell->id,
             'name' => $bell->name,
-            'time' => $bell->time->format('H:i'),
+            'time' => Carbon::parse($bell->time)->format('H:i'),
             'type' => $bell->type,
             'season' => $bell->season,
             'message' => $message,

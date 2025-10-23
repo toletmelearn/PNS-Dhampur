@@ -305,12 +305,12 @@ class FreePeriodDetectionService
         $score = Constants::get('scoring.base_availability_score', 0);
 
         // Subject expertise (highest priority)
-        if ($subjectId && $teacher->subjects()->where('subject_id', $subjectId)->exists()) {
+        if ($subjectId && $teacher->subjects()->where('id', $subjectId)->exists()) {
             $score += Constants::get('scoring.subject_compatibility_score', 50);
         }
 
         // Class familiarity
-        if ($classId && $teacher->classes()->where('class_id', $classId)->exists()) {
+        if ($classId && $teacher->classes()->where('id', $classId)->exists()) {
             $score += Constants::get('scoring.class_familiarity_score', 30);
         }
 
@@ -457,18 +457,12 @@ class FreePeriodDetectionService
         $score = 0;
         
         // Direct subject match (highest priority)
-        if ($teacher->subjects()->where('subject_id', $subjectId)->exists()) {
+        if ($teacher->subjects()->where('id', $subjectId)->exists()) {
             $score += Constants::get('scoring.max_teacher_score', 100);
             
-            // Check teaching experience in this subject
-            $teachingRecord = DB::table('teacher_subject_assignments')
-                ->where('teacher_id', $teacher->id)
-                ->where('subject_id', $subjectId)
-                ->first();
-                
-            if ($teachingRecord && isset($teachingRecord->years_experience)) {
-                $score += min($teachingRecord->years_experience * Constants::get('scoring.workload_balance_score', 5), Constants::get('scoring.max_experience_points', 25));
-            }
+            // Add experience-based bonus
+            $experienceYears = $teacher->experience ? ($teacher->experience->total_years ?? 0) : 0;
+            $score += min($experienceYears * Constants::get('scoring.workload_balance_score', 5), Constants::get('scoring.max_experience_points', 25));
         } else {
             // Check for related subjects
             $relatedScore = $this->getRelatedSubjectScore($teacher, $subjectId);
@@ -490,7 +484,7 @@ class FreePeriodDetectionService
         $score = 0;
 
         foreach ($relatedSubjects as $relatedSubject) {
-            if ($teacher->subjects()->where('subject_id', $relatedSubject->id)->exists()) {
+            if ($teacher->subjects()->where('id', $relatedSubject->id)->exists()) {
                 $score += Constants::get('scoring.workload_balance_score', 30); // Partial compatibility for related subjects
             }
         }
@@ -503,8 +497,8 @@ class FreePeriodDetectionService
      */
     private function getRelatedSubjects(Subject $subject): Collection
     {
-        return Subject::where('category', $subject->category)
-            ->orWhere('department', $subject->department)
+        // Use same class as a proxy for relatedness in absence of category/department fields
+        return Subject::where('class_id', $subject->class_id)
             ->where('id', '!=', $subject->id)
             ->get();
     }
@@ -516,18 +510,18 @@ class FreePeriodDetectionService
     {
         $score = 0;
         
-        // Direct class teaching experience
-        if ($teacher->classes()->where('class_id', $classId)->exists()) {
+        // Direct class teaching experience (homeroom/class teacher)
+        if ($teacher->classes()->where('id', $classId)->exists()) {
             $score += 50;
         }
         
-        // Same grade level experience
+        // Same section experience as a proxy for familiarity
         $class = ClassModel::find($classId);
         if ($class) {
-            $sameGradeClasses = $teacher->classes()
-                ->where('grade_level', $class->grade_level)
+            $sameSectionClasses = $teacher->classes()
+                ->where('section', $class->section)
                 ->count();
-            $score += min($sameGradeClasses * 10, 30);
+            $score += min($sameSectionClasses * 10, 30);
         }
 
         return min($score, 50);
@@ -667,7 +661,7 @@ class FreePeriodDetectionService
      */
     private function hasSubjectCompatibility(Teacher $teacher, $subjectId): bool
     {
-        return $teacher->subjects()->where('subject_id', $subjectId)->exists();
+        return $teacher->subjects()->where('id', $subjectId)->exists();
     }
 
     /**
@@ -678,12 +672,9 @@ class FreePeriodDetectionService
         $subject = Subject::find($subjectId);
         if (!$subject) return false;
 
-        // Check for subjects in same category or department
+        // Related expertise: teaches any subject in the same class
         return $teacher->subjects()
-            ->where(function($query) use ($subject) {
-                $query->where('category', $subject->category)
-                      ->orWhere('department', $subject->department);
-            })
+            ->where('class_id', $subject->class_id)
             ->exists();
     }
 
@@ -788,7 +779,7 @@ class FreePeriodDetectionService
 
         return $freeTeachers->filter(function ($teacher) use ($options) {
             return $this->hasSubjectCompatibility($teacher, $options['subject_id']) &&
-                   $teacher->classes()->where('class_id', $options['class_id'])->exists();
+                   $teacher->classes()->where('id', $options['class_id'])->exists();
         })->sortByDesc('compatibility_score')->first();
     }
 
@@ -812,7 +803,7 @@ class FreePeriodDetectionService
         $freeTeachers = $this->findFreeTeachers($date, $startTime, $endTime, null, $options);
 
         return $freeTeachers->filter(function ($teacher) use ($options) {
-            return $teacher->classes()->where('class_id', $options['class_id'])->exists();
+            return $teacher->classes()->where('id', $options['class_id'])->exists();
         })->sortByDesc('compatibility_score')->first();
     }
 

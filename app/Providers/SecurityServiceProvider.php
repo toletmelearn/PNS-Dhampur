@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
+use Illuminate\Cache\RateLimiting\Limit;
 
 class SecurityServiceProvider extends ServiceProvider
 {
@@ -255,9 +256,8 @@ class SecurityServiceProvider extends ServiceProvider
                 ],
             ],
             'rate_limiting.storage' => 'redis', // or 'cache'
-            'rate_limiting.key_generator' => function (Request $request) {
-                return $request->user()?->id ?? $request->ip();
-            },
+            // Replace non-serializable closure with a config-safe identifier
+            'rate_limiting.key_generator' => 'user_or_ip',
         ]);
     }
 

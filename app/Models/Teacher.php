@@ -12,10 +12,10 @@ class Teacher extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'user_id','qualification','experience_years','salary','joining_date','documents'
+        'user_id','qualification','experience_years','salary','joining_date','documents','is_active','can_substitute'
     ];
 
-    protected $casts = ['documents'=>'array'];
+    protected $casts = ['documents'=>'array','is_active'=>'boolean','can_substitute'=>'boolean'];
 
     public function user() { return $this->belongsTo(User::class); }
     public function classes() { return $this->hasMany(ClassModel::class, 'class_teacher_id'); }
@@ -23,9 +23,10 @@ class Teacher extends Model
     public function syllabus() { return $this->hasMany(Syllabus::class); }
     
     // Substitution relationships
-    public function substitutionRequests() { return $this->hasMany(TeacherSubstitution::class, 'absent_teacher_id'); }
+    public function substitutionRequests() { return $this->hasMany(TeacherSubstitution::class, 'original_teacher_id'); }
     public function substitutionAssignments() { return $this->hasMany(TeacherSubstitution::class, 'substitute_teacher_id'); }
     public function availability() { return $this->hasMany(TeacherAvailability::class); }
+    public function absences() { return $this->hasMany(TeacherAbsence::class, 'teacher_id'); }
     
     // Document relationships
     public function teacherDocuments() { return $this->hasMany(TeacherDocument::class); }
@@ -81,7 +82,7 @@ class Teacher extends Model
                     $query->where('is_active', true);
                 })
                 ->whereDoesntHave('substitutionRequests', function ($query) use ($date) {
-                    $query->whereDate('date', $date);
+                    $query->whereDate('substitution_date', $date);
                 })
                 ->get()
                 ->filter(function ($teacher) use ($date, $timeSlot) {
@@ -103,11 +104,11 @@ class Teacher extends Model
             return [
                 'classes_taught' => $this->classes()->count(),
                 'substitutions_completed' => $this->substitutionAssignments()
-                    ->whereYear('date', $academicYear)
+                    ->whereYear('substitution_date', $academicYear)
                     ->where('status', 'completed')
                     ->count(),
                 'substitutions_requested' => $this->substitutionRequests()
-                    ->whereYear('date', $academicYear)
+                    ->whereYear('substitution_date', $academicYear)
                     ->count(),
                 'reliability_score' => $this->calculateReliabilityScore($academicYear),
                 'experience_years' => $this->experience_years,
@@ -198,13 +199,13 @@ class Teacher extends Model
     private function calculateReliabilityScore($academicYear)
     {
         $totalAssignments = $this->substitutionAssignments()
-            ->whereYear('date', $academicYear)
+            ->whereYear('substitution_date', $academicYear)
             ->count();
             
         if ($totalAssignments == 0) return 100;
         
         $completedAssignments = $this->substitutionAssignments()
-            ->whereYear('date', $academicYear)
+            ->whereYear('substitution_date', $academicYear)
             ->where('status', 'completed')
             ->count();
             
@@ -221,6 +222,9 @@ class Teacher extends Model
             
         return min(100, round((($currentClasses + $activeSubstitutions) / $maxClasses) * 100, 2));
     }
+
+    // Add subjects relationship (a teacher can teach many subjects)
+    public function subjects() { return $this->hasMany(Subject::class, 'teacher_id'); }
 
     private function getSubjectsTaught()
     {
@@ -243,5 +247,33 @@ class Teacher extends Model
         static::deleted(function ($teacher) {
             self::clearTeacherCache($teacher->id);
         });
+    }
+
+    // Experience/Portfolio relationships
+    public function experience()
+    {
+        return $this->hasOne(TeacherExperience::class);
+    }
+
+    public function employmentHistories()
+    {
+        return $this->hasMany(EmploymentHistory::class);
+    }
+
+    public function certifications()
+    {
+        return $this->hasMany(Certification::class);
+    }
+
+    public function performanceReviews()
+    {
+        return $this->hasMany(PerformanceReview::class);
+    }
+
+    public function skills()
+    {
+        return $this->belongsToMany(Skill::class, 'skill_teacher')
+            ->withPivot(['proficiency_level', 'years_experience', 'verified', 'endorsements_count', 'notes'])
+            ->withTimestamps();
     }
 }

@@ -67,6 +67,10 @@ class StudentVerification extends Model
     const STATUS_VERIFIED = 'verified';
     const STATUS_FAILED = 'failed';
     const STATUS_MANUAL_REVIEW = 'manual_review';
+    // Aliases to align with controller/service usage
+    const STATUS_APPROVED = 'verified';
+    const STATUS_REJECTED = 'failed';
+    const STATUS_MISMATCH = 'mismatch';
 
     // Verification methods
     const METHOD_AUTOMATIC = 'automatic';
@@ -99,6 +103,16 @@ class StudentVerification extends Model
     public function auditLogs()
     {
         return $this->hasMany(VerificationAuditLog::class, 'verification_id');
+    }
+
+    public function documentMatches()
+    {
+        return $this->hasMany(\App\Models\DocumentMatch::class, 'verification_id');
+    }
+
+    public function discrepancyReport()
+    {
+        return $this->hasOne(\App\Models\DiscrepancyReport::class, 'verification_id');
     }
 
     /**

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\BellTiming;
 use App\Models\BellNotification;
 use App\Models\SpecialSchedule;
+use App\Models\Holiday;
+use App\Models\BellLog;
 use App\Services\SeasonSwitchingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -271,16 +273,101 @@ class BellTimingController extends Controller
      */
     public function checkBellNotification(): JsonResponse
     {
-        $bellsToRing = BellTiming::checkBellTime();
+        $todaySpecial = SpecialSchedule::getTodaySpecialSchedule();
+        $isHolidayToday = Holiday::current()->exists();
+
+        // Suppress ringing on holidays unless a special schedule is active
+        if ($isHolidayToday && !$todaySpecial) {
+            $currentTimeStr = Carbon::now()->format('H:i');
+            BellLog::create([
+                'bell_timing_id' => null,
+                'special_schedule_id' => null,
+                'schedule_type' => 'regular',
+                'ring_type' => 'auto',
+                'name' => 'Holiday - No Bells',
+                'time' => $currentTimeStr,
+                'season' => BellTiming::getCurrentSeason(),
+                'date' => now()->toDateString(),
+                'suppressed' => true,
+                'forced' => false,
+                'reason' => 'holiday',
+                'metadata' => null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'bells_to_ring' => [],
+                    'should_ring' => false,
+                    'active_notifications' => [],
+                    'has_notifications' => false,
+                    'suppressed' => true,
+                    'suppression_reason' => 'holiday'
+                ]
+            ]);
+        }
+
+        $currentTimeStr = Carbon::now()->format('H:i');
+        $bellsToRing = [];
+
+        if ($todaySpecial && is_array($todaySpecial->custom_timings) && count($todaySpecial->custom_timings) > 0) {
+            foreach ($todaySpecial->custom_timings as $timing) {
+                $timingStr = $timing['time'] ?? null;
+                if ($timingStr && $timingStr === $currentTimeStr) {
+                    $bellsToRing[] = [
+                        'id' => null,
+                        'name' => $timing['name'] ?? $todaySpecial->name,
+                        'time' => $timingStr,
+                        'type' => $timing['type'] ?? 'start',
+                        'description' => $todaySpecial->description ?? 'Special schedule bell',
+                        'season' => BellTiming::getCurrentSeason(),
+                        'special_schedule' => true
+                    ];
+                }
+            }
+        } else {
+            // Regular schedule fallback
+            $bellsToRing = BellTiming::checkBellTime()->map(function($bell) {
+                return [
+                    'id' => $bell->id,
+                    'name' => $bell->name,
+                    'time' => \Carbon\Carbon::parse($bell->time)->format('H:i'),
+                    'type' => $bell->type,
+                    'description' => $bell->description,
+                    'season' => $bell->season,
+                    'special_schedule' => false
+                ];
+            })->values()->all();
+        }
+
         $activeNotifications = BellNotification::getActiveNotifications();
+
+        // Log bell ring events
+        foreach ($bellsToRing as $entry) {
+            BellLog::create([
+                'bell_timing_id' => $entry['id'],
+                'special_schedule_id' => ($entry['special_schedule'] && $todaySpecial) ? $todaySpecial->id : null,
+                'schedule_type' => $entry['special_schedule'] ? 'special' : 'regular',
+                'ring_type' => 'auto',
+                'name' => $entry['name'],
+                'time' => $entry['time'],
+                'season' => $entry['season'] ?? BellTiming::getCurrentSeason(),
+                'date' => now()->toDateString(),
+                'suppressed' => false,
+                'forced' => false,
+                'reason' => null,
+                'metadata' => null,
+            ]);
+        }
 
         return response()->json([
             'success' => true,
             'data' => [
                 'bells_to_ring' => $bellsToRing,
-                'should_ring' => $bellsToRing->count() > 0,
+                'should_ring' => count($bellsToRing) > 0,
                 'active_notifications' => $activeNotifications,
-                'has_notifications' => $activeNotifications->count() > 0
+                'has_notifications' => $activeNotifications->count() > 0,
+                'special_schedule_active' => (bool) $todaySpecial
             ]
         ]);
     }
@@ -592,5 +679,124 @@ class BellTimingController extends Controller
                 'message' => 'Failed to check season switch: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Manually trigger a bell ring now
+     */
+    public function ringNow(Request $request): JsonResponse
+    {
+        $force = (bool) $request->boolean('force', false);
+        $name = $request->input('name', 'Manual Bell');
+        $type = $request->input('type', 'start');
+        $description = $request->input('description', 'Manual ring triggered');
+
+        $todaySpecial = SpecialSchedule::getTodaySpecialSchedule();
+        $isHolidayToday = Holiday::current()->exists();
+
+        if ($isHolidayToday && !$todaySpecial && !$force) {
+            // Log suppressed manual attempt
+            BellLog::create([
+                'bell_timing_id' => null,
+                'special_schedule_id' => null,
+                'schedule_type' => 'regular',
+                'ring_type' => 'manual',
+                'name' => $name,
+                'time' => Carbon::now()->format('H:i'),
+                'season' => BellTiming::getCurrentSeason(),
+                'date' => now()->toDateString(),
+                'suppressed' => true,
+                'forced' => false,
+                'reason' => 'holiday',
+                'metadata' => null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'bells_to_ring' => [],
+                    'should_ring' => false,
+                    'active_notifications' => [],
+                    'has_notifications' => false,
+                    'suppressed' => true,
+                    'suppression_reason' => 'holiday'
+                ]
+            ]);
+        }
+
+        $bell = [
+            'id' => null,
+            'name' => $name,
+            'time' => Carbon::now()->format('H:i'),
+            'type' => $type,
+            'description' => $description,
+            'season' => BellTiming::getCurrentSeason(),
+            'special_schedule' => (bool) $todaySpecial,
+            'manual' => true
+        ];
+
+        $activeNotifications = BellNotification::getActiveNotifications();
+
+        // Log manual ring
+        BellLog::create([
+            'bell_timing_id' => null,
+            'special_schedule_id' => $todaySpecial ? $todaySpecial->id : null,
+            'schedule_type' => $todaySpecial ? 'special' : 'regular',
+            'ring_type' => 'manual',
+            'name' => $name,
+            'time' => $bell['time'],
+            'season' => $bell['season'],
+            'date' => now()->toDateString(),
+            'suppressed' => false,
+            'forced' => $force,
+            'reason' => $force ? 'manual_forced' : null,
+            'metadata' => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'bells_to_ring' => [$bell],
+                'should_ring' => true,
+                'active_notifications' => $activeNotifications,
+                'has_notifications' => $activeNotifications->count() > 0,
+                'special_schedule_active' => (bool) $todaySpecial
+            ]
+        ]);
+    }
+
+    /**
+     * Get recent bell logs with optional filters
+     */
+    public function recentBellLogs(Request $request): JsonResponse
+    {
+        $limit = (int) $request->get('limit', 50);
+        $limit = max(1, min($limit, 200));
+
+        $query = BellLog::query()->orderBy('date', 'desc')->orderBy('time', 'desc');
+
+        if ($request->filled('date')) {
+            $query->whereDate('date', $request->get('date'));
+        }
+        if ($request->filled('season')) {
+            $query->where('season', $request->get('season'));
+        }
+        if ($request->filled('schedule_type')) {
+            $query->where('schedule_type', $request->get('schedule_type'));
+        }
+        if ($request->filled('suppressed')) {
+            $query->where('suppressed', (bool) $request->boolean('suppressed'));
+        }
+        if ($request->filled('forced')) {
+            $query->where('forced', (bool) $request->boolean('forced'));
+        }
+
+        $logs = $query->limit($limit)->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $logs,
+            'count' => $logs->count(),
+        ]);
     }
 }

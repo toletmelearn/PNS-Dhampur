@@ -23,7 +23,9 @@ class ModuleServiceProvider extends ServiceProvider
         'Transport',
         'Communication',
         'Reports',
-        'Settings'
+        'Settings',
+        'ParentPortal',
+        'Hostel'
     ];
 
     /**
@@ -128,7 +130,7 @@ class ModuleServiceProvider extends ServiceProvider
             $routePath = app_path("Modules/{$module}/routes.php");
             
             if (file_exists($routePath)) {
-                Route::middleware(['web', 'auth', 'verified', 'module', 'security', 'audit'])
+                Route::middleware(['web', 'auth', 'verified', 'module:' . strtolower($module), 'security', 'audit'])
                     ->prefix(strtolower($module))
                     ->name(strtolower($module) . '.')
                     ->group($routePath);

@@ -24,6 +24,12 @@
                     <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#specialScheduleModal">
                         <i class="fas fa-calendar-alt"></i> Special Schedule
                     </button>
+                    <button class="btn btn-warning" onclick="ringNow()">
+                        <i class="fas fa-bell"></i> Ring Now
+                    </button>
+                    <button class="btn btn-danger" onclick="ringNow(true)">
+                        <i class="fas fa-exclamation-triangle"></i> Force Ring
+                    </button>
                 </div>
             </div>
         </div>
@@ -471,6 +477,57 @@ function checkBellNotifications() {
         });
 }
 
+// Manual ring handler
+function ringNow(force = false) {
+    const token = $('meta[name="csrf-token"]').attr('content');
+    $.ajax({
+        url: '/bell-schedule/ring-now',
+        method: 'POST',
+        data: { force: force, _token: token }
+    }).done(function(response) {
+        if (response && response.success) {
+            const data = response.data || {};
+
+            // If suppressed due to holiday and not forced
+            if (((data.suppressed && data.suppression_reason === 'holiday') || data.suppressed_due_to_holiday) && !force) {
+                showSystemNotification({
+                    title: 'Bell Ringing',
+                    message: data.message || 'Ringing suppressed due to holiday.',
+                    priority: 'low',
+                    auto_dismiss: true
+                });
+                return;
+            }
+
+            // Show ring notifications
+            if (Array.isArray(data.bells_to_ring) && data.bells_to_ring.length > 0) {
+                data.bells_to_ring.forEach(function(bell) { showBellNotification(bell); });
+            } else {
+                showSystemNotification({
+                    title: 'Bell Ringing',
+                    message: force ? 'Forced ring executed.' : 'No bell available to ring now.',
+                    priority: force ? 'medium' : 'low',
+                    auto_dismiss: true
+                });
+            }
+        } else {
+            showSystemNotification({
+                title: 'Bell Ringing',
+                message: (response && response.message) ? response.message : 'Failed to ring bell.',
+                priority: 'high',
+                auto_dismiss: false
+            });
+        }
+    }).fail(function(xhr) {
+        const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Server error while ringing bell.';
+        showSystemNotification({
+            title: 'Bell Ringing',
+            message: msg,
+            priority: 'high',
+            auto_dismiss: false
+        });
+    });
+}
 function showBellNotification(bell) {
     const notification = $(`
         <div class="alert alert-success alert-dismissible fade show bell-notification" role="alert">
@@ -984,6 +1041,43 @@ function createPredefinedSchedule(type) {
         });
     }
 }
+
+<!-- Recent Bell Logs -->
+<div class="row mt-4" id="recent-logs-section">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i> Recent Bell Logs</h5>
+                <div class="d-flex align-items-center">
+                    <label for="recent-logs-limit" class="form-label me-2 mb-0">Limit</label>
+                    <input type="number" id="recent-logs-limit" class="form-control form-control-sm d-inline-block w-auto me-2" value="13" min="1" max="200">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="refreshRecentBellLogs()">Refresh</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm" id="recent-bell-logs-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Name</th>
+                                <th>Season</th>
+                                <th>Schedule</th>
+                                <th>Ring</th>
+                                <th>Suppressed</th>
+                                <th>Forced</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div id="recent-logs-error" class="text-danger d-none"></div>
+            </div>
+        </div>
+    </div>
+</div>
 </script>
 @endsection
 
@@ -1142,7 +1236,7 @@ function startRealTimeUpdates() {
      // Update current period
      const currentPeriodName = document.getElementById('current-period-name');
      const currentPeriodTime = document.getElementById('current-period-time');
-     const periodProgressBar = document.getElementById('period-progress-bar');
+     const periodProgressBar = document.getElementById('period-progress-container');
      
      if (scheduleData.current_period) {
          if (currentPeriodName) {

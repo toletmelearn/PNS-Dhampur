@@ -83,6 +83,26 @@ class ExamPaper extends Model
         return $this->belongsTo(User::class, 'rejected_by');
     }
 
+    public function template()
+    {
+        return $this->belongsTo(PaperTemplate::class, 'template_id');
+    }
+
+    public function versions()
+    {
+        return $this->hasMany(PaperVersion::class, 'exam_paper_id')->orderByDesc('version_number');
+    }
+
+    public function submissions()
+    {
+        return $this->hasMany(PaperSubmission::class, 'exam_paper_id');
+    }
+
+    public function getLatestVersionAttribute()
+    {
+        return $this->versions()->first();
+    }
+
     // Scopes
     public function scopePublished($query)
     {

@@ -12,8 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-
-class InventoryManagementService
+use App\Models\StockAlert;
 {
     protected $cachePrefix = 'inventory_';
     protected $cacheTTL = 300; // 5 minutes
@@ -541,5 +540,54 @@ class InventoryManagementService
         $monthsOwned = now()->diffInMonths($purchaseDate);
         $monthlyDepreciation = ($asset->purchase_price * $asset->depreciation_rate) / 100 / 12;
         return $monthlyDepreciation * $monthsOwned;
+    }
+    /**
+     * Get persisted stock alert feed with filters
+     */
+    public function getStockAlertFeed(array $filters = [])
+    {
+        $query = StockAlert::with(['item.category', 'acknowledgedBy', 'resolvedBy']);
+
+        if (!empty($filters['status']) && $filters['status'] !== 'all') {
+            $query->where('status', $filters['status']);
+        } else {
+            $query->whereIn('status', ['active', 'acknowledged']);
+        }
+
+        if (!empty($filters['severity']) && $filters['severity'] !== 'all') {
+            $query->where('severity', $filters['severity']);
+        }
+
+        if (!empty($filters['type']) && $filters['type'] !== 'all') {
+            $query->where('alert_type', $filters['type']);
+        }
+
+        if (!empty($filters['category_id'])) {
+            $query->whereHas('item', function ($q) use ($filters) {
+                $q->where('category_id', $filters['category_id']);
+            });
+        }
+
+        if (!empty($filters['from'])) {
+            $query->where('triggered_at', '>=', $filters['from']);
+        }
+
+        if (!empty($filters['to'])) {
+            $query->where('triggered_at', '<=', $filters['to']);
+        }
+
+        if (!empty($filters['search'])) {
+            $query->whereHas('item', function ($q) use ($filters) {
+                $q->where('name', 'like', '%' . $filters['search'] . '%')
+                  ->orWhere('item_code', 'like', '%' . $filters['search'] . '%');
+            });
+        }
+
+        $query->orderByDesc('triggered_at');
+
+        $perPage = $filters['per_page'] ?? 15;
+        $alerts = $query->paginate($perPage);
+
+        return $alerts;
     }
 }

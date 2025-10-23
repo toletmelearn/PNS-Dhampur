@@ -8,13 +8,25 @@
         "analyze": "vite build --mode analyze"
     },
     "devDependencies": {
+        "@vitejs/plugin-legacy": "^4.1.1",
+        "autoprefixer": "^10.4.21",
         "axios": "^1.1.2",
+        "cssnano": "^7.1.1",
         "laravel-vite-plugin": "^0.7.2",
         "lodash": "^4.17.19",
-        "postcss": "^8.1.14",
-        "vite": "^4.0.0",
-        "@vitejs/plugin-legacy": "^4.1.1",
+        "postcss": "^8.5.6",
         "rollup-plugin-visualizer": "^5.9.2",
-        "terser": "^5.19.4"
+        "terser": "^5.19.4",
+        "vite": "^4.0.0"
+    },
+    "dependencies": {
+        "@playwright/test": "^1.56.1",
+        "@popperjs/core": "^2.11.8",
+        "bootstrap": "^5.3.8",
+        "chart.js": "^4.5.1",
+        "jquery": "^3.7.1",
+        "moment": "^2.30.1",
+        "playwright": "^1.56.1",
+        "sweetalert2": "^11.26.3"
     }
 }

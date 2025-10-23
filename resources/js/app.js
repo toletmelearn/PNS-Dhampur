@@ -528,3 +528,61 @@ if (typeof jQuery !== 'undefined') {
         });
     };
 }
+
+// Register Service Worker for PWA + add responsive table helpers
+(function() {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('/js/sw.js').then(function(reg) {
+        console.log('ServiceWorker registration successful with scope: ', reg.scope);
+      }).catch(function(err) {
+        console.error('ServiceWorker registration failed: ', err);
+      });
+    });
+  }
+
+  // Responsive table: wrap wide tables and add scroll hint
+  function enhanceTables() {
+    document.querySelectorAll('table').forEach(function(table) {
+      // Skip if already wrapped
+      if (table.parentElement && table.parentElement.classList.contains('table-responsive')) return;
+      const wrapper = document.createElement('div');
+      wrapper.className = 'table-responsive';
+      table.parentNode.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+
+      // Add scroll hint for small screens
+      const hint = document.createElement('div');
+      hint.className = 'table-scroll-hint';
+      hint.textContent = 'Swipe to scroll →';
+      wrapper.appendChild(hint);
+    });
+  }
+
+  // Touch-friendly: increase hit area for buttons and inputs on mobile
+  function enhanceTouchTargets() {
+    const minSize = 44; // Apple's HIG recommended min touch size
+    const selectors = ['button', '.btn', 'input[type="submit"]', 'a.btn', 'label'];
+    selectors.forEach(function(sel) {
+      document.querySelectorAll(sel).forEach(function(el) {
+        const rect = el.getBoundingClientRect();
+        const height = rect.height;
+        const width = rect.width;
+        if (height < minSize) el.style.minHeight = minSize + 'px';
+        if (width < minSize) el.style.minWidth = minSize + 'px';
+        el.style.padding = '10px 14px';
+      });
+    });
+  }
+
+  function initMobileEnhancements() {
+    enhanceTables();
+    enhanceTouchTargets();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMobileEnhancements);
+  } else {
+    initMobileEnhancements();
+  }
+})();

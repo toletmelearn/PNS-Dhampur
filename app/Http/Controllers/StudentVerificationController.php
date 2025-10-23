@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
+use App\Models\DocumentMatch;
+use App\Models\DiscrepancyReport;
+use Illuminate\Support\Facades\DB;
 
 class StudentVerificationController extends Controller
 {
@@ -1076,6 +1079,64 @@ class StudentVerificationController extends Controller
                 $verification->extracted_data
             );
 
+            // Persist mismatch details as DocumentMatch rows
+            $resolutionsByField = [];
+            foreach (($analysis['resolutions'] ?? []) as $res) {
+                if (isset($res['field'])) {
+                    $resolutionsByField[$res['field']] = $res;
+                }
+            }
+
+            // Clear previous matches for this verification
+            $verification->documentMatches()->delete();
+
+            $reject = (config('verification.thresholds.overall.reject', 40.0) / 100.0);
+            $manual = (config('verification.thresholds.overall.manual_review', 60.0) / 100.0);
+
+            foreach ($analysis['mismatches'] as $mismatch) {
+                $field = $mismatch['field'];
+                $conf = (float) ($mismatch['confidence'] ?? 0.0);
+                $severity = $conf <= $reject ? 'high' : ($conf <= $manual ? 'medium' : 'low');
+                $autoResolvable = isset($resolutionsByField[$field]) && (($resolutionsByField[$field]['action'] ?? null) === 'auto_approve');
+
+                $verification->documentMatches()->create([
+                    'field' => $field,
+                    'expected_value' => $mismatch['expected'] ?? null,
+                    'document_value' => $mismatch['extracted'] ?? null,
+                    'similarity_score' => $mismatch['similarity_score'] ?? null,
+                    'confidence' => $conf,
+                    'mismatch_type' => $mismatch['mismatch_type'] ?? null,
+                    'severity' => $severity,
+                    'auto_resolvable' => $autoResolvable,
+                    'suggestions' => $mismatch['suggestions'] ?? [],
+                    'source_document_type' => $verification->document_type,
+                ]);
+            }
+
+            // Upsert discrepancy report
+            $status = $analysis['auto_resolvable'] ? 'auto_resolvable' : ($analysis['requires_manual_review'] ? 'pending_manual' : 'analyzed');
+            $verification->discrepancyReport()->updateOrCreate(
+                ['verification_id' => $verification->id],
+                [
+                    'student_id' => $verification->student_id,
+                    'mismatches_count' => count($analysis['mismatches']),
+                    'overall_confidence' => $analysis['overall_confidence'],
+                    'recommendation' => $analysis['recommendation'],
+                    'auto_resolvable' => $analysis['auto_resolvable'],
+                    'status' => $status,
+                    'analysis' => $analysis,
+                    'created_by' => Auth::id(),
+                ]
+            );
+
+            // Audit trail
+            $this->auditTrailService->logMismatchAnalysis(
+                $verification,
+                $analysis['mismatches'],
+                $analysis['recommendation'],
+                $analysis['overall_confidence']
+            );
+
             return response()->json([
                 'success' => true,
                 'analysis' => $analysis,
@@ -1116,11 +1177,75 @@ class StudentVerificationController extends Controller
                 $verification->extracted_data
             );
 
+            // Persist mismatch details before applying resolution
+            $resolutionsByField = [];
+            foreach (($analysis['resolutions'] ?? []) as $res) {
+                if (isset($res['field'])) {
+                    $resolutionsByField[$res['field']] = $res;
+                }
+            }
+
+            // Clear previous matches for this verification
+            $verification->documentMatches()->delete();
+
+            $reject = (config('verification.thresholds.overall.reject', 40.0) / 100.0);
+            $manual = (config('verification.thresholds.overall.manual_review', 60.0) / 100.0);
+
+            foreach ($analysis['mismatches'] as $mismatch) {
+                $field = $mismatch['field'];
+                $conf = (float) ($mismatch['confidence'] ?? 0.0);
+                $severity = $conf <= $reject ? 'high' : ($conf <= $manual ? 'medium' : 'low');
+                $autoResolvable = isset($resolutionsByField[$field]) && (($resolutionsByField[$field]['action'] ?? null) === 'auto_approve');
+
+                $verification->documentMatches()->create([
+                    'field' => $field,
+                    'expected_value' => $mismatch['expected'] ?? null,
+                    'document_value' => $mismatch['extracted'] ?? null,
+                    'similarity_score' => $mismatch['similarity_score'] ?? null,
+                    'confidence' => $conf,
+                    'mismatch_type' => $mismatch['mismatch_type'] ?? null,
+                    'severity' => $severity,
+                    'auto_resolvable' => $autoResolvable,
+                    'suggestions' => $mismatch['suggestions'] ?? [],
+                    'source_document_type' => $verification->document_type,
+                ]);
+            }
+
+            // Upsert discrepancy report baseline status
+            $status = $analysis['auto_resolvable'] ? 'auto_resolvable' : ($analysis['requires_manual_review'] ? 'pending_manual' : 'analyzed');
+            $verification->discrepancyReport()->updateOrCreate(
+                ['verification_id' => $verification->id],
+                [
+                    'student_id' => $verification->student_id,
+                    'mismatches_count' => count($analysis['mismatches']),
+                    'overall_confidence' => $analysis['overall_confidence'],
+                    'recommendation' => $analysis['recommendation'],
+                    'auto_resolvable' => $analysis['auto_resolvable'],
+                    'status' => $status,
+                    'analysis' => $analysis,
+                    'created_by' => Auth::id(),
+                ]
+            );
+
             // Apply automatic resolution if possible
             $resolved = $this->mismatchResolutionService->applyAutomaticResolution(
                 $verification,
                 $analysis
             );
+
+            // Update discrepancy report status based on resolution outcome
+            $useMismatch = (bool) config('verification.use_mismatch_status', false);
+            if ($resolved) {
+                $verification->discrepancyReport()->update([
+                    'status' => 'auto_resolved',
+                    'recommendation' => 'approve',
+                ]);
+            } else {
+                $status = (!empty($analysis['mismatches']) && $useMismatch) ? 'mismatch' : ($analysis['requires_manual_review'] ? 'pending_manual' : 'analyzed');
+                $verification->discrepancyReport()->update([
+                    'status' => $status,
+                ]);
+            }
 
             $verification->refresh();
 
@@ -1204,6 +1329,62 @@ class StudentVerificationController extends Controller
                         $verification->extracted_data
                     );
 
+                    // Persist mismatch details for each verification
+                    $resolutionsByField = [];
+                    foreach (($analysis['resolutions'] ?? []) as $res) {
+                        if (isset($res['field'])) {
+                            $resolutionsByField[$res['field']] = $res;
+                        }
+                    }
+
+                    $verification->documentMatches()->delete();
+
+                    $reject = (config('verification.thresholds.overall.reject', 40.0) / 100.0);
+            $manual = (config('verification.thresholds.overall.manual_review', 60.0) / 100.0);
+
+                    foreach ($analysis['mismatches'] as $mismatch) {
+                        $field = $mismatch['field'];
+                        $conf = (float) ($mismatch['confidence'] ?? 0.0);
+                        $severity = $conf <= $reject ? 'high' : ($conf <= $manual ? 'medium' : 'low');
+                        $autoResolvable = isset($resolutionsByField[$field]) && (($resolutionsByField[$field]['action'] ?? null) === 'auto_approve');
+
+                        $verification->documentMatches()->create([
+                            'field' => $field,
+                            'expected_value' => $mismatch['expected'] ?? null,
+                            'document_value' => $mismatch['extracted'] ?? null,
+                            'similarity_score' => $mismatch['similarity_score'] ?? null,
+                            'confidence' => $conf,
+                            'mismatch_type' => $mismatch['mismatch_type'] ?? null,
+                            'severity' => $severity,
+                            'auto_resolvable' => $autoResolvable,
+                            'suggestions' => $mismatch['suggestions'] ?? [],
+                            'source_document_type' => $verification->document_type,
+                        ]);
+                    }
+
+                    $status = $analysis['auto_resolvable'] ? 'auto_resolvable' : ($analysis['requires_manual_review'] ? 'pending_manual' : 'analyzed');
+                    $verification->discrepancyReport()->updateOrCreate(
+                        ['verification_id' => $verification->id],
+                        [
+                            'student_id' => $verification->student_id,
+                            'mismatches_count' => count($analysis['mismatches']),
+                            'overall_confidence' => $analysis['overall_confidence'],
+                            'recommendation' => $analysis['recommendation'],
+                            'auto_resolvable' => $analysis['auto_resolvable'],
+                            'status' => $status,
+                            'analysis' => $analysis,
+                            'created_by' => Auth::id(),
+                        ]
+                    );
+
+                    // Audit trail
+                    $this->auditTrailService->logMismatchAnalysis(
+                        $verification,
+                        $analysis['mismatches'],
+                        $analysis['recommendation'],
+                        $analysis['overall_confidence']
+                    );
+
                     $results[$verificationId] = $analysis;
                     
                     if ($analysis['auto_resolvable']) {
@@ -1262,11 +1443,73 @@ class StudentVerificationController extends Controller
                         $verification->extracted_data
                     );
 
+                    // Persist mismatch details
+                    $resolutionsByField = [];
+                    foreach (($analysis['resolutions'] ?? []) as $res) {
+                        if (isset($res['field'])) {
+                            $resolutionsByField[$res['field']] = $res;
+                        }
+                    }
+
+                    $verification->documentMatches()->delete();
+
+                    $reject = config('verification.thresholds.overall.reject', 0.30);
+                    $manual = config('verification.thresholds.overall.manual_review', 0.70);
+
+                    foreach ($analysis['mismatches'] as $mismatch) {
+                        $field = $mismatch['field'];
+                        $conf = (float) ($mismatch['confidence'] ?? 0.0);
+                        $severity = $conf <= $reject ? 'high' : ($conf <= $manual ? 'medium' : 'low');
+                        $autoResolvable = isset($resolutionsByField[$field]) && (($resolutionsByField[$field]['action'] ?? null) === 'auto_approve');
+
+                        $verification->documentMatches()->create([
+                            'field' => $field,
+                            'expected_value' => $mismatch['expected'] ?? null,
+                            'document_value' => $mismatch['extracted'] ?? null,
+                            'similarity_score' => $mismatch['similarity_score'] ?? null,
+                            'confidence' => $conf,
+                            'mismatch_type' => $mismatch['mismatch_type'] ?? null,
+                            'severity' => $severity,
+                            'auto_resolvable' => $autoResolvable,
+                            'suggestions' => $mismatch['suggestions'] ?? [],
+                            'source_document_type' => $verification->document_type,
+                        ]);
+                    }
+
+                    $status = $analysis['auto_resolvable'] ? 'auto_resolvable' : ($analysis['requires_manual_review'] ? 'pending_manual' : 'analyzed');
+                    $verification->discrepancyReport()->updateOrCreate(
+                        ['verification_id' => $verification->id],
+                        [
+                            'student_id' => $verification->student_id,
+                            'mismatches_count' => count($analysis['mismatches']),
+                            'overall_confidence' => $analysis['overall_confidence'],
+                            'recommendation' => $analysis['recommendation'],
+                            'auto_resolvable' => $analysis['auto_resolvable'],
+                            'status' => $status,
+                            'analysis' => $analysis,
+                            'created_by' => Auth::id(),
+                        ]
+                    );
+
                     // Apply automatic resolution
                     $resolved = $this->mismatchResolutionService->applyAutomaticResolution(
                         $verification,
                         $analysis
                     );
+
+                    // Update discrepancy report status based on resolution outcome
+                    $useMismatch = (bool) config('verification.use_mismatch_status', false);
+                    if ($resolved) {
+                        $verification->discrepancyReport()->update([
+                            'status' => 'auto_resolved',
+                            'recommendation' => 'approve',
+                        ]);
+                    } else {
+                        $status = (!empty($analysis['mismatches']) && $useMismatch) ? 'mismatch' : ($analysis['requires_manual_review'] ? 'pending_manual' : 'analyzed');
+                        $verification->discrepancyReport()->update([
+                            'status' => $status,
+                        ]);
+                    }
 
                     $verification->refresh();
 

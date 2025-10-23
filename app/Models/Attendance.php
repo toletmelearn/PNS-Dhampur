@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Attendance extends Model
 {
@@ -170,6 +171,14 @@ class Attendance extends Model
     public function getFormattedCheckOutTimeAttribute()
     {
         return $this->check_out_time ? $this->check_out_time->format('H:i A') : null;
+    }
+
+    /**
+     * Mutators
+     */
+    public function setDateAttribute($value)
+    {
+        $this->attributes['date'] = Carbon::parse($value)->format('Y-m-d');
     }
 
     /**

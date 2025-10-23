@@ -150,14 +150,25 @@
         
         .photo-section {
             float: right;
-            width: 80px;
-            height: 100px;
-            border: 1px solid #000;
+            width: 100px;
+            height: 120px;
+            border: 2px solid #000;
             margin-left: 20px;
+            margin-bottom: 15px;
             text-align: center;
-            line-height: 100px;
-            font-size: 10px;
+            line-height: 120px;
+            font-size: 11px;
             color: #666;
+            background-color: #f8f9fa;
+        }
+        .qr-section {
+            float: right;
+            width: 100px;
+            height: 100px;
+            border: 0;
+            margin-left: 20px;
+            margin-bottom: 10px;
+            text-align: center;
         }
     </style>
 </head>

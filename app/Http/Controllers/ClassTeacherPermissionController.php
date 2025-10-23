@@ -53,7 +53,7 @@ class ClassTeacherPermissionController extends Controller
 
         $permissions = $query->orderBy('created_at', 'desc')->paginate(15);
 
-        $teachers = User::role('teacher')->get();
+        $teachers = User::withRole('teacher')->get();
         // Fix N+1 query by adding eager loading for students relationship
         $classes = ClassModel::with(['students'])->get();
         $subjects = Subject::all();
@@ -66,7 +66,7 @@ class ClassTeacherPermissionController extends Controller
 
     public function create()
     {
-        $teachers = User::role('teacher')->get();
+        $teachers = User::withRole('teacher')->get();
         // Fix N+1 query by adding eager loading for students relationship
         $classes = ClassModel::with(['students'])->get();
         $subjects = Subject::all();
@@ -140,7 +140,7 @@ class ClassTeacherPermissionController extends Controller
             return back()->withErrors(['error' => 'Cannot edit revoked permission.']);
         }
 
-        $teachers = User::role('teacher')->get();
+        $teachers = User::withRole('teacher')->get();
         // Fix N+1 query by adding eager loading for students relationship
         $classes = ClassModel::with(['students'])->get();
         $subjects = Subject::all();
@@ -269,7 +269,7 @@ class ClassTeacherPermissionController extends Controller
         $auditTrails = $query->orderBy('created_at', 'desc')->paginate(20);
 
         // Get filter options
-        $teachers = User::role('teacher')->get();
+        $teachers = User::withRole('teacher')->get();
         // Fix N+1 query by adding eager loading for students relationship
         $classes = ClassModel::with(['students'])->get();
         $subjects = Subject::all();

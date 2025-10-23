@@ -14,19 +14,32 @@ class AddAdvancedDatabaseIndexes extends Migration
      */
     public function up()
     {
-        // Helper function to check if index exists
-        $indexExists = function ($table, $indexName) {
+        // Detect database driver to guard MySQL-specific features (e.g., FULLTEXT, partitions)
+        $driver = Schema::getConnection()->getDriverName();
+
+        // Helper function to check if index exists (supports MySQL/MariaDB and SQLite)
+        $indexExists = function ($table, $indexName) use ($driver) {
             try {
-                $indexes = DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$indexName]);
-                return !empty($indexes);
-            } catch (Exception $e) {
+                if (in_array($driver, ['mysql', 'mariadb'])) {
+                    $indexes = DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$indexName]);
+                    return !empty($indexes);
+                }
+                if ($driver === 'sqlite') {
+                    $indexes = DB::select(
+                        "SELECT name FROM sqlite_master WHERE type='index' AND tbl_name = ? AND name = ?",
+                        [$table, $indexName]
+                    );
+                    return !empty($indexes);
+                }
+                return false;
+            } catch (\Throwable $e) {
                 return false;
             }
         };
 
         // Advanced indexes for users table
         if (Schema::hasTable('users')) {
-            Schema::table('users', function (Blueprint $table) use ($indexExists) {
+            Schema::table('users', function (Blueprint $table) use ($indexExists, $driver) {
                 // Composite index for role-based queries
                 if (Schema::hasColumn('users', 'role') && Schema::hasColumn('users', 'status') && !$indexExists('users', 'idx_users_role_status_advanced')) {
                     $table->index(['role', 'status'], 'idx_users_role_status_advanced');
@@ -38,7 +51,11 @@ class AddAdvancedDatabaseIndexes extends Migration
                 }
                 
                 // Full-text search index for name and email
-                if (Schema::hasColumn('users', 'name') && Schema::hasColumn('users', 'email')) {
+                if (
+                    Schema::hasColumn('users', 'name') &&
+                    Schema::hasColumn('users', 'email') &&
+                    in_array($driver, ['mysql', 'mariadb'])
+                ) {
                     DB::statement('ALTER TABLE users ADD FULLTEXT idx_users_search (name, email)');
                 }
             });
@@ -76,14 +93,18 @@ class AddAdvancedDatabaseIndexes extends Migration
 
         // Indexes for library_books table
         if (Schema::hasTable('library_books')) {
-            Schema::table('library_books', function (Blueprint $table) use ($indexExists) {
+            Schema::table('library_books', function (Blueprint $table) use ($indexExists, $driver) {
                 // Composite index for availability
                 if (Schema::hasColumn('library_books', 'status') && Schema::hasColumn('library_books', 'category') && !$indexExists('library_books', 'idx_library_status_category')) {
                     $table->index(['status', 'category'], 'idx_library_status_category');
                 }
                 
                 // Full-text search for books
-                if (Schema::hasColumn('library_books', 'title') && Schema::hasColumn('library_books', 'author')) {
+                if (
+                    Schema::hasColumn('library_books', 'title') &&
+                    Schema::hasColumn('library_books', 'author') &&
+                    in_array($driver, ['mysql', 'mariadb'])
+                ) {
                     DB::statement('ALTER TABLE library_books ADD FULLTEXT idx_library_search (title, author)');
                 }
             });
@@ -123,8 +144,10 @@ class AddAdvancedDatabaseIndexes extends Migration
             });
         }
 
-        // Partitioning for large tables (if supported)
-        $this->createPartitions();
+        // Partitioning for large tables (only for MySQL/MariaDB)
+        if (in_array($driver, ['mysql', 'mariadb'])) {
+            $this->createPartitions();
+        }
     }
 
     /**

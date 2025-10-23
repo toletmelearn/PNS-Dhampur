@@ -856,8 +856,7 @@ function openBackupManager() {
 }
 
 function openUserManager() {
-    alert('Opening User Management System...');
-    // Here you would redirect to user management page
+    window.location.href = "{{ route('admin.users.index') }}";
 }
 
 function openSecurityCenter() {

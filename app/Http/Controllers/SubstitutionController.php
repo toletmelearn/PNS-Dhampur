@@ -111,38 +111,33 @@ class SubstitutionController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'absence_id' => 'nullable|exists:teacher_absences,id',
-            'original_teacher_id' => 'required|exists:teachers,id',
+        $validated = $request->validate([
+            'absent_teacher_id' => 'required|exists:teachers,id',
             'class_id' => 'required|exists:classes,id',
-            'subject_id' => 'required|exists:subjects,id',
             'substitution_date' => 'required|date|after_or_equal:today',
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i|after:start_time',
-            'period_number' => 'required|integer|min:1|max:10',
-            'reason' => 'required|string|max:500',
+            'subject_id' => 'nullable|exists:subjects,id',
+            'reason' => 'nullable|string|max:500',
             'notes' => 'nullable|string|max:1000',
-            'preparation_materials' => 'nullable|string|max:2000',
-            'priority' => 'required|in:low,medium,high,urgent',
-            'is_emergency' => 'boolean',
+            'priority' => 'nullable|in:low,normal,high',
+            'is_emergency' => 'nullable|boolean',
         ]);
 
         $substitution = TeacherSubstitution::create([
-            'absence_id' => $request->absence_id,
-            'original_teacher_id' => $request->original_teacher_id,
-            'class_id' => $request->class_id,
-            'subject_id' => $request->subject_id,
-            'period_number' => $request->period_number,
-            'substitution_date' => $request->substitution_date,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
+            'original_teacher_id' => $validated['absent_teacher_id'],
+            'class_id' => $validated['class_id'],
+            'subject_id' => $validated['subject_id'] ?? null,
+            'substitution_date' => $validated['substitution_date'],
+            'start_time' => $validated['start_time'],
+            'end_time' => $validated['end_time'],
             'status' => TeacherSubstitution::STATUS_PENDING,
-            'reason' => $request->reason,
-            'notes' => $request->notes,
-            'preparation_materials' => $request->preparation_materials,
-            'priority' => $request->priority,
-            'is_emergency' => $request->boolean('is_emergency'),
-            'assigned_by' => Auth::id(),
+            'reason' => $validated['reason'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+            'priority' => $validated['priority'] ?? 'normal',
+            'is_emergency' => (bool)($validated['is_emergency'] ?? false),
+            'requested_by' => Auth::id(),
+            'requested_at' => now(),
         ]);
 
         // Try to auto-assign if requested
@@ -157,7 +152,7 @@ class SubstitutionController extends Controller
                     'success' => true,
                     'message' => 'Substitution created and automatically assigned to ' . $assignedTeacher->name,
                     'substitution' => $substitution->load(['originalTeacher', 'substituteTeacher', 'class', 'subject'])
-                ]);
+                ], 201);
             }
         }
 
@@ -165,7 +160,7 @@ class SubstitutionController extends Controller
             'success' => true,
             'message' => 'Substitution request created successfully',
             'substitution' => $substitution->load(['originalTeacher', 'class', 'subject'])
-        ]);
+        ], 201);
     }
 
     /**
@@ -224,7 +219,7 @@ class SubstitutionController extends Controller
      */
     public function assignSubstitute(Request $request, $id)
     {
-        $request->validate([
+        $validated = $request->validate([
             'substitute_teacher_id' => 'required|exists:teachers,id',
             'notes' => 'nullable|string|max:1000',
         ]);
@@ -238,12 +233,13 @@ class SubstitutionController extends Controller
             ], 400);
         }
 
-        // Check for conflicts
-        $hasConflict = $substitution->hasConflict(
-            $substitution->substitution_date,
-            $substitution->start_time,
-            $substitution->end_time
-        );
+        // Check for conflicts against the selected substitute teacher
+        $hasConflict = TeacherSubstitution::where('substitute_teacher_id', $validated['substitute_teacher_id'])
+            ->where('substitution_date', $substitution->substitution_date)
+            ->where('start_time', '<', $substitution->end_time)
+            ->where('end_time', '>', $substitution->start_time)
+            ->whereIn('status', ['assigned', 'pending'])
+            ->exists();
 
         if ($hasConflict) {
             return response()->json([
@@ -253,8 +249,8 @@ class SubstitutionController extends Controller
         }
 
         $substitution->update([
-            'substitute_teacher_id' => $request->substitute_teacher_id,
-            'status' => TeacherSubstitution::STATUS_PENDING,
+            'substitute_teacher_id' => $validated['substitute_teacher_id'],
+            'status' => 'assigned',
             'assigned_at' => now(),
             'assigned_by' => Auth::id(),
             'notes' => $request->notes,
@@ -692,8 +688,11 @@ class SubstitutionController extends Controller
 
         // Check for teachers not on leave
         $query->whereDoesntHave('absences', function ($q) use ($date) {
-            $q->where('start_date', '<=', $date)
-              ->where('end_date', '>=', $date)
+            $q->where('absence_date', '<=', $date)
+              ->where(function ($inner) use ($date) {
+                  $inner->whereNull('end_date')
+                        ->orWhere('end_date', '>=', $date);
+              })
               ->where('status', 'approved');
         });
 

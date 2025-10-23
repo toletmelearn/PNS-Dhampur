@@ -16,9 +16,9 @@ class Kernel extends ConsoleKernel
         $backupConfig = config('backup.schedules', []);
 
         // Daily full backup
-        if (isset($backupConfig['daily_full']) && $backupConfig['daily_full']['enabled']) {
+        if (isset($backupConfig['daily_full']) && ($backupConfig['daily_full']['enabled'] ?? false)) {
             $schedule->command('backup:create full')
-                ->dailyAt($backupConfig['daily_full']['time'])
+                ->cron($backupConfig['daily_full']['cron'] ?? '0 2 * * *')
                 ->withoutOverlapping()
                 ->onOneServer()
                 ->runInBackground()
@@ -26,18 +26,18 @@ class Kernel extends ConsoleKernel
         }
 
         // Hourly database backup
-        if (isset($backupConfig['hourly_database']) && $backupConfig['hourly_database']['enabled']) {
+        if (isset($backupConfig['hourly_database']) && ($backupConfig['hourly_database']['enabled'] ?? false)) {
             $schedule->command('backup:create database')
-                ->hourly()
+                ->cron($backupConfig['hourly_database']['cron'] ?? '0 * * * *')
                 ->withoutOverlapping()
                 ->onOneServer()
                 ->runInBackground();
         }
 
         // Weekly archive backup
-        if (isset($backupConfig['weekly_archive']) && $backupConfig['weekly_archive']['enabled']) {
+        if (isset($backupConfig['weekly_archive']) && ($backupConfig['weekly_archive']['enabled'] ?? false)) {
             $schedule->command('backup:create full --compress --encrypt')
-                ->weeklyOn($backupConfig['weekly_archive']['day'], $backupConfig['weekly_archive']['time'])
+                ->cron($backupConfig['weekly_archive']['cron'] ?? '0 1 * * 0')
                 ->withoutOverlapping()
                 ->onOneServer()
                 ->runInBackground()
@@ -113,6 +113,34 @@ class Kernel extends ConsoleKernel
             ->dailyAt('06:00')
             ->withoutOverlapping()
             ->onOneServer();
+
+        // Fee reminders (upcoming and overdue) based on configuration
+        $reminderConfig = config('fees.reminders', []);
+        if (!empty($reminderConfig) && ($reminderConfig['enabled'] ?? true)) {
+            $daysAhead = (int)($reminderConfig['upcoming_days_ahead'] ?? 3);
+            $sendTime = $reminderConfig['send_time'] ?? '08:00';
+
+            // Upcoming due reminders
+            $schedule->command("fees:send-reminders --days={$daysAhead}")
+                ->dailyAt($sendTime)
+                ->withoutOverlapping()
+                ->onOneServer()
+                ->runInBackground();
+
+            // Overdue fee reminders (min 1 day overdue)
+            $schedule->command('fees:send-reminders --overdue --days=1')
+                ->dailyAt($sendTime)
+                ->withoutOverlapping()
+                ->onOneServer()
+                ->runInBackground();
+        }
+
+        // Late fee application - calculate and update late fees daily
+        $schedule->command('fees:apply-late-fees')
+            ->dailyAt('01:30')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->runInBackground();
     }
 
     /**

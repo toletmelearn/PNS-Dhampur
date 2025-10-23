@@ -1288,7 +1288,7 @@ function formatAcademicReport(data) {
         </div>
         
         <h4>Class Performance</h4>
-        <table class="table">
+        <div class="table-responsive"><table class="table">
             <thead>
                 <tr><th>Class</th><th>Students</th><th>Average Score</th><th>Pass Rate</th></tr>
             </thead>
@@ -1297,10 +1297,10 @@ function formatAcademicReport(data) {
                     `<tr><td>${item.class_name}</td><td>${item.student_count}</td><td>${item.average_score}%</td><td>${item.pass_rate}%</td></tr>`
                 ).join('')}
             </tbody>
-        </table>
+        </table></div>
         
         <h4>Subject Performance</h4>
-        <table class="table">
+        <div class="table-responsive"><table class="table">
             <thead>
                 <tr><th>Subject</th><th>Average Score</th><th>Highest Score</th><th>Lowest Score</th></tr>
             </thead>
@@ -1309,7 +1309,7 @@ function formatAcademicReport(data) {
                     `<tr><td>${item.subject_name}</td><td>${item.average_score}%</td><td>${item.highest_score}%</td><td>${item.lowest_score}%</td></tr>`
                 ).join('')}
             </tbody>
-        </table>
+        </table></div>
     `;
 }
 
@@ -1332,7 +1332,7 @@ function formatFinancialReport(data) {
         </div>
         
         <h4>Class-wise Collection</h4>
-        <table class="table">
+        <div class="table-responsive"><table class="table">
             <thead>
                 <tr><th>Class</th><th>Total Collected</th></tr>
             </thead>
@@ -1341,10 +1341,10 @@ function formatFinancialReport(data) {
                     `<tr><td>${item.class_name}</td><td>₹${item.total_collected.toLocaleString()}</td></tr>`
                 ).join('')}
             </tbody>
-        </table>
+        </table></div>
         
         <h4>Payment Methods</h4>
-        <table class="table">
+        <div class="table-responsive"><table class="table">
             <thead>
                 <tr><th>Method</th><th>Amount</th><th>Percentage</th></tr>
             </thead>
@@ -1353,7 +1353,7 @@ function formatFinancialReport(data) {
                     `<tr><td>${item.method}</td><td>₹${item.amount.toLocaleString()}</td><td>${item.percentage}%</td></tr>`
                 ).join('')}
             </tbody>
-        </table>
+        </table></div>
     `;
 }
 
@@ -1376,7 +1376,7 @@ function formatAttendanceReport(data) {
         </div>
         
         <h4>Class-wise Attendance</h4>
-        <table class="table">
+        <div class="table-responsive"><table class="table">
             <thead>
                 <tr><th>Class</th><th>Attendance Rate</th><th>Present</th><th>Total</th></tr>
             </thead>
@@ -1385,10 +1385,10 @@ function formatAttendanceReport(data) {
                     `<tr><td>${item.class}</td><td>${item.attendance_rate}%</td><td>${item.present}</td><td>${item.total}</td></tr>`
                 ).join('')}
             </tbody>
-        </table>
+        </table></div>
         
         <h4>Low Attendance Students</h4>
-        <table class="table">
+        <div class="table-responsive"><table class="table">
             <thead>
                 <tr><th>Student Name</th><th>Class</th><th>Attendance Rate</th></tr>
             </thead>
@@ -1397,7 +1397,7 @@ function formatAttendanceReport(data) {
                     `<tr><td>${item.name}</td><td>${item.class}</td><td>${item.attendance_rate}%</td></tr>`
                 ).join('')}
             </tbody>
-        </table>
+        </table></div>
     `;
 }
 
@@ -1405,7 +1405,7 @@ function formatAttendanceReport(data) {
 function formatPerformanceReport(data) {
     return `
         <h4>Top Performers</h4>
-        <table class="table">
+        <div class="table-responsive"><table class="table">
             <thead>
                 <tr><th>Student Name</th><th>Class</th><th>Average Score</th></tr>
             </thead>
@@ -1414,10 +1414,10 @@ function formatPerformanceReport(data) {
                     `<tr><td>${item.name}</td><td>${item.class}</td><td>${item.average}%</td></tr>`
                 ).join('')}
             </tbody>
-        </table>
+        </table></div>
         
         <h4>Subject Averages</h4>
-        <table class="table">
+        <div class="table-responsive"><table class="table">
             <thead>
                 <tr><th>Subject</th><th>Average Score</th></tr>
             </thead>
@@ -1426,10 +1426,10 @@ function formatPerformanceReport(data) {
                     `<tr><td>${item.subject}</td><td>${item.average}%</td></tr>`
                 ).join('')}
             </tbody>
-        </table>
+        </table></div>
         
         <h4>Grade Distribution</h4>
-        <table class="table">
+        <div class="table-responsive"><table class="table">
             <thead>
                 <tr><th>Grade</th><th>Count</th></tr>
             </thead>
@@ -1438,7 +1438,7 @@ function formatPerformanceReport(data) {
                     `<tr><td>${item.grade}</td><td>${item.count}</td></tr>`
                 ).join('')}
             </tbody>
-        </table>
+        </table></div>
     `;
 }
 

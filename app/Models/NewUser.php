@@ -851,4 +851,64 @@ class NewUser extends Authenticatable implements MustVerifyEmail
             self::LOCK_REASON_POLICY_VIOLATION => 'Policy Violation',
         ];
     }
+
+    // ===== Compatibility shims for legacy middleware =====
+    public function getRoleAttribute(): string
+    {
+        $primaryRole = $this->getPrimaryRole();
+        if ($primaryRole) {
+            return $primaryRole->name;
+        }
+        // Fallback to legacy column if present
+        if (array_key_exists('role', $this->attributes) && !empty($this->attributes['role'])) {
+            return $this->attributes['role'];
+        }
+        return 'guest';
+    }
+
+    public function getRoleLevel(): int
+    {
+        $role = $this->role; // uses accessor above
+        $levels = [
+            'student' => 1,
+            'parent' => 1,
+            'teacher' => 2,
+            'class_teacher' => 2,
+            'exam_incharge' => 2,
+            'accountant' => 3,
+            'it' => 4,
+            'principal' => 5,
+            'admin' => 5,
+            'super_admin' => 6,
+        ];
+        return $levels[strtolower($role)] ?? 0;
+    }
+
+    public function canAccessAttendance(): bool
+    {
+        $allowedRoles = [
+            NewRole::SUPER_ADMIN,
+            NewRole::ADMIN,
+            NewRole::PRINCIPAL,
+            NewRole::TEACHER,
+            NewRole::STUDENT,
+            NewRole::PARENT,
+            'accountant', 'it', 'exam_incharge', 'class_teacher'
+        ];
+        if ($this->hasAnyRole($allowedRoles)) {
+            return true;
+        }
+        // Permission fallback for granular access
+        return $this->hasAnyPermission([
+            'attendance.view',
+            'attendance.view_all',
+            'attendance.mark_all',
+            'attendance.manage_settings',
+        ]);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasAnyRole([NewRole::SUPER_ADMIN, NewRole::ADMIN, 'principal', 'it']);
+    }
 }

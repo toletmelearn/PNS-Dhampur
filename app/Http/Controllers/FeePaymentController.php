@@ -2,101 +2,91 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Fee;
+use App\Models\StudentFee;
+use App\Models\FeeTransaction;
+use App\Models\FeeReceipt;
+use App\Models\PaymentGatewayConfig;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use PDF; // from barryvdh/laravel-dompdf
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class FeePaymentController extends Controller
 {
-    /**
-     * Record a payment for a fee item.
-     * Request expects:
-     *  - paid_amount (numeric)
-     *  - paid_date (date) optional
-     *  - remarks (string) optional
-     */
-    public function pay(Request $request, $id)
+    public function __construct()
     {
-        $fee = Fee::findOrFail($id);
-
-        $v = Validator::make($request->all(), [
-            'paid_amount' => 'required|numeric|min:0.01',
-            'paid_date' => 'nullable|date',
-            'remarks' => 'nullable|string',
-            'payment_mode' => 'nullable|string' // cash/cheque/online
-        ]);
-
-        if ($v->fails()) {
-            return response()->json(['errors'=>$v->errors()], 422);
-        }
-
-        // Simple payment handling: add to paid_amount and set status
-        $paid = (float)$request->input('paid_amount', 0);
-        $fee->paid_amount += $paid;
-        $fee->paid_date = $request->input('paid_date', now());
-        $fee->remarks = $request->input('remarks', $fee->remarks);
-        $fee->status = $fee->paid_amount >= $fee->amount ? 'paid' : 'partial';
-        $fee->save();
-
-        // Store a payment record in a payments sub-table (optional) - if you want, create payments table later.
-        // For now we'll embed receipt data generation.
-
-        // Generate receipt PDF now and store in storage/app/public/receipts/fee_{id}_{timestamp}.pdf
-        $student = $fee->student()->first();
-        $data = [
-            'fee' => $fee,
-            'student' => $student,
-            'paid' => $paid,
-            'payment_mode' => $request->input('payment_mode', 'cash'),
-            'date' => $fee->paid_date,
-            'school' => config('app.name', 'PNS Dhampur')
-        ];
-
-        $pdf = PDF::loadView('pdfs.fee_receipt', $data)->setPaper('A4', 'portrait');
-
-        $filename = 'receipts/fee_'.$fee->id.'_'.time().'.pdf';
-        Storage::disk('public')->put($filename, $pdf->output());
-
-        // Save path into fee record if you want
-        $documents = $fee->documents ?? [];
-        if (!is_array($documents)) $documents = [];
-        $documents[] = $filename;
-        $fee->documents = $documents;
-        $fee->save();
-
-        return response()->json([
-            'message' => 'Payment recorded',
-            'fee' => $fee,
-            'receipt_path' => $filename,
-            'receipt_url' => asset('storage/'.$filename)
-        ]);
+        $this->middleware(['auth']);
     }
 
-    /**
-     * Return the PDF receipt as a response (download/view).
-     */
-    public function receipt($id)
+    public function initiate(Request $request, StudentFee $studentFee)
     {
-        $fee = Fee::findOrFail($id);
-
-        // find latest stored receipt in documents array
-        $docs = $fee->documents ?? [];
-        if (!is_array($docs) || count($docs) === 0) {
-            return response()->json(['message'=>'No receipt found for this fee'], 404);
+        $this->authorize('pay', $studentFee);
+        $gateway = PaymentGatewayConfig::where('is_active', true)->first();
+        if (!$gateway) {
+            return back()->withErrors('Payment gateway not configured');
         }
 
-        // assume last element is the receipt we stored
-        $filename = end($docs);
+        // Stub initiate with gateway params
+        $order = [
+            'amount' => (int) round(($studentFee->amount - $studentFee->paid_amount) * 100),
+            'currency' => 'INR',
+            'notes' => [
+                'student_id' => $studentFee->student_id,
+                'student_fee_id' => $studentFee->id,
+            ],
+        ];
 
-        if (!Storage::disk('public')->exists($filename)) {
-            return response()->json(['message'=>'Receipt file not found on server'], 404);
-        }
+        return view('finance.fees.payment.checkout', compact('studentFee', 'gateway', 'order'));
+    }
 
-        $path = storage_path('app/public/'.$filename);
-        return response()->file($path, [
-            'Content-Type' => 'application/pdf'
+    public function callback(Request $request)
+    {
+        $validated = $request->validate([
+            'student_fee_id' => 'required|exists:student_fees,id',
+            'transaction_id' => 'required|string',
+            'gateway' => 'required|string',
+            'status' => 'required|in:success,failed,pending',
+            'amount' => 'required|numeric|min:0',
+            'payment_method' => 'nullable|string',
+            'paid_at' => 'nullable|date',
         ]);
+
+        $studentFee = StudentFee::findOrFail($validated['student_fee_id']);
+
+        DB::transaction(function () use ($studentFee, $validated) {
+            $txn = FeeTransaction::create([
+                'student_fee_id' => $studentFee->id,
+                'amount' => $validated['amount'],
+                'transaction_id' => $validated['transaction_id'],
+                'gateway' => $validated['gateway'],
+                'status' => $validated['status'],
+                'payment_method' => $validated['payment_method'] ?? null,
+                'paid_at' => $validated['paid_at'] ?? now(),
+                'metadata' => request('metadata', []),
+            ]);
+
+            if ($validated['status'] === 'success') {
+                $studentFee->update([
+                    'paid_amount' => ($studentFee->paid_amount + $validated['amount']),
+                    'paid_date' => now(),
+                    'status' => (($studentFee->paid_amount + $validated['amount']) >= $studentFee->amount) ? 'paid' : 'partial',
+                ]);
+
+                $receipt = FeeReceipt::create([
+                    'student_fee_id' => $studentFee->id,
+                    'fee_transaction_id' => $txn->id,
+                    'receipt_number' => 'RCPT-' . date('Ymd') . '-' . $txn->id,
+                    'issued_at' => now(),
+                ]);
+
+                $txn->update(['receipt_id' => $receipt->id]);
+            }
+        });
+
+        return redirect()->route('student-fees.show', $studentFee->id)->with('success', 'Payment processed');
+    }
+
+    public function receipt(FeeReceipt $receipt)
+    {
+        $receipt->load('studentFee.student', 'transaction');
+        return view('finance.fees.payment.receipt', compact('receipt'));
     }
 }

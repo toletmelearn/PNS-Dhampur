@@ -436,14 +436,14 @@ function viewDetails(trailId) {
 function approveCorrection(trailId) {
     const modal = new bootstrap.Modal(document.getElementById('approveModal'));
     const form = document.getElementById('approveForm');
-    form.action = `/audit-trail/${trailId}/approve`;
+    form.action = '{{ route("class-teacher-permissions.audit-trail.approve", ["auditTrail" => "__ID__"]) }}'.replace('__ID__', trailId);
     modal.show();
 }
 
 function rejectCorrection(trailId) {
     const modal = new bootstrap.Modal(document.getElementById('rejectModal'));
     const form = document.getElementById('rejectForm');
-    form.action = `/audit-trail/${trailId}/reject`;
+    form.action = '{{ route("class-teacher-permissions.audit-trail.reject", ["auditTrail" => "__ID__"]) }}'.replace('__ID__', trailId);
     modal.show();
 }
 
@@ -459,7 +459,7 @@ function bulkApprove() {
     if (confirm(`Are you sure you want to approve ${ids.length} correction(s)?`)) {
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = '{{ route("class-teacher-permissions.bulk-approve-corrections") }}';
+        form.action = '{{ route("class-teacher-permissions.audit-trail.bulk-approve") }}';
         
         const csrfToken = document.createElement('input');
         csrfToken.type = 'hidden';
@@ -483,7 +483,7 @@ function bulkApprove() {
 function exportReport() {
     const form = document.getElementById('filterForm');
     const exportForm = form.cloneNode(true);
-    exportForm.action = '{{ route("class-teacher-permissions.export-audit-report") }}';
+    exportForm.action = '{{ route("class-teacher-permissions.audit-trail.export") }}';
     exportForm.style.display = 'none';
     document.body.appendChild(exportForm);
     exportForm.submit();

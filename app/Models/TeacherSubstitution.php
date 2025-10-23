@@ -12,19 +12,25 @@ class TeacherSubstitution extends Model
 
     protected $fillable = [
         'absence_id',
-        'substitute_teacher_id',
+        'absent_teacher_id',
         'original_teacher_id',
+        'substitute_teacher_id',
         'class_id',
         'subject_id',
+        'subject',
         'period_number',
+        'date',
         'substitution_date',
         'start_time',
         'end_time',
         'status',
+        'requested_at',
+        'requested_by',
         'assigned_by',
         'assigned_at',
         'confirmed_at',
         'completed_at',
+        'cancelled_at',
         'notes',
         'preparation_materials',
         'feedback',
@@ -33,7 +39,7 @@ class TeacherSubstitution extends Model
         'auto_assigned',
         'reason',
         'priority',
-        'is_emergency'
+        'is_emergency',
     ];
 
     protected $casts = [
@@ -365,5 +371,21 @@ class TeacherSubstitution extends Model
             ->whereIn('status', [self::STATUS_CONFIRMED, self::STATUS_PENDING])
             ->where('id', '!=', $this->id)
             ->exists();
+    }
+
+    protected static function booted()
+    {
+        static::saving(function ($model) {
+            if ($model->substitution_date && !$model->date) {
+                $model->date = $model->substitution_date;
+            }
+            if ($model->date && !$model->substitution_date) {
+                $model->substitution_date = $model->date;
+            }
+        });
+    }
+    public function setPriorityAttribute($value)
+    {
+        $this->attributes['priority'] = $value === 'normal' ? 'medium' : $value;
     }
 }

@@ -665,6 +665,32 @@
         Performance.init();
         Accessibility.init();
 
+        // Auto-wrap any tables missing Bootstrap's responsive wrapper
+        try {
+            const tables = Utils.$$('table.table');
+            tables.forEach(table => {
+                if (!table.closest('.table-responsive')) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'table-responsive';
+                    table.parentNode.insertBefore(wrapper, table);
+                    wrapper.appendChild(table);
+                }
+            });
+        } catch (e) {
+            console.warn('Table auto-wrap failed:', e);
+        }
+
+        // Register Service Worker for PWA (scope across entire app)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/js/sw.js', { scope: '/' })
+                .then(reg => {
+                    console.log('Service Worker registered with scope:', reg.scope);
+                })
+                .catch(err => {
+                    console.error('Service Worker registration failed:', err);
+                });
+        }
+
         // Global error handler
         window.addEventListener('error', (e) => {
             console.error('JavaScript error:', e.error);

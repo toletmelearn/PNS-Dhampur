@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Budget;
+use App\Models\DepartmentBudget;
 use App\Models\Transaction;
 use App\Models\Teacher;
 use App\Models\InventoryItem;
@@ -44,14 +44,14 @@ class BudgetTrackingService
      */
     protected function getBudgetOverview($year, $department = null)
     {
-        $query = Budget::where('year', $year);
+        $query = DepartmentBudget::where('budget_year', $year);
         if ($department) {
             $query->where('department', $department);
         }
 
         $budgets = $query->get();
-        $totalBudget = $budgets->sum('total_budget');
-        $totalSpent = $budgets->sum('spent_amount');
+        $totalBudget = (float) $budgets->sum('allocated_budget');
+        $totalSpent = (float) $budgets->sum('spent_amount');
         $remaining = $totalBudget - $totalSpent;
         $utilizationRate = $totalBudget > 0 ? ($totalSpent / $totalBudget) * 100 : 0;
 
@@ -62,12 +62,12 @@ class BudgetTrackingService
         return [
             'total_budget' => $totalBudget,
             'total_spent' => $totalSpent,
-            'remaining_budget' => $remaining,
+            'remaining_budget' => round($remaining, 2),
             'utilization_rate' => round($utilizationRate, 2),
-            'current_month_spent' => $currentMonthSpent,
+            'current_month_spent' => round($currentMonthSpent, 2),
             'average_monthly_spent' => round($averageMonthlySpent, 2),
             'budget_status' => $this->getBudgetStatus($utilizationRate),
-            'departments_count' => $budgets->groupBy('department')->count(),
+            'departments_count' => $budgets->pluck('department')->unique()->count(),
             'variance_percentage' => $this->calculateVariancePercentage($totalBudget, $totalSpent),
             'projected_year_end' => $this->projectYearEndSpending($totalSpent, $year)
         ];
@@ -161,22 +161,22 @@ class BudgetTrackingService
      */
     protected function getDepartmentBreakdown($year)
     {
-        $departments = Budget::where('year', $year)
+        $departments = DepartmentBudget::where('budget_year', $year)
                             ->select('department', 
-                                   DB::raw('SUM(total_budget) as total_budget'),
+                                   DB::raw('SUM(allocated_budget) as total_budget'),
                                    DB::raw('SUM(spent_amount) as spent_amount'))
                             ->groupBy('department')
                             ->get();
 
-        return $departments->map(function ($dept) {
+        return $departments->map(function ($dept) use ($year) {
             $utilization = $dept->total_budget > 0 ? 
                 ($dept->spent_amount / $dept->total_budget) * 100 : 0;
             
             return [
                 'department' => $dept->department ?? 'General',
-                'allocated' => $dept->total_budget,
-                'spent' => $dept->spent_amount,
-                'remaining' => $dept->total_budget - $dept->spent_amount,
+                'allocated' => (float) $dept->total_budget,
+                'spent' => (float) $dept->spent_amount,
+                'remaining' => round($dept->total_budget - $dept->spent_amount, 2),
                 'utilization_rate' => round($utilization, 2),
                 'status' => $this->getBudgetStatus($utilization),
                 'monthly_burn_rate' => $this->getMonthlyBurnRate($dept->department, $year),

@@ -24,11 +24,19 @@ use App\Http\Controllers\TeacherAvailabilityController;
 use App\Http\Controllers\SubstitutionController;
 use App\Http\Controllers\Api\ExternalIntegrationController;
 use App\Http\Controllers\Api\SuperAdminApiController;
-
-// Module-based controllers
+use App\Http\Controllers\AdmitApiController;
+use App\Http\Controllers\DailySyllabusManagementController;
+use App\Http\Controllers\VendorManagementController;
+use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\AssetAllocationController;
+use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\InventoryManagementController;
+use App\Http\Controllers\BudgetManagementController;
+use App\Http\Controllers\ExamPaperManagementController;
 use App\Modules\Student\Controllers\StudentController as ModuleStudentController;
-use App\Modules\Teacher\Controllers\TeacherController as ModuleTeacherController;
-use App\Modules\Attendance\Controllers\AttendanceController as ModuleAttendanceController;
+use App\Http\Controllers\ClassTeacherDataController;
+use App\Http\Controllers\SRRegisterApiController;
+use App\Http\Controllers\API\AlumniApiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -588,6 +596,32 @@ Route::middleware(['auth:sanctum', 'rate.limit'])->group(function () {
     // Results Management (Role-based access)
     Route::middleware(['role:admin,principal,teacher'])->group(function () {
         Route::apiResource('results', ResultController::class);
+
+        // Automatic Result Generation System endpoints
+        Route::prefix('result')->name('result.')->group(function () {
+            Route::get('templates', [ResultController::class, 'listTemplates'])->name('templates.index');
+            Route::post('templates', [ResultController::class, 'storeTemplate'])->name('templates.store');
+
+            Route::post('marks/upload', [ResultController::class, 'uploadMarks'])->name('marks.upload');
+            Route::post('generate', [ResultController::class, 'generate'])->name('generate');
+            Route::post('publish', [ResultController::class, 'publish'])->name('publish');
+
+            Route::get('cards', [ResultController::class, 'listCards'])->name('cards.index');
+            Route::get('cards/{id}/download', [ResultController::class, 'downloadCard'])->name('cards.download');
+        });
+    });
+
+    // Admit Cards Management (Admin/Principal/Exam In-charge)
+    Route::middleware(['role:admin,principal,exam_incharge'])->group(function () {
+        Route::prefix('admit')->name('admit.')->group(function () {
+            Route::get('templates', [AdmitApiController::class, 'templates'])->name('templates.index');
+            Route::post('allocate', [AdmitApiController::class, 'allocate'])->name('allocate');
+            Route::post('generate', [AdmitApiController::class, 'generate'])->name('generate');
+            Route::get('cards', [AdmitApiController::class, 'list'])->name('cards.index');
+            Route::get('cards/{id}/download', [AdmitApiController::class, 'download'])->name('cards.download');
+            Route::get('cards/bulk-download', [AdmitApiController::class, 'bulkDownload'])->name('cards.bulk-download');
+            Route::post('verify', [AdmitApiController::class, 'verify'])->name('verify');
+        });
     });
 
     // Syllabus Management (Role-based access)
@@ -597,12 +631,92 @@ Route::middleware(['auth:sanctum', 'rate.limit'])->group(function () {
 
     // Inventory Management (Admin/Principal only)
     Route::middleware(['role:admin,principal'])->group(function () {
+        // Inventory items
         Route::apiResource('inventory', InventoryController::class);
+        Route::post('inventory/{id}/dispose', [InventoryController::class, 'dispose']);
+        Route::get('inventory/low-stock', [InventoryController::class, 'lowStock']);
+
+        // Vendor management
+        Route::apiResource('vendors', VendorManagementController::class);
+
+        // Purchase orders
+        Route::apiResource('purchase-orders', PurchaseOrderController::class);
+        Route::post('purchase-orders/{id}/duplicate', [PurchaseOrderController::class, 'duplicate']);
+        Route::get('purchase-orders/report', [PurchaseOrderController::class, 'report']);
+
+        // Asset allocations
+        Route::get('asset-allocations', [AssetAllocationController::class, 'index']);
+        Route::get('asset-allocations/{allocation}', [AssetAllocationController::class, 'show']);
+        Route::delete('asset-allocations/{allocation}', [AssetAllocationController::class, 'destroy']);
+        Route::post('asset-allocations/{allocation}/extend', [AssetAllocationController::class, 'extendAllocation']);
+        Route::post('asset-allocations/{allocation}/return', [AssetAllocationController::class, 'returnAsset']);
+        Route::post('asset-allocations/{allocation}/mark-lost', [AssetAllocationController::class, 'markAsLost']);
+        Route::post('asset-allocations/{allocation}/mark-damaged', [AssetAllocationController::class, 'markAsDamaged']);
+        Route::post('asset-allocations/{allocation}/update-usage', [AssetAllocationController::class, 'updateUsage']);
+        Route::get('asset-allocations/{allocation}/usage-report', [AssetAllocationController::class, 'usageReport']);
+        Route::post('asset-allocations/{allocation}/duplicate', [AssetAllocationController::class, 'duplicate']);
+        Route::get('asset-allocations/due-today', [AssetAllocationController::class, 'dueToday']);
+        Route::get('asset-allocations/due-tomorrow', [AssetAllocationController::class, 'dueTomorrow']);
+        Route::get('asset-allocations/report', [AssetAllocationController::class, 'report']);
+        Route::get('inventory/{id}/allocation-history', [AssetAllocationController::class, 'allocationHistory']);
+
+        // Maintenance schedules
+        Route::get('maintenance-schedules', [MaintenanceController::class, 'index']);
+        Route::get('maintenance-schedules/{schedule}', [MaintenanceController::class, 'show']);
+        Route::post('maintenance-schedules', [MaintenanceController::class, 'store']);
+        Route::post('maintenance-schedules/{schedule}/start', [MaintenanceController::class, 'startMaintenance']);
+        Route::post('maintenance-schedules/{schedule}/complete', [MaintenanceController::class, 'completeMaintenance']);
+        Route::get('maintenance/overdue', [MaintenanceController::class, 'overdue']);
+        Route::get('maintenance/due-today', [MaintenanceController::class, 'dueToday']);
+        Route::get('maintenance/due-tomorrow', [MaintenanceController::class, 'dueTomorrow']);
+        Route::get('maintenance/due-this-week', [MaintenanceController::class, 'dueThisWeek']);
+        Route::get('maintenance/monthly', [MaintenanceController::class, 'monthlySchedule']);
+        Route::get('maintenance/statistics', [MaintenanceController::class, 'statistics']);
+        Route::get('maintenance/report', [MaintenanceController::class, 'report']);
+        Route::get('inventory/{id}/maintenance-history', [MaintenanceController::class, 'maintenanceHistory']);
+        Route::get('inventory/{id}/maintenance-report', [MaintenanceController::class, 'maintenanceReport']);
+
+        // Alerts and notifications
+        Route::get('inventory/alerts/low-stock', [InventoryManagementController::class, 'lowStockAlerts']);
+        Route::get('inventory/notifications', [InventoryManagementController::class, 'getNotifications']);
+        Route::get('inventory/maintenance-reminders', [InventoryManagementController::class, 'maintenanceReminders']);
     });
 
     // Budget Management (Admin/Principal only)
     Route::middleware(['role:admin,principal'])->group(function () {
+        // Core budgets CRUD
         Route::apiResource('budgets', BudgetController::class);
+
+        // Annual budget allocation by management
+        Route::post('budget/annual/allocate', [BudgetManagementController::class, 'allocateAnnual']);
+
+        // Monthly expense tracking against budget
+        Route::get('budget/monthly-expenses', [BudgetManagementController::class, 'monthlyExpenses']);
+
+        // Real-time budget utilization insights and dashboard
+        Route::get('budget/utilization', [BudgetManagementController::class, 'utilization']);
+
+        // Budget utilization alerts
+        Route::get('budget/alerts', [BudgetManagementController::class, 'alerts']);
+
+        // Department-wise budget allocation comparison
+        Route::get('budget/department-allocation', [BudgetManagementController::class, 'departmentAllocation']);
+
+        // Variance analysis and forecasting
+        Route::get('budget/variance-forecast', [BudgetManagementController::class, 'varianceAndForecast']);
+
+        // Budget categories management
+        Route::get('budget/categories', [BudgetManagementController::class, 'listCategories']);
+        Route::post('budget/categories', [BudgetManagementController::class, 'createCategory']);
+        Route::patch('budget/categories/{category}', [BudgetManagementController::class, 'updateCategory']);
+        Route::delete('budget/categories/{category}', [BudgetManagementController::class, 'deleteCategory']);
+
+        // Expense approvals
+        Route::post('budget/expense-approvals/{transaction}/approve', [BudgetManagementController::class, 'approveExpense']);
+        Route::post('budget/expense-approvals/{transaction}/reject', [BudgetManagementController::class, 'rejectExpense']);
+
+        // Reports listing
+        Route::get('budget/reports', [BudgetManagementController::class, 'listReports']);
     });
 
     // Bell Timing Management (Admin only)
@@ -617,6 +731,8 @@ Route::middleware(['auth:sanctum', 'rate.limit'])->group(function () {
         Route::get('bell-timings/notification/check', [BellTimingController::class, 'checkBellNotification']);
         Route::patch('bell-timings/{bellTiming}/toggle', [BellTimingController::class, 'toggleActive']);
         Route::patch('bell-timings/order/update', [BellTimingController::class, 'updateOrder']);
+        // Bell logs recent
+        Route::get('bell-timings/logs/recent', [BellTimingController::class, 'recentBellLogs']);
         
         // Season switching endpoints
         Route::get('bell-timings/season/info', [BellTimingController::class, 'getSeasonInfo'])
@@ -635,6 +751,12 @@ Route::middleware(['auth:sanctum', 'rate.limit'])->group(function () {
         Route::post('teacher-substitutions/auto-assign', [TeacherSubstitutionController::class, 'autoAssignSubstitutes']);
         Route::get('teacher-substitutions/dashboard/stats', [TeacherSubstitutionController::class, 'getDashboardStats'])
             ->middleware('cache.response:dashboard');
+    });
+
+    // Substitutions API (protected, Admin/Principal only)
+    Route::middleware(['auth:sanctum', 'role:admin,principal'])->group(function () {
+        Route::apiResource('substitutions', SubstitutionController::class);
+        Route::put('substitutions/{substitution}/assign', [SubstitutionController::class, 'assignSubstitute']);
     });
 
     // Teacher Availability (Admin/Principal/Teacher access)
@@ -773,3 +895,126 @@ Route::prefix('super-admin')->middleware(['auth:sanctum', 'security', 'audit', '
 });
 
 
+
+// Exam Paper Management (protected)
+Route::middleware(['auth:sanctum', 'security', 'audit', 'throttle:api'])->prefix('exam-papers')->group(function () {
+    // Admin-only template upload
+    Route::post('templates/upload', [ExamPaperManagementController::class, 'uploadTemplate'])
+        ->middleware(['role:admin']);
+
+    // Teacher submission and versioning
+    Route::post('{paper}/submit', [ExamPaperManagementController::class, 'submitPaper'])
+        ->middleware(['role:teacher,admin']);
+    Route::post('{paper}/versions', [ExamPaperManagementController::class, 'createVersion'])
+        ->middleware(['role:teacher,admin']);
+    Route::get('{paper}/versions', [ExamPaperManagementController::class, 'listVersions'])
+        ->middleware(['role:teacher,admin']);
+
+    // Admin approvals
+    Route::post('submissions/{submission}/approve', [ExamPaperManagementController::class, 'approveSubmission'])
+        ->middleware(['role:admin']);
+
+    // Secure downloads
+    Route::get('{paper}/download', [ExamPaperManagementController::class, 'downloadPaper'])
+        ->middleware(['role:teacher,admin']);
+    Route::post('bulk-download', [ExamPaperManagementController::class, 'bulkDownload'])
+        ->middleware(['role:admin']);
+});
+
+// Daily Syllabus Management System (protected)
+Route::middleware(['auth:sanctum', 'security', 'audit', 'throttle:api'])
+    ->prefix('daily-syllabus')
+    ->group(function () {
+        // Teacher: create daily syllabus + materials
+        Route::post('upload', [DailySyllabusManagementController::class, 'teacherUploadDailyWork'])
+            ->middleware(['role:teacher']);
+
+        // Student: list syllabi for own class
+        Route::get('student/list', [DailySyllabusManagementController::class, 'listDailyForStudent'])
+            ->middleware(['role:student']);
+
+        // Secure download for materials
+        Route::get('materials/{id}/download', [DailySyllabusManagementController::class, 'downloadMaterial'])
+            ->middleware(['role:student,teacher,admin,principal']);
+
+        // Progress updates and summary
+        Route::post('progress/update', [DailySyllabusManagementController::class, 'updateSyllabusProgress'])
+            ->middleware(['role:teacher,admin,principal']);
+        Route::get('progress/summary', [DailySyllabusManagementController::class, 'progressSummary'])
+            ->middleware(['role:teacher,admin,principal']);
+
+        // Comments on materials
+        Route::post('materials/{id}/comments', [DailySyllabusManagementController::class, 'addComment'])
+            ->middleware(['role:student,teacher,admin,principal']);
+        Route::get('materials/{id}/comments', [DailySyllabusManagementController::class, 'listComments'])
+            ->middleware(['role:student,teacher,admin,principal']);
+    });
+
+
+
+Route::middleware(['auth:sanctum', 'security', 'audit', 'throttle:api'])
+    ->prefix('class-data')
+    ->group(function () {
+        Route::get('/', [ClassTeacherDataController::class, 'index'])
+            ->middleware(['role:teacher,admin,principal']);
+        Route::post('/', [ClassTeacherDataController::class, 'store'])
+            ->middleware(['role:teacher']);
+        Route::get('/{id}', [ClassTeacherDataController::class, 'show'])
+            ->middleware(['role:teacher,admin,principal']);
+        Route::put('/{id}', [ClassTeacherDataController::class, 'update'])
+            ->middleware(['role:teacher']);
+
+        // Audit trail and version history
+        Route::get('/{id}/audit', [ClassTeacherDataController::class, 'auditTrail'])
+            ->middleware(['role:teacher,admin,principal']);
+        Route::get('/{id}/history', [ClassTeacherDataController::class, 'history'])
+            ->middleware(['role:teacher,admin,principal']);
+
+        // Approval workflow (admin/principal only)
+        Route::post('/{id}/approve', [ClassTeacherDataController::class, 'approve'])
+            ->middleware(['role:admin,principal']);
+        Route::post('/{id}/reject', [ClassTeacherDataController::class, 'reject'])
+            ->middleware(['role:admin,principal']);
+    });
+Route::middleware(['auth:sanctum', 'security', 'audit'])->prefix('sr-register')->group(function () {
+    Route::get('/', [SRRegisterApiController::class, 'index']);
+    Route::get('/search', [SRRegisterApiController::class, 'search']);
+
+    Route::get('/student/{studentId}', [SRRegisterApiController::class, 'studentProfile']);
+
+    Route::get('/student/{studentId}/histories', [SRRegisterApiController::class, 'histories']);
+    Route::post('/student/{studentId}/histories', [SRRegisterApiController::class, 'storeHistory']);
+
+    Route::get('/student/{studentId}/promotions', [SRRegisterApiController::class, 'promotions']);
+    Route::post('/student/{studentId}/promotions', [SRRegisterApiController::class, 'recordPromotion']);
+
+    Route::get('/student/{studentId}/transfers', [SRRegisterApiController::class, 'transfers']);
+    Route::post('/student/{studentId}/transfers', [SRRegisterApiController::class, 'issueTC']);
+
+    Route::post('/stats', [SRRegisterApiController::class, 'stats']);
+});
+Route::middleware(['auth:sanctum', 'security', 'audit', 'throttle:api'])
+    ->prefix('alumni')
+    ->group(function () {
+        Route::get('/', [AlumniApiController::class, 'index']);
+        Route::post('/', [AlumniApiController::class, 'store']);
+        Route::get('/{id}', [AlumniApiController::class, 'show']);
+        Route::put('/{id}', [AlumniApiController::class, 'update']);
+        Route::delete('/{id}', [AlumniApiController::class, 'destroy']);
+
+        Route::get('/batches', [AlumniApiController::class, 'batches']);
+        Route::post('/batches', [AlumniApiController::class, 'storeBatch']);
+
+        Route::get('/{alumniId}/achievements', [AlumniApiController::class, 'achievements']);
+        Route::post('/{alumniId}/achievements', [AlumniApiController::class, 'storeAchievement']);
+
+        Route::get('/{alumniId}/contributions', [AlumniApiController::class, 'contributions']);
+        Route::post('/{alumniId}/contributions', [AlumniApiController::class, 'storeContribution']);
+
+        Route::get('/events', [AlumniApiController::class, 'events']);
+        Route::post('/events', [AlumniApiController::class, 'storeEvent']);
+        Route::get('/events/{eventId}', [AlumniApiController::class, 'showEvent']);
+        Route::post('/events/{eventId}/register', [AlumniApiController::class, 'registerEvent']);
+        Route::post('/events/{eventId}/checkin', [AlumniApiController::class, 'checkin']);
+    });
+

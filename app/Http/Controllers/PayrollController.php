@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Helpers\SecurityHelper;
+use Illuminate\Support\Facades\Auth;
 
 class PayrollController extends Controller
 {
@@ -306,130 +307,118 @@ class PayrollController extends Controller
      */
     public function salaryStructures(Request $request)
     {
-        $query = SalaryStructure::with('user');
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->whereHas('user', function($q) use ($search) {
-                $q->where('name', 'like', SecurityHelper::buildLikePattern($search))
-                  ->orWhere('email', 'like', SecurityHelper::buildLikePattern($search));
-            });
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('grade_level')) {
-            $query->where('grade_level', $request->grade_level);
-        }
-
-        $salaryStructures = $query->latest()->paginate(15);
-        
-        $gradeLevels = SalaryStructure::distinct()->pluck('grade_level')->filter()->sort();
-
-        return view('payroll.salary-structures', compact('salaryStructures', 'gradeLevels'));
-    }
-
-    /**
-     * Create or update salary structure
-     */
-    public function storeSalaryStructure(Request $request)
-    {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'basic_salary' => 'required|numeric|min:0',
-            'allowances' => 'array',
-            'allowances.*' => 'numeric|min:0',
-            'deductions' => 'array',
-            'deductions.*' => 'numeric|min:0',
-            'benefits' => 'array',
-            'benefits.*' => 'numeric|min:0',
-            'grade_level' => 'nullable|string|max:50',
-            'effective_from' => 'required|date',
-            'effective_to' => 'nullable|date|after:effective_from',
-            'status' => 'required|in:active,inactive,draft'
-        ]);
-
-        try {
-            DB::beginTransaction();
-
-            // Deactivate existing active salary structures for this user
-            if ($request->status === 'active') {
-                SalaryStructure::where('user_id', $request->user_id)
-                    ->where('status', 'active')
-                    ->update(['status' => 'inactive']);
+        // Return JSON for DataTable when requested via AJAX
+        if ($request->ajax()) {
+            $query = SalaryStructure::query();
+    
+            if ($request->filled('search')) {
+                $search = $request->get('search');
+                $query->where(function($q) use ($search) {
+                    $pattern = SecurityHelper::buildLikePattern($search);
+                    $q->where('name', 'like', $pattern)
+                      ->orWhere('code', 'like', $pattern)
+                      ->orWhere('description', 'like', $pattern);
+                });
             }
-
-            $salaryStructure = SalaryStructure::create([
-                'user_id' => $request->user_id,
-                'basic_salary' => $request->basic_salary,
-                'allowances' => $request->allowances ?? [],
-                'deductions' => $request->deductions ?? [],
-                'benefits' => $request->benefits ?? [],
-                'grade_level' => $request->grade_level,
-                'effective_from' => $request->effective_from,
-                'effective_to' => $request->effective_to,
-                'status' => $request->status,
-                'created_by' => auth()->id(),
-                'updated_by' => auth()->id()
-            ]);
-
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Salary structure created successfully',
-                'data' => $salaryStructure->load('user')
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Salary structure creation failed', [
-                'user_id' => $request->user_id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => UserFriendlyErrorService::getErrorMessage($e, 'general')
-            ], 500);
+    
+            if ($request->filled('status')) {
+                $query->where('status', $request->get('status'));
+            }
+    
+            if ($request->filled('grade_level')) {
+                $query->where('grade_level', $request->get('grade_level'));
+            }
+    
+            if ($request->filled('effective_from')) {
+                $query->whereDate('effective_from', '>=', $request->get('effective_from'));
+            }
+    
+            $structures = $query->latest()->get();
+            $data = $structures->map(function (SalaryStructure $s) {
+                $calc = $s->calculateSalary();
+                return [
+                    'id' => $s->id,
+                    'structure_name' => $s->name ?? ($s->code ?: 'Structure #' . $s->id),
+                    'grade_level' => $s->grade_level,
+                    'basic_salary' => (float) $s->basic_salary,
+                    'gross_salary' => (float) ($calc['gross_salary'] ?? 0),
+                    'net_salary' => (float) ($calc['net_salary'] ?? 0),
+                    'status' => $s->status,
+                    'effective_from' => optional($s->effective_from)->toDateString(),
+                ];
+            });
+    
+            return response()->json(['data' => $data]);
         }
+    
+        // Non-AJAX: render view with filters
+        $gradeLevels = SalaryStructure::distinct()->pluck('grade_level')->filter()->sort();
+        return view('payroll.salary-structures', compact('gradeLevels'));
     }
+
+    // storeSalaryStructure implementation moved below to align with frontend form fields
 
     /**
      * Show payroll deductions management
      */
     public function deductions(Request $request)
     {
-        $query = PayrollDeduction::with('user');
+        if ($request->ajax()) {
+            $query = PayrollDeduction::with('employee');
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->whereHas('user', function($q) use ($search) {
-                $q->where('name', 'like', SecurityHelper::buildLikePattern($search))
-                  ->orWhere('email', 'like', SecurityHelper::buildLikePattern($search));
+            if ($request->filled('search')) {
+                $search = $request->get('search');
+                $query->where(function($q) use ($search) {
+                    $pattern = SecurityHelper::buildLikePattern($search);
+                    $q->where('description', 'like', $pattern)
+                      ->orWhere('employee_name', 'like', $pattern);
+                });
+            }
+
+            if ($request->filled('deduction_type')) {
+                $query->where('deduction_type', $request->get('deduction_type'));
+            }
+
+            if ($request->filled('status')) {
+                $query->where('status', $request->get('status'));
+            }
+
+            if ($request->filled('employee_id')) {
+                $query->where('employee_id', $request->get('employee_id'));
+            }
+
+            if ($request->filled('month')) {
+                try {
+                    $period = Carbon::createFromFormat('Y-m', $request->get('month'));
+                    $query->where('payroll_month', $period->month)
+                          ->where('payroll_year', $period->year);
+                } catch (\Exception $e) {}
+            }
+
+            if ($request->filled('min_amount')) {
+                $query->where('deduction_amount', '>=', (float) $request->get('min_amount'));
+            }
+
+            $deductions = $query->latest()->get();
+            $data = $deductions->map(function (PayrollDeduction $d) {
+                $employeeName = $d->employee?->name ?? $d->employee_name ?? 'Unknown';
+                $period = $d->payroll_year && $d->payroll_month ? sprintf('%04d-%02d', $d->payroll_year, $d->payroll_month) : optional($d->effective_from)->format('Y-m');
+                return [
+                    'id' => $d->id,
+                    'employee_name' => $employeeName,
+                    'deduction_type' => $d->deduction_type,
+                    'description' => $d->description,
+                    'amount' => (float) $d->deduction_amount,
+                    'period' => $period,
+                    'status' => $d->status,
+                    'effective_date' => optional($d->effective_from)->toDateString(),
+                ];
             });
+
+            return response()->json(['data' => $data]);
         }
 
-        if ($request->filled('deduction_type')) {
-            $query->where('deduction_type', $request->deduction_type);
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('month')) {
-            $period = Carbon::createFromFormat('Y-m', $request->month);
-            $query->where('payroll_month', $period->month)
-                  ->where('payroll_year', $period->year);
-        }
-
-        $deductions = $query->latest()->paginate(15);
-
-        return view('payroll.deductions', compact('deductions'));
+        return view('payroll.deductions');
     }
 
     /**
@@ -547,4 +536,327 @@ class PayrollController extends Controller
             ], 500);
         }
     }
+    public function getSalaryStructure(SalaryStructure $salaryStructure)
+{
+    $response = [
+        'id' => $salaryStructure->id,
+        'structure_name' => $salaryStructure->name ?? ($salaryStructure->code ?: 'Structure #' . $salaryStructure->id),
+        'grade_level' => $salaryStructure->grade_level,
+        'basic_salary' => (float) $salaryStructure->basic_salary,
+        'effective_from' => optional($salaryStructure->effective_from)->toDateString(),
+        'effective_to' => optional($salaryStructure->effective_to)->toDateString(),
+        'status' => $salaryStructure->status,
+        'allowances' => $salaryStructure->allowances ?? [],
+        'deductions' => $salaryStructure->deductions ?? [],
+    ];
+
+    return response()->json($response);
+}
+
+public function storeSalaryStructure(Request $request)
+{
+    $data = $request->validate([
+        'structure_name' => 'required|string|max:255',
+        'grade_level' => 'required|string|max:50',
+        'basic_salary' => 'required|numeric|min:0',
+        'effective_from' => 'required|date',
+        'effective_to' => 'nullable|date|after:effective_from',
+        'status' => 'required|in:draft,active,inactive,archived',
+        'allowances' => 'array',
+        'allowances.*' => 'numeric|min:0',
+        'deductions' => 'array',
+        'deductions.*' => 'numeric|min:0',
+    ]);
+
+    $structure = SalaryStructure::create([
+        'name' => $data['structure_name'],
+        'grade_level' => $data['grade_level'],
+        'basic_salary' => $data['basic_salary'],
+        'allowances' => $request->input('allowances', []),
+        'deductions' => $request->input('deductions', []),
+        'effective_from' => $data['effective_from'],
+        'effective_to' => $data['effective_to'] ?? null,
+        'status' => $data['status'],
+        'created_by' => Auth::id(),
+        'updated_by' => Auth::id(),
+    ]);
+
+    return response()->json(['message' => 'Salary structure created successfully', 'id' => $structure->id]);
+}
+
+public function updateSalaryStructure(Request $request, SalaryStructure $salaryStructure)
+{
+    $data = $request->validate([
+        'structure_name' => 'required|string|max:255',
+        'grade_level' => 'required|string|max:50',
+        'basic_salary' => 'required|numeric|min:0',
+        'effective_from' => 'required|date',
+        'effective_to' => 'nullable|date|after:effective_from',
+        'status' => 'required|in:draft,active,inactive,archived',
+        'allowances' => 'array',
+        'allowances.*' => 'numeric|min:0',
+        'deductions' => 'array',
+        'deductions.*' => 'numeric|min:0',
+    ]);
+
+    $salaryStructure->update([
+        'name' => $data['structure_name'],
+        'grade_level' => $data['grade_level'],
+        'basic_salary' => $data['basic_salary'],
+        'allowances' => $request->input('allowances', []),
+        'deductions' => $request->input('deductions', []),
+        'effective_from' => $data['effective_from'],
+        'effective_to' => $data['effective_to'] ?? null,
+        'status' => $data['status'],
+        'updated_by' => Auth::id(),
+    ]);
+
+    return response()->json(['message' => 'Salary structure updated successfully']);
+}
+
+public function destroySalaryStructure(SalaryStructure $salaryStructure)
+{
+    $salaryStructure->delete();
+    return response()->json(['message' => 'Salary structure deleted successfully']);
+}
+
+public function getDeduction(PayrollDeduction $deduction)
+{
+    $response = [
+        'id' => $deduction->id,
+        'employee_id' => $deduction->employee_id,
+        'deduction_type' => $deduction->deduction_type,
+        'description' => $deduction->description,
+        'amount' => (float) $deduction->deduction_amount,
+        'calculation_method' => $deduction->calculation_method === PayrollDeduction::METHOD_FIXED_AMOUNT ? 'fixed' : ($deduction->calculation_method === PayrollDeduction::METHOD_PERCENTAGE ? 'percentage_gross' : 'manual'),
+        'rate' => (float) ($deduction->deduction_rate ?? 0),
+        'effective_from' => optional($deduction->effective_from)->toDateString(),
+        'effective_to' => optional($deduction->effective_to)->toDateString(),
+        'priority' => data_get($deduction->compliance_data, 'priority', 'medium'),
+        'is_recurring' => (bool) $deduction->is_recurring,
+        'remarks' => $deduction->remarks,
+        'loan_advance_details' => data_get($deduction->compliance_data, 'loan_advance_details'),
+        'statutory_details' => [
+            'pan_number' => $deduction->pan_number,
+            'pf_number' => $deduction->pf_number,
+            'esi_number' => $deduction->esi_number,
+            'uan_number' => data_get($deduction->compliance_data, 'uan_number')
+        ],
+    ];
+
+    return response()->json($response);
+}
+
+public function storeDeduction(Request $request)
+{
+    $data = $request->validate([
+        'employee_id' => 'required|exists:users,id',
+        'deduction_type' => 'required|in:statutory,voluntary,disciplinary,advance,loan,other',
+        'description' => 'required|string|max:1000',
+        'amount' => 'required|numeric|min:0',
+        'calculation_method' => 'nullable|string',
+        'rate' => 'nullable|numeric|min:0|max:100',
+        'effective_from' => 'required|date',
+        'effective_to' => 'nullable|date|after:effective_from',
+        'priority' => 'nullable|string|in:low,medium,high,urgent',
+        'is_recurring' => 'nullable|boolean',
+        'remarks' => 'nullable|string|max:500',
+    ]);
+
+    $calcMethod = match($request->get('calculation_method')) {
+        'fixed' => PayrollDeduction::METHOD_FIXED_AMOUNT,
+        'percentage_gross', 'percentage_basic' => PayrollDeduction::METHOD_PERCENTAGE,
+        default => PayrollDeduction::METHOD_MANUAL,
+    };
+
+    $employee = User::findOrFail($data['employee_id']);
+
+    $compliance = [
+        'priority' => $request->get('priority'),
+        'loan_advance_details' => $request->only(['loan_total_amount', 'loan_installments', 'loan_interest_rate']) ?: null,
+        'uan_number' => $request->get('uan_number'),
+    ];
+
+    $deduction = PayrollDeduction::create([
+        'employee_id' => $employee->id,
+        'employee_name' => $employee->name,
+        'deduction_type' => $data['deduction_type'],
+        'description' => $data['description'],
+        'gross_salary' => 0, // Will be set during processing
+        'basic_salary' => null,
+        'deduction_rate' => $request->get('rate'),
+        'deduction_amount' => $data['amount'],
+        'employer_contribution' => 0,
+        'calculation_method' => $calcMethod,
+        'pan_number' => $request->get('pan_number'),
+        'pf_number' => $request->get('pf_number'),
+        'esi_number' => $request->get('esi_number'),
+        'tds_amount' => 0,
+        'pf_employee' => 0,
+        'pf_employer' => 0,
+        'esi_employee' => 0,
+        'esi_employer' => 0,
+        'effective_from' => $data['effective_from'],
+        'effective_to' => $data['effective_to'] ?? null,
+        'status' => PayrollDeduction::STATUS_PENDING,
+        'is_recurring' => (bool) ($data['is_recurring'] ?? false),
+        'remarks' => $data['remarks'] ?? null,
+        'created_by' => Auth::id(),
+        'updated_by' => Auth::id(),
+        'compliance_data' => $compliance,
+    ]);
+
+    return response()->json(['message' => 'Deduction created successfully', 'id' => $deduction->id]);
+}
+
+public function updateDeduction(Request $request, PayrollDeduction $deduction)
+{
+    $data = $request->validate([
+        'employee_id' => 'required|exists:users,id',
+        'deduction_type' => 'required|in:statutory,voluntary,disciplinary,advance,loan,other',
+        'description' => 'required|string|max:1000',
+        'amount' => 'required|numeric|min:0',
+        'calculation_method' => 'nullable|string',
+        'rate' => 'nullable|numeric|min:0|max:100',
+        'effective_from' => 'required|date',
+        'effective_to' => 'nullable|date|after:effective_from',
+        'priority' => 'nullable|string|in:low,medium,high,urgent',
+        'is_recurring' => 'nullable|boolean',
+        'remarks' => 'nullable|string|max:500',
+    ]);
+
+    $calcMethod = match($request->get('calculation_method')) {
+        'fixed' => PayrollDeduction::METHOD_FIXED_AMOUNT,
+        'percentage_gross', 'percentage_basic' => PayrollDeduction::METHOD_PERCENTAGE,
+        default => PayrollDeduction::METHOD_MANUAL,
+    };
+
+    $employee = User::findOrFail($data['employee_id']);
+
+    $compliance = [
+        'priority' => $request->get('priority'),
+        'loan_advance_details' => $request->only(['loan_total_amount', 'loan_installments', 'loan_interest_rate']) ?: null,
+        'uan_number' => $request->get('uan_number'),
+    ];
+
+    $deduction->update([
+        'employee_id' => $employee->id,
+        'employee_name' => $employee->name,
+        'deduction_type' => $data['deduction_type'],
+        'description' => $data['description'],
+        'deduction_rate' => $request->get('rate'),
+        'deduction_amount' => $data['amount'],
+        'calculation_method' => $calcMethod,
+        'pan_number' => $request->get('pan_number'),
+        'pf_number' => $request->get('pf_number'),
+        'esi_number' => $request->get('esi_number'),
+        'effective_from' => $data['effective_from'],
+        'effective_to' => $data['effective_to'] ?? null,
+        'status' => $deduction->status === PayrollDeduction::STATUS_CANCELLED ? $deduction->status : PayrollDeduction::STATUS_PENDING,
+        'is_recurring' => (bool) ($data['is_recurring'] ?? false),
+        'remarks' => $data['remarks'] ?? null,
+        'updated_by' => Auth::id(),
+        'compliance_data' => $compliance,
+    ]);
+
+    return response()->json(['message' => 'Deduction updated successfully']);
+}
+
+public function destroyDeduction(PayrollDeduction $deduction)
+{
+    $deduction->delete();
+    return response()->json(['message' => 'Deduction deleted successfully']);
+}
+
+public function approveDeduction(PayrollDeduction $deduction)
+{
+    if ($deduction->status !== PayrollDeduction::STATUS_PENDING) {
+        return response()->json(['message' => 'Deduction cannot be approved'], 400);
+    }
+
+    $deduction->status = PayrollDeduction::STATUS_APPROVED;
+    $deduction->approved_by = Auth::id();
+    $deduction->approved_at = now();
+    $deduction->save();
+
+    return response()->json(['message' => 'Deduction approved successfully']);
+}
+
+public function getSalaryStructureStats(Request $request)
+{
+    $month = $request->get('month');
+    $year = $request->get('year');
+    $period = null;
+    if ($month && $year) {
+        try {
+            $period = Carbon::createFromDate((int)$year, (int)$month, 1);
+        } catch (\Exception $e) {
+            $period = now();
+        }
+    } else {
+        $period = now();
+    }
+
+    $totalStructures = SalaryStructure::count();
+    $activeStructures = SalaryStructure::where('status', SalaryStructure::STATUS_ACTIVE)->count();
+    $gradeLevels = SalaryStructure::distinct()->pluck('grade_level')->filter()->count();
+
+    $activeList = SalaryStructure::where('status', SalaryStructure::STATUS_ACTIVE)->get();
+    $grossSum = 0; $netSum = 0; $count = 0;
+    foreach ($activeList as $s) {
+        $calc = $s->calculateSalary();
+        $grossSum += $calc['gross_salary'] ?? 0;
+        $netSum += $calc['net_salary'] ?? 0;
+        $count++;
+    }
+    $avgGross = $count > 0 ? round($grossSum / $count, 2) : 0;
+
+    $totalDeductionsCount = PayrollDeduction::count();
+    $pendingApprovals = PayrollDeduction::where('status', PayrollDeduction::STATUS_PENDING)->count();
+    $activeLoans = PayrollDeduction::where('deduction_type', PayrollDeduction::TYPE_LOAN)
+        ->whereIn('status', [PayrollDeduction::STATUS_APPROVED, PayrollDeduction::STATUS_PROCESSED])
+        ->where(function($q) use ($period) {
+            $q->whereNull('effective_to')->orWhereDate('effective_to', '>=', $period->toDateString());
+        })
+        ->count();
+
+    $monthlySum = PayrollDeduction::where('payroll_year', $period->year)
+        ->where('payroll_month', $period->month)
+        ->sum('deduction_amount');
+
+    // For reports page additional stats
+    $totalEmployees = User::count();
+    $totalPayroll = round($grossSum, 2);
+    $netPayable = round($netSum, 2);
+
+    return response()->json([
+        'total_structures' => $totalStructures,
+        'active_structures' => $activeStructures,
+        'grade_levels' => $gradeLevels,
+        'avg_gross_salary' => $avgGross,
+        'total_deductions' => $totalDeductionsCount,
+        'pending_approvals' => $pendingApprovals,
+        'active_loans' => $activeLoans,
+        'monthly_deductions' => round($monthlySum, 2),
+        'total_employees' => $totalEmployees,
+        'total_payroll' => $totalPayroll,
+        'net_payable' => $netPayable,
+    ]);
+}
+
+public function getEmployees(Request $request)
+{
+    $employees = User::select('id', 'name', 'employee_code')
+        ->orderBy('name')
+        ->get()
+        ->map(function($u) {
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'employee_id' => $u->employee_code,
+            ];
+        });
+
+    return response()->json($employees);
+}
 }

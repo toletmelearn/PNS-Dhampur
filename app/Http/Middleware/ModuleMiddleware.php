@@ -157,6 +157,7 @@ class ModuleMiddleware
                 'library' => ['admin', 'principal', 'librarian', 'teacher', 'student'],
                 'transport' => ['admin', 'principal', 'transport_manager', 'student', 'parent'],
                 'hostel' => ['admin', 'principal', 'hostel_warden', 'student', 'parent'],
+                'parentportal' => ['admin', 'principal', 'teacher', 'parent'],
                 'inventory' => ['admin', 'principal', 'inventory_manager'],
                 'hr' => ['admin', 'principal', 'hr_manager'],
                 'communication' => ['admin', 'principal', 'teacher', 'student', 'parent'],

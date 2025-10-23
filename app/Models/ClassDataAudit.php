@@ -120,12 +120,22 @@ class ClassDataAudit extends Model
 
     public function versions()
     {
-        return $this->hasMany(ClassDataVersion::class, 'audit_id');
+        // Link versions either directly by audit_id or by the audited entity
+        $relation = $this->hasMany(ClassDataVersion::class, 'audit_id');
+        return $relation->orWhere(function ($q) {
+            $q->where('entity_type', $this->auditable_type)
+              ->where('entity_id', $this->auditable_id);
+        });
     }
 
     public function approvals()
     {
         return $this->hasMany(ClassDataApproval::class, 'audit_id');
+    }
+
+    public function approval()
+    {
+        return $this->hasOne(ClassDataApproval::class, 'audit_id');
     }
 
     public function class()

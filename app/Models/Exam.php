@@ -25,6 +25,7 @@ class Exam extends Model
         'date' => 'date',
         'start_date' => 'date',
         'end_date' => 'date',
+        'exam_date' => 'date',
     ];
 
     public function class() 

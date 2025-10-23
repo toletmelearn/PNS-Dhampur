@@ -13,6 +13,7 @@ class TeacherDocument extends Model
 
     protected $fillable = [
         'teacher_id',
+        'category_id',
         'document_type',
         'original_name',
         'file_path',
@@ -62,6 +63,11 @@ class TeacherDocument extends Model
         return $this->belongsTo(Teacher::class);
     }
 
+    public function category()
+    {
+        return $this->belongsTo(DocumentCategory::class, 'category_id');
+    }
+
     public function uploadedBy()
     {
         return $this->belongsTo(User::class, 'uploaded_by');
@@ -70,6 +76,17 @@ class TeacherDocument extends Model
     public function reviewedBy()
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function versions()
+    {
+        return $this->hasMany(DocumentVersion::class, 'teacher_document_id')->orderBy('version_number', 'desc');
+    }
+
+    public function currentVersion()
+    {
+        return $this->hasOne(DocumentVersion::class, 'teacher_document_id')
+            ->where('is_current_version', true);
     }
 
     /**
@@ -173,6 +190,34 @@ class TeacherDocument extends Model
         if (Storage::exists($this->file_path)) {
             Storage::delete($this->file_path);
         }
+    }
+
+    /**
+     * Versioning helper: create a new version from stored file metadata
+     */
+    public function createNewVersion(array $meta): DocumentVersion
+    {
+        // Mark existing current version as not current
+        DocumentVersion::where('teacher_document_id', $this->id)
+            ->update(['is_current_version' => false]);
+
+        $nextVersion = (int) (DocumentVersion::where('teacher_document_id', $this->id)->max('version_number') ?? 0) + 1;
+
+        return DocumentVersion::create([
+            'teacher_document_id' => $this->id,
+            'version_number' => $nextVersion,
+            'original_name' => $meta['original_name'] ?? $this->original_name,
+            'file_path' => $meta['file_path'] ?? $this->file_path,
+            'file_extension' => $meta['file_extension'] ?? $this->file_extension,
+            'file_size' => $meta['file_size'] ?? $this->file_size,
+            'mime_type' => $meta['mime_type'] ?? $this->mime_type,
+            'status' => DocumentVersion::STATUS_PENDING,
+            'change_summary' => $meta['change_summary'] ?? null,
+            'is_current_version' => true,
+            'created_by' => $meta['created_by'] ?? $this->uploaded_by,
+            'checksum' => $meta['checksum'] ?? null,
+            'metadata' => $meta['metadata'] ?? []
+        ]);
     }
 
     /**

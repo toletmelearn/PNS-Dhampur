@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Models\SecurityEvent;
 use Carbon\Carbon;
 use App\Support\Constants;
+use App\Services\SmsService;
 
 class MonitoringService
 {
@@ -523,8 +524,36 @@ class MonitoringService
      */
     protected function sendSMSAlert(string $severity, array $results): void
     {
-        // Placeholder for SMS implementation
-        // Would integrate with services like Twilio, AWS SNS, etc.
+        $smsRecipients = [];
+
+        // Prefer explicit recipients from monitoring config if present
+        $channelConfig = $this->config['alerts']['channels']['sms'] ?? [];
+        if (!empty($channelConfig['recipients']) && is_array($channelConfig['recipients'])) {
+            $smsRecipients = $channelConfig['recipients'];
+        }
+
+        // Fallback to environment-based recipients (comma-separated)
+        if (empty($smsRecipients)) {
+            $envRecipients = env('SMS_ALERT_RECIPIENTS', '');
+            if (!empty($envRecipients)) {
+                $smsRecipients = array_filter(array_map('trim', explode(',', $envRecipients)));
+            }
+        }
+
+        if (empty($smsRecipients)) {
+            return; // No recipients configured
+        }
+
+        $message = sprintf(
+            'System Alert [%s]: overall=%s at %s',
+            strtoupper($severity),
+            $results['overall_status'] ?? $severity,
+            $results['timestamp'] ?? now()->toISOString()
+        );
+
+        /** @var SmsService $smsService */
+        $smsService = app(SmsService::class);
+        $smsService->sendBulk($smsRecipients, $message);
     }
 
     /**

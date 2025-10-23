@@ -61,6 +61,15 @@
             color: #666;
             background-color: #f8f9fa;
         }
+        .qr-section {
+            float: right;
+            width: 120px;
+            height: 120px;
+            border: 0;
+            margin-left: 30px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
         
         .student-details {
             margin-bottom: 30px;
@@ -219,6 +228,11 @@
         <div class="photo-section">
             AFFIX<br>RECENT<br>PASSPORT<br>SIZE<br>PHOTOGRAPH<br>HERE
         </div>
+        @if(!empty($admitCard['qr_code']))
+        <div class="qr-section">
+            <img src="{{ $admitCard['qr_code'] }}" alt="QR Code" style="width:120px;height:120px;" />
+        </div>
+        @endif
         
         <div class="student-details">
             <div class="details-section">
