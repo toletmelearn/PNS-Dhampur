@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Role Access Test Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        .role { margin-bottom: 20px; border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
+        .role-title { background-color: #f5f5f5; padding: 5px; margin-bottom: 10px; }
+        .pass { color: green; }
+        .fail { color: red; }
+        .summary { margin-top: 20px; font-weight: bold; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+    </style>
+</head>
+<body>
+    <h1>User Role Access Test Report</h1>
+    <div class='role'>
+        <div class='role-title'><h2>SUPER_ADMIN - Full system access and configuration</h2></div>
+        <h3>Permissions</h3>
+        <table>
+            <tr>
+                <th>Permission</th>
+                <th>Expected</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>system_config</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>user_management</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>school_management</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>financial_management</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>academic_management</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>reporting</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>multi_school_access</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+        </table>
+        
+        <h3>Route Access</h3>
+        <table>
+            <tr>
+                <th>Route</th>
+                <th>Expected</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>/admin/system-config</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/users/manage</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/schools/manage</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/finance/dashboard</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/academic/dashboard</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/reports/all</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+        </table>
+    </div>
+    <div class='role'>
+        <div class='role-title'><h2>ADMIN - School management and user creation</h2></div>
+        <h3>Permissions</h3>
+        <table>
+            <tr>
+                <th>Permission</th>
+                <th>Expected</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>system_config</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>user_management</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>school_management</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>financial_management</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>academic_management</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>reporting</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>multi_school_access</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+        </table>
+        
+        <h3>Route Access</h3>
+        <table>
+            <tr>
+                <th>Route</th>
+                <th>Expected</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>/admin/system-config</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/users/manage</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/schools/manage</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/finance/dashboard</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/academic/dashboard</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/reports/all</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+        </table>
+    </div>
+    <div class='role'>
+        <div class='role-title'><h2>PRINCIPAL - Single school management</h2></div>
+        <h3>Permissions</h3>
+        <table>
+            <tr>
+                <th>Permission</th>
+                <th>Expected</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>system_config</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>user_management</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>school_management</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>financial_management</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>academic_management</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>reporting</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>multi_school_access</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+        </table>
+        
+        <h3>Route Access</h3>
+        <table>
+            <tr>
+                <th>Route</th>
+                <th>Expected</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>/admin/system-config</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/users/manage</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/schools/manage</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/finance/dashboard</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/academic/dashboard</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/reports/school</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+        </table>
+    </div>
+    <div class='role'>
+        <div class='role-title'><h2>TEACHER - Class and subject management</h2></div>
+        <h3>Permissions</h3>
+        <table>
+            <tr>
+                <th>Permission</th>
+                <th>Expected</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>system_config</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>user_management</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>school_management</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>financial_management</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>academic_management</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>reporting</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>multi_school_access</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+        </table>
+        
+        <h3>Route Access</h3>
+        <table>
+            <tr>
+                <th>Route</th>
+                <th>Expected</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>/admin/system-config</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/users/manage</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/schools/manage</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/finance/dashboard</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/teacher/classes/manage</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/teacher/attendance/manage</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/teacher/grades/manage</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/teacher/syllabus/manage</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/teacher/exams/manage</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+        </table>
+    </div>
+    <div class='role'>
+        <div class='role-title'><h2>STUDENT - Personal data access</h2></div>
+        <h3>Permissions</h3>
+        <table>
+            <tr>
+                <th>Permission</th>
+                <th>Expected</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>system_config</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>user_management</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>school_management</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>financial_management</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>academic_management</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>reporting</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>multi_school_access</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>personal_data</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>syllabus_view</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>result_view</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>fee_payment</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+        </table>
+        
+        <h3>Route Access</h3>
+        <table>
+            <tr>
+                <th>Route</th>
+                <th>Expected</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>/student/profile</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/student/syllabus/view</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/student/results/view</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/student/fees/pay</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/system-config</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/users/manage</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/teacher/grades/manage</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+        </table>
+    </div>
+    <div class='role'>
+        <div class='role-title'><h2>PARENT - Child progress monitoring</h2></div>
+        <h3>Permissions</h3>
+        <table>
+            <tr>
+                <th>Permission</th>
+                <th>Expected</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>system_config</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>user_management</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>school_management</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>financial_management</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>academic_management</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>reporting</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>multi_school_access</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>child_data</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>fee_payment</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>attendance_view</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>grade_view</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+        </table>
+        
+        <h3>Route Access</h3>
+        <table>
+            <tr>
+                <th>Route</th>
+                <th>Expected</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>/parent/children/view</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/parent/fees/pay</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/parent/attendance/view</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/parent/grades/view</td>
+                <td>Yes</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/system-config</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/admin/users/manage</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+            <tr>
+                <td>/teacher/grades/manage</td>
+                <td>No</td>
+                <td class='pass'>PASS</td>
+            </tr>
+        </table>
+    </div>
+    <div class='summary'>
+        <h2>Overall Test Summary</h2>
+        <p>Permission Tests: <span class='pass'>PASS</span></p>
+        <p>Route Access Tests: <span class='pass'>PASS</span></p>
+        <p>Overall Status: <span class='pass'>PASS</span></p>
+    </div>
+</body>
+</html>

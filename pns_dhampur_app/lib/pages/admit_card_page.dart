@@ -25,7 +25,13 @@ class _AdmitCardPageState extends State<AdmitCardPage>
       'section': 'A',
       'examType': 'Annual Exam',
       'examDate': '2024-03-15',
-      'subjects': ['Mathematics', 'Science', 'English', 'Hindi', 'Social Studies'],
+      'subjects': [
+        'Mathematics',
+        'Science',
+        'English',
+        'Hindi',
+        'Social Studies'
+      ],
       'photo': '👦',
       'fatherName': 'Mr. Rajesh Sharma',
       'motherName': 'Mrs. Priya Sharma',
@@ -41,7 +47,13 @@ class _AdmitCardPageState extends State<AdmitCardPage>
       'section': 'A',
       'examType': 'Annual Exam',
       'examDate': '2024-03-15',
-      'subjects': ['Mathematics', 'Science', 'English', 'Hindi', 'Social Studies'],
+      'subjects': [
+        'Mathematics',
+        'Science',
+        'English',
+        'Hindi',
+        'Social Studies'
+      ],
       'photo': '👧',
       'fatherName': 'Mr. Suresh Verma',
       'motherName': 'Mrs. Anita Verma',
@@ -67,8 +79,21 @@ class _AdmitCardPageState extends State<AdmitCardPage>
     },
   ];
 
-  final List<String> _classes = ['All Classes', 'Class 10', 'Class 9', 'Class 8', 'Class 7', 'Class 6'];
-  final List<String> _exams = ['All Exams', 'Annual Exam', 'Half Yearly', 'Unit Test', 'Monthly Test'];
+  final List<String> _classes = [
+    'All Classes',
+    'Class 10',
+    'Class 9',
+    'Class 8',
+    'Class 7',
+    'Class 6'
+  ];
+  final List<String> _exams = [
+    'All Exams',
+    'Annual Exam',
+    'Half Yearly',
+    'Unit Test',
+    'Monthly Test'
+  ];
 
   @override
   void initState() {
@@ -210,12 +235,13 @@ class _AdmitCardPageState extends State<AdmitCardPage>
                           ),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
-                            value: _selectedClass,
+                            initialValue: _selectedClass,
                             decoration: InputDecoration(
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                             ),
                             items: _classes.map((String value) {
                               return DropdownMenuItem<String>(
@@ -247,12 +273,13 @@ class _AdmitCardPageState extends State<AdmitCardPage>
                           ),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
-                            value: _selectedExam,
+                            initialValue: _selectedExam,
                             decoration: InputDecoration(
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
                             ),
                             items: _exams.map((String value) {
                               return DropdownMenuItem<String>(
@@ -418,7 +445,8 @@ class _AdmitCardPageState extends State<AdmitCardPage>
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -520,10 +548,12 @@ class _AdmitCardPageState extends State<AdmitCardPage>
                 Row(
                   children: [
                     Icon(
-                      card['status'] == 'Generated' ? Icons.check_circle : Icons.pending,
+                      card['status'] == 'Generated'
+                          ? Icons.check_circle
+                          : Icons.pending,
                       size: 16,
-                      color: card['status'] == 'Generated' 
-                          ? const Color(0xFF4CAF50) 
+                      color: card['status'] == 'Generated'
+                          ? const Color(0xFF4CAF50)
                           : const Color(0xFFFF9800),
                     ),
                     const SizedBox(width: 4),
@@ -531,8 +561,8 @@ class _AdmitCardPageState extends State<AdmitCardPage>
                       card['status'],
                       style: TextStyle(
                         fontSize: 12,
-                        color: card['status'] == 'Generated' 
-                            ? const Color(0xFF4CAF50) 
+                        color: card['status'] == 'Generated'
+                            ? const Color(0xFF4CAF50)
                             : const Color(0xFFFF9800),
                         fontWeight: FontWeight.w500,
                       ),
@@ -648,7 +678,8 @@ class _AdmitCardPageState extends State<AdmitCardPage>
                     _buildDetailRow('Date of Birth', card['dob']),
                     _buildDetailRow('Admission No.', card['admissionNo']),
                     _buildDetailRow('Roll Number', card['rollNumber']),
-                    _buildDetailRow('Class & Section', '${card['class']} - ${card['section']}'),
+                    _buildDetailRow('Class & Section',
+                        '${card['class']} - ${card['section']}'),
                   ],
                 ),
               ),
@@ -671,7 +702,8 @@ class _AdmitCardPageState extends State<AdmitCardPage>
             runSpacing: 4,
             children: (card['subjects'] as List<String>).map((subject) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: const Color(0xFF3F51B5).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16),
@@ -755,7 +787,8 @@ class _AdmitCardPageState extends State<AdmitCardPage>
     );
   }
 
-  Widget _buildReportCard(String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildReportCard(String title, String subtitle, IconData icon,
+      Color color, VoidCallback onTap) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -822,8 +855,10 @@ class _AdmitCardPageState extends State<AdmitCardPage>
 
   List<Map<String, dynamic>> _getFilteredCards() {
     return _admitCards.where((card) {
-      bool classMatch = _selectedClass == 'All Classes' || card['class'] == _selectedClass;
-      bool examMatch = _selectedExam == 'All Exams' || card['examType'] == _selectedExam;
+      bool classMatch =
+          _selectedClass == 'All Classes' || card['class'] == _selectedClass;
+      bool examMatch =
+          _selectedExam == 'All Exams' || card['examType'] == _selectedExam;
       return classMatch && examMatch;
     }).toList();
   }
@@ -838,7 +873,8 @@ class _AdmitCardPageState extends State<AdmitCardPage>
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Bulk Generate Admit Cards'),
-          content: const Text('Generate admit cards for all students in selected class and exam?'),
+          content: const Text(
+              'Generate admit cards for all students in selected class and exam?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -852,7 +888,8 @@ class _AdmitCardPageState extends State<AdmitCardPage>
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF3F51B5),
               ),
-              child: const Text('Generate', style: TextStyle(color: Colors.white)),
+              child:
+                  const Text('Generate', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -866,7 +903,8 @@ class _AdmitCardPageState extends State<AdmitCardPage>
 
   void _generateAdmitCard(Map<String, dynamic> card) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Generating admit card for ${card['studentName']}...')),
+      SnackBar(
+          content: Text('Generating admit card for ${card['studentName']}...')),
     );
   }
 

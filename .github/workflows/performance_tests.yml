@@ -1,0 +1,115 @@
+name: Performance Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_duration:
+        description: 'Test duration in minutes'
+        required: true
+        default: '5'
+      concurrent_users:
+        description: 'Number of concurrent users'
+        required: true
+        default: '50'
+      test_environment:
+        description: 'Test environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  performance_test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+      
+      - name: Install Apache JMeter
+        run: |
+          wget https://dlcdn.apache.org//jmeter/binaries/apache-jmeter-5.5.tgz
+          tar -xzf apache-jmeter-5.5.tgz
+          echo "JMETER_HOME=$GITHUB_WORKSPACE/apache-jmeter-5.5" >> $GITHUB_ENV
+          echo "$GITHUB_WORKSPACE/apache-jmeter-5.5/bin" >> $GITHUB_PATH
+      
+      - name: Generate test data
+        run: php generate_test_data.php
+      
+      - name: Run JMeter tests
+        run: |
+          jmeter -n -t jmeter_attendance_test.jmx \
+            -Jhost=${{ github.event.inputs.test_environment == 'production' && 'pns-dhampur.edu' || 'staging.pns-dhampur.edu' }} \
+            -Jport=443 \
+            -Jprotocol=https \
+            -JnumThreads=${{ github.event.inputs.concurrent_users }} \
+            -JrampUp=30 \
+            -Jduration=${{ github.event.inputs.test_duration }} \
+            -l results.jtl \
+            -e -o report
+      
+      - name: Run performance monitoring
+        run: |
+          php monitor_performance.php $((${{ github.event.inputs.test_duration }} * 60)) "github_action_${{ github.run_id }}"
+      
+      - name: Generate performance report
+        run: |
+          echo "# Performance Test Results" > performance_report.md
+          echo "## Test Configuration" >> performance_report.md
+          echo "- Environment: ${{ github.event.inputs.test_environment }}" >> performance_report.md
+          echo "- Duration: ${{ github.event.inputs.test_duration }} minutes" >> performance_report.md
+          echo "- Concurrent Users: ${{ github.event.inputs.concurrent_users }}" >> performance_report.md
+          echo "- Test Date: $(date)" >> performance_report.md
+          echo "" >> performance_report.md
+          
+          echo "## Summary" >> performance_report.md
+          echo "$(jmeter -g results.jtl -e -o report)" >> performance_report.md
+          
+          echo "## Key Metrics" >> performance_report.md
+          echo "- Average Response Time: $(grep 'summary =' results.jtl | awk '{print $9}') ms" >> performance_report.md
+          echo "- Throughput: $(grep 'summary =' results.jtl | awk '{print $11}') requests/sec" >> performance_report.md
+          echo "- Error Rate: $(grep 'summary =' results.jtl | awk '{print $15}')%" >> performance_report.md
+      
+      - name: Upload JMeter results
+        uses: actions/upload-artifact@v3
+        with:
+          name: jmeter-results
+          path: |
+            results.jtl
+            report/
+      
+      - name: Upload performance metrics
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-metrics
+          path: performance_metrics.csv
+      
+      - name: Upload performance report
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-report
+          path: performance_report.md
+      
+      - name: Check performance thresholds
+        run: |
+          # Extract metrics from results
+          AVG_RESPONSE_TIME=$(grep 'summary =' results.jtl | awk '{print $9}')
+          ERROR_RATE=$(grep 'summary =' results.jtl | awk '{print $15}')
+          
+          # Check against thresholds
+          if (( $(echo "$AVG_RESPONSE_TIME > 1000" | bc -l) )); then
+            echo "::warning::Average response time ($AVG_RESPONSE_TIME ms) exceeds threshold (1000 ms)"
+          fi
+          
+          if (( $(echo "$ERROR_RATE > 1.0" | bc -l) )); then
+            echo "::error::Error rate ($ERROR_RATE%) exceeds threshold (1.0%)"
+            exit 1
+          fi

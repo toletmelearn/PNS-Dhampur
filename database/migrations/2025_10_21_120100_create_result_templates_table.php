@@ -12,7 +12,7 @@ return new class extends Migration {
             $table->string('name');
             $table->string('format')->default('percentage'); // percentage | gpa | cbse | custom
             $table->json('settings')->nullable(); // JSON for layout, subject order, weightages, remarks options
-            $table->foreignId('grading_system_id')->nullable()->constrained('grading_systems');
+            $table->unsignedBigInteger('grading_system_id')->nullable(); // Will add foreign key later
             $table->foreignId('created_by')->nullable()->constrained('users');
             $table->boolean('is_active')->default(true);
             $table->timestamps();

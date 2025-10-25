@@ -7,6 +7,8 @@
 .env
 .env.backup
 .env.production
+.env.local
+.env.testing
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
@@ -17,6 +19,45 @@ yarn-error.log
 /.idea
 /.vscode
 *.log
+
+# --------- Security & Sensitive Files ----------
+*.key
+*.pem
+*.p12
+*.pfx
+config/database.php.backup
+config/app.php.backup
+storage/logs/*
+!storage/logs/.gitkeep
+
+# --------- Temporary & Debug Files ----------
+*.tmp
+*.temp
+*_test.php
+*_test.txt
+*_test.html
+test_*.php
+test_*.txt
+test_*.html
+debug_*.php
+debug_*.txt
+cookies.txt
+*.cache
+*.bak
+*.backup
+
+# --------- IDE & OS Files ----------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*.swp
+*.swo
+*~
+
 # --------- Flutter ----------
 /.build/
 /build/
@@ -28,5 +69,15 @@ yarn-error.log
 *.iml
 android/.gradle/
 ios/Pods/
-/.DS_Store
+
+# --------- Laravel Specific ----------
+/bootstrap/cache/*.php
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/framework/testing/*
+!storage/framework/cache/.gitkeep
+!storage/framework/sessions/.gitkeep
+!storage/framework/views/.gitkeep
+!storage/framework/testing/.gitkeep
 

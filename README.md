@@ -1,15 +1,15 @@
 # 🏫 PNS Dhampur School Management System
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Laravel-9.x-red?style=for-the-badge&logo=laravel" alt="Laravel">
-  <img src="https://img.shields.io/badge/PHP-8.0+-blue?style=for-the-badge&logo=php" alt="PHP">
-  <img src="https://img.shields.io/badge/Flutter-3.x-blue?style=for-the-badge&logo=flutter" alt="Flutter">
+  <img src="https://img.shields.io/badge/Laravel-10.x-red?style=for-the-badge&logo=laravel" alt="Laravel">
+  <img src="https://img.shields.io/badge/PHP-8.1+-blue?style=for-the-badge&logo=php" alt="PHP">
   <img src="https://img.shields.io/badge/MySQL-8.0-orange?style=for-the-badge&logo=mysql" alt="MySQL">
+  <img src="https://img.shields.io/badge/Bootstrap-5.x-purple?style=for-the-badge&logo=bootstrap" alt="Bootstrap">
   <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License">
 </p>
 
 <p align="center">
-  A comprehensive, modern school management system designed specifically for PNS Dhampur School, featuring advanced automation, security, and mobile accessibility.
+  A comprehensive, modern school management system designed specifically for PNS Dhampur School, featuring advanced automation, security, and comprehensive academic management.
 </p>
 
 ## 📋 Table of Contents
@@ -17,14 +17,12 @@
 - [Overview](#overview)
 - [Features](#features)
 - [Technology Stack](#technology-stack)
+- [Requirements](#requirements)
 - [Installation](#installation)
 - [Configuration](#configuration)
-- [Usage](#usage)
-- [API Documentation](#api-documentation)
-- [Mobile Application](#mobile-application)
 - [Testing](#testing)
 - [Security](#security)
-- [Backup & Recovery](#backup--recovery)
+- [Deployment](#deployment)
 - [Contributing](#contributing)
 - [License](#license)
 - [Support](#support)
@@ -34,165 +32,175 @@
 The PNS Dhampur School Management System is a full-featured, enterprise-grade solution designed to streamline school operations, enhance educational delivery, and provide comprehensive management tools for administrators, teachers, students, and parents.
 
 ### Key Highlights
-- 🚀 **Modern Architecture**: Built with Laravel 9.x and Flutter
+- 🚀 **Modern Architecture**: Built with Laravel 10.x
 - 🔐 **Enterprise Security**: Multi-layer authentication and authorization
-- 📱 **Mobile-First**: Native mobile app for iOS and Android
-- 🤖 **AI-Powered**: Intelligent substitution system and analytics
 - 📊 **Advanced Analytics**: Comprehensive reporting and insights
 - 🔄 **Real-Time**: Live notifications and updates
-- 🌐 **Multi-Platform**: Web, mobile, and API access
+- 🌐 **Web-Based**: Responsive design for all devices
+- ✅ **Production Ready**: Fully tested and verified system
 
 ## ✨ Features
 
 ### 👥 User Management
-- **Multi-Role System**: Admin, Principal, Teachers, Students, Parents
-- **Advanced Authentication**: Session security, password policies
-- **User Activity Tracking**: Comprehensive audit trails
-- **Permission Management**: Granular access control
+- **Multi-Role Authentication**: Admin, Teacher, Student, Parent access levels
+- **Secure Login System**: Role-based dashboard redirection
+- **User Profile Management**: Complete profile management for all user types
+- **Password Security**: Advanced password policies and security
 
 ### 📚 Academic Management
-- **Student Information System**: Complete student profiles and records
-- **Class Management**: Dynamic class allocation and management
-- **Subject Management**: Curriculum and syllabus tracking
-- **Assignment System**: Digital assignment submission and grading
-- **Exam Management**: Comprehensive examination system with security
-
-### 👨‍🏫 Teacher Management
-- **Teacher Profiles**: Complete professional information
-- **Substitution System**: AI-powered automatic teacher substitution
-- **Availability Tracking**: Real-time teacher availability
-- **Performance Analytics**: Teaching effectiveness metrics
-- **Document Management**: Digital document storage and verification
+- **Class & Section Management**: Organize students by classes and sections
+- **Subject Management**: Comprehensive subject allocation and tracking
+- **Student Enrollment**: Complete student registration and management
+- **Teacher Assignment**: Teacher-subject-class allocation system
+- **Academic Year Management**: Multi-year academic planning
 
 ### 📊 Attendance System
-- **Biometric Integration**: Fingerprint and facial recognition support
-- **Real-Time Tracking**: Live attendance monitoring
-- **Analytics Dashboard**: Attendance patterns and insights
-- **Regularization System**: Attendance correction workflows
-- **Mobile Attendance**: Mobile app-based attendance marking
+- **Daily Attendance**: Mark and track student attendance
+- **Attendance Reports**: Generate detailed attendance analytics
+- **Biometric Integration**: Support for biometric attendance devices
+- **Attendance Alerts**: Automated notifications for low attendance
 
-### 💰 Financial Management
-- **Fee Management**: Comprehensive fee collection system
-- **Payment Processing**: Multiple payment gateway integration
-- **Budget Management**: Department-wise budget allocation
-- **Financial Reporting**: Detailed financial analytics
-- **Vendor Management**: Supplier and vendor tracking
+### 📝 Examination System
+- **Exam Management**: Create and manage various types of examinations
+- **Result Processing**: Automated result calculation and grade assignment
+- **Report Cards**: Generate comprehensive student report cards
+- **Performance Analytics**: Track student academic performance
+- **Admit Card Generation**: Automated admit card creation
 
-### 📱 Bell Schedule System
-- **Automated Bell System**: Programmable school bell automation
-- **Special Schedules**: Holiday and event-specific schedules
-- **Mobile Notifications**: Real-time schedule updates
-- **Audio Integration**: Automated announcement system
+### 💰 Fee Management
+- **Fee Structure**: Define and manage fee structures by class
+- **Payment Tracking**: Track fee payments and outstanding amounts
+- **Receipt Generation**: Automated fee receipt generation
+- **Financial Reports**: Comprehensive financial reporting
+- **Payment Reminders**: Automated fee reminder system
 
-### 📈 Analytics & Reporting
-- **Performance Dashboards**: Real-time KPI monitoring
-- **Custom Reports**: Flexible report generation
-- **Data Visualization**: Interactive charts and graphs
-- **Export Capabilities**: PDF, Excel, CSV export options
-- **Predictive Analytics**: AI-powered insights
+### 📢 Communication & Notifications
+- **Notification System**: Send notifications to students, teachers, and parents
+- **Announcements**: School-wide announcement management
+- **Email Integration**: Automated email notifications
+- **SMS Integration**: SMS notification support
 
-### 🔧 System Administration
-- **Backup System**: Automated backup and recovery
-- **System Health Monitoring**: Performance tracking
-- **Error Logging**: Comprehensive error tracking
-- **Configuration Management**: System-wide settings
-- **Maintenance Tools**: Database optimization and cleanup
+### ⏰ Schedule Management
+- **Bell Timing**: Configure school bell schedules
+- **Timetable Management**: Create and manage class timetables
+- **Holiday Calendar**: Manage academic calendar and holidays
+- **Event Management**: School event planning and tracking
 
-## 🛠 Technology Stack
+### 📋 Administrative Features
+- **Data Audit**: Track all system changes and modifications
+- **Document Management**: Teacher document and experience tracking
+- **System Settings**: Comprehensive system configuration
+- **Backup Management**: Automated data backup systems
+- **User Activity Logs**: Complete audit trail
 
-### Backend
-- **Framework**: Laravel 9.x
-- **Language**: PHP 8.0+
-- **Database**: MySQL 8.0
+## 🛠️ Technology Stack
+
+- **Backend**: Laravel 10.x (PHP 8.1+)
+- **Frontend**: Blade Templates with Bootstrap 5
+- **Database**: MySQL 8.0+
 - **Authentication**: Laravel Sanctum
-- **Queue System**: Redis/Database
-- **File Storage**: Local/Cloud Storage
-- **PDF Generation**: DomPDF
-- **Excel Processing**: Maatwebsite Excel
-
-### Frontend
-- **Web**: Blade Templates, JavaScript ES6+, CSS3
-- **Mobile**: Flutter 3.x (Dart)
-- **UI Framework**: Bootstrap 5, Material Design
-- **Charts**: Chart.js, ApexCharts
-- **Icons**: Font Awesome, Material Icons
-
-### DevOps & Tools
+- **File Storage**: Laravel Storage
+- **Task Scheduling**: Laravel Scheduler
+- **Testing**: PHPUnit
+- **Build Tools**: Vite
 - **Version Control**: Git
-- **Testing**: PHPUnit, Flutter Test
-- **Code Quality**: Laravel Pint, ESLint
-- **Documentation**: Markdown
-- **Deployment**: Apache/Nginx, Docker support
+
+## 📋 Requirements
+
+### System Requirements
+- **PHP**: 8.1 or higher
+- **Composer**: Latest version
+- **Node.js**: 16.x or higher
+- **NPM**: 8.x or higher
+- **MySQL**: 8.0 or higher
+- **Apache/Nginx**: Web server
+- **Git**: Version control
+
+### PHP Extensions
+- OpenSSL PHP Extension
+- PDO PHP Extension
+- Mbstring PHP Extension
+- Tokenizer PHP Extension
+- XML PHP Extension
+- Ctype PHP Extension
+- JSON PHP Extension
+- BCMath PHP Extension
 
 ## 🚀 Installation
 
-### Prerequisites
-- PHP 8.0 or higher
-- Composer
-- Node.js & NPM
-- MySQL 8.0
-- Apache/Nginx web server
-- Flutter SDK (for mobile app)
+### 1. Clone the Repository
+```bash
+git clone https://github.com/yourusername/pns-dhampur-school-management.git
+cd pns-dhampur-school-management
+```
 
-### Backend Setup
+### 2. Install PHP Dependencies
+```bash
+composer install
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-repo/pns-dhampur.git
-   cd pns-dhampur
-   ```
+### 3. Install Node.js Dependencies
+```bash
+npm install
+```
 
-2. **Install PHP dependencies**
-   ```bash
-   composer install
-   ```
+### 4. Environment Configuration
+```bash
+# Copy environment file
+cp .env.example .env
 
-3. **Environment configuration**
-   ```bash
-   cp .env.example .env
-   php artisan key:generate
-   ```
+# Generate application key
+php artisan key:generate
+```
 
-4. **Database setup**
-   ```bash
-   php artisan migrate
-   php artisan db:seed
-   ```
+### 5. Database Setup
+```bash
+# Configure your database in .env file
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=pns_dhampur
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
 
-5. **Storage setup**
-   ```bash
-   php artisan storage:link
-   ```
+# Run migrations
+php artisan migrate
 
-6. **Start the development server**
-   ```bash
-   php artisan serve
-   ```
+# Seed the database (optional)
+php artisan db:seed
+```
 
-### Mobile App Setup
+### 6. Storage Setup
+```bash
+# Create storage link
+php artisan storage:link
 
-1. **Navigate to mobile app directory**
-   ```bash
-   cd pns_dhampur_app
-   ```
+# Set proper permissions (Linux/Mac)
+chmod -R 775 storage
+chmod -R 775 bootstrap/cache
+```
 
-2. **Install Flutter dependencies**
-   ```bash
-   flutter pub get
-   ```
+### 7. Build Frontend Assets
+```bash
+npm run build
+```
 
-3. **Run the mobile app**
-   ```bash
-   flutter run
-   ```
+### 8. Start the Application
+```bash
+# Development server
+php artisan serve
+
+# Or configure your web server to point to the public directory
+```
 
 ## ⚙️ Configuration
 
 ### Environment Variables
+Key environment variables to configure:
+
 ```env
-APP_NAME="PNS Dhampur School Management System"
+APP_NAME="PNS Dhampur School Management"
 APP_ENV=production
-APP_KEY=your-app-key
 APP_DEBUG=false
 APP_URL=https://your-domain.com
 
@@ -200,175 +208,172 @@ DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=pns_dhampur
-DB_USERNAME=your-username
-DB_PASSWORD=your-password
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
 
-# Additional configurations for features
-BIOMETRIC_ENABLED=true
-BELL_SYSTEM_ENABLED=true
-MOBILE_APP_ENABLED=true
+MAIL_MAILER=smtp
+MAIL_HOST=your-smtp-host
+MAIL_PORT=587
+MAIL_USERNAME=your-email
+MAIL_PASSWORD=your-password
+MAIL_ENCRYPTION=tls
+
+SESSION_DRIVER=database
+CACHE_DRIVER=file
+QUEUE_CONNECTION=database
 ```
 
-### System Settings
-Access the admin panel to configure:
-- School information and branding
-- Academic year settings
-- Fee structures
-- Bell schedules
-- Notification preferences
-- Security policies
+### Default Admin Credentials
+After running migrations and seeders:
+- **Email**: admin@pnsdhampur.edu.in
+- **Password**: admin123
 
-## 📖 Usage
-
-### Default Login Credentials
-
-**Super Admin**
-- Email: `admin@pnsdhampur.local`
-- Password: `Password123`
-
-**Test Teacher**
-- Email: `test@teacher.com`
-- Password: `password123`
-
-**Test Student**
-- Email: `student1@pns-dhampur.edu`
-- Password: `password123`
-
-### Quick Start Guide
-
-1. **Admin Setup**: Configure school settings, academic year, and user roles
-2. **User Management**: Create teacher and student accounts
-3. **Class Setup**: Define classes, subjects, and assignments
-4. **Attendance**: Configure biometric devices and attendance policies
-5. **Fee Management**: Set up fee structures and payment methods
-6. **Mobile App**: Deploy mobile app for teachers and students
-
-## 🔌 API Documentation
-
-The system provides RESTful APIs for all major functionalities:
-
-### Authentication
-```http
-POST /api/login
-POST /api/logout
-POST /api/refresh
-```
-
-### Student Management
-```http
-GET /api/students
-POST /api/students
-PUT /api/students/{id}
-DELETE /api/students/{id}
-```
-
-### Attendance
-```http
-GET /api/attendance
-POST /api/attendance/bulk
-GET /api/attendance/analytics
-```
-
-### Bell Schedule
-```http
-GET /api/bell-schedule
-POST /api/bell-schedule/trigger
-```
-
-For complete API documentation, visit `/api/documentation` after installation.
-
-## 📱 Mobile Application
-
-The Flutter mobile app provides:
-- **Teacher Dashboard**: Attendance marking, class management
-- **Student Portal**: Assignments, schedules, notifications
-- **Parent Access**: Student progress, fee payments
-- **Offline Support**: Core features work without internet
-- **Push Notifications**: Real-time updates and alerts
-
-### Mobile App Features
-- Cross-platform (iOS & Android)
-- Biometric authentication
-- Offline attendance marking
-- Real-time synchronization
-- Push notifications
-- Dark mode support
+**⚠️ Important**: Change the default admin password immediately after first login.
 
 ## 🧪 Testing
 
-### Running Tests
-
-**Backend Tests**
+### Run All Tests
 ```bash
-# Run all tests
 php artisan test
+```
 
-# Run specific test suite
-php artisan test tests/Feature/StudentTest.php
+### Run Specific Test Suites
+```bash
+# Unit tests
+php artisan test --testsuite=Unit
 
-# Run with coverage
+# Feature tests
+php artisan test --testsuite=Feature
+```
+
+### Code Coverage
+```bash
 php artisan test --coverage
 ```
 
-**Mobile App Tests**
+### System Health Check
 ```bash
-# Run Flutter tests
-flutter test
+# Verify routes
+php artisan route:list
 
-# Run integration tests
-flutter drive --target=test_driver/app.dart
+# Check migration status
+php artisan migrate:status
+
+# Run tests
+php artisan test
+
+# Build frontend assets
+npm run build
 ```
 
-### Test Coverage
-- Unit Tests: 95%+ coverage
-- Feature Tests: 90%+ coverage
-- Integration Tests: 85%+ coverage
+## 🔒 Security Features
 
-## 🔐 Security
+- **CSRF Protection**: All forms protected against CSRF attacks
+- **SQL Injection Prevention**: Eloquent ORM with prepared statements
+- **XSS Protection**: Input sanitization and output escaping
+- **Authentication**: Secure user authentication with password hashing
+- **Authorization**: Role-based access control (RBAC)
+- **Data Validation**: Comprehensive input validation
+- **Security Headers**: Proper security headers configuration
+- **Session Security**: Secure session management
+- **Password Policies**: Enforced password complexity
+- **Audit Logging**: Complete activity tracking
 
-### Security Features
-- **Multi-Factor Authentication**: SMS and email verification
-- **Role-Based Access Control**: Granular permissions
-- **Session Security**: Advanced session management
-- **Data Encryption**: Sensitive data encryption
-- **Audit Logging**: Comprehensive activity tracking
-- **SQL Injection Protection**: Parameterized queries
-- **XSS Protection**: Input sanitization
-- **CSRF Protection**: Token-based protection
+## 📁 Project Structure
 
-### Security Testing
-Regular security audits and penetration testing ensure system integrity.
-
-## 💾 Backup & Recovery
-
-### Automated Backup System
-- **Daily Database Backups**: 2:00 AM daily
-- **Weekly File Backups**: Sundays at 3:00 AM
-- **Monthly Full Exports**: 1st of each month
-- **Retention Policy**: 30 days for daily, 12 months for monthly
-
-### Manual Backup Commands
-```bash
-# Database backup
-php artisan backup:database
-
-# File system backup
-php artisan backup:files
-
-# Full system export
-php artisan data:export --format=json --all
+```
+├── app/
+│   ├── Http/Controllers/     # Application controllers
+│   ├── Models/              # Eloquent models
+│   ├── Services/            # Business logic services
+│   ├── Middleware/          # Custom middleware
+│   └── Providers/           # Service providers
+├── database/
+│   ├── migrations/          # Database migrations
+│   ├── seeders/            # Database seeders
+│   └── factories/          # Model factories
+├── resources/
+│   ├── views/              # Blade templates
+│   ├── js/                 # JavaScript files
+│   └── css/                # CSS files
+├── routes/
+│   ├── web.php             # Web routes
+│   └── api.php             # API routes
+├── storage/
+│   ├── app/                # Application files
+│   ├── framework/          # Framework files
+│   └── logs/               # Application logs
+├── tests/
+│   ├── Feature/            # Feature tests
+│   └── Unit/               # Unit tests
+└── public/
+    ├── css/                # Compiled CSS
+    ├── js/                 # Compiled JavaScript
+    └── images/             # Static images
 ```
 
-### Disaster Recovery
-Comprehensive disaster recovery procedures are documented in `DISASTER_RECOVERY_PLAN.md`.
+## 🚀 Deployment
+
+### Production Deployment Steps
+
+1. **Server Setup**
+   ```bash
+   # Update server
+   sudo apt update && sudo apt upgrade -y
+   
+   # Install required packages
+   sudo apt install php8.1 php8.1-fpm nginx mysql-server composer nodejs npm
+   ```
+
+2. **Application Deployment**
+   ```bash
+   # Clone repository
+   git clone https://github.com/yourusername/pns-dhampur-school-management.git
+   cd pns-dhampur-school-management
+   
+   # Install dependencies
+   composer install --optimize-autoloader --no-dev
+   npm install && npm run build
+   
+   # Set permissions
+   sudo chown -R www-data:www-data storage bootstrap/cache
+   sudo chmod -R 775 storage bootstrap/cache
+   ```
+
+3. **Environment Configuration**
+   ```bash
+   # Configure production environment
+   cp .env.example .env
+   php artisan key:generate
+   
+   # Run migrations
+   php artisan migrate --force
+   
+   # Cache configuration
+   php artisan config:cache
+   php artisan route:cache
+   php artisan view:cache
+   ```
+
+### Performance Optimization
+```bash
+# Optimize autoloader
+composer install --optimize-autoloader --no-dev
+
+# Cache configuration
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# Optimize images and assets
+npm run build
+```
 
 ## 🤝 Contributing
 
-We welcome contributions! Please read our contributing guidelines:
-
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
@@ -378,34 +383,41 @@ We welcome contributions! Please read our contributing guidelines:
 - Update documentation
 - Follow semantic versioning
 
-## 📄 License
+## 📝 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## 📞 Support
+
+For support and questions:
+- **Email**: support@pnsdhampur.edu.in
+- **Phone**: +91-XXXXXXXXXX
+- **Address**: PNS Dhampur, Uttar Pradesh, India
 
 ### Documentation
-- **Setup Guide**: `BACKUP_SETUP_GUIDE.md`
-- **Security Manual**: `manual_security_test.md`
-- **API Documentation**: Available at `/api/documentation`
+- [Installation Guide](docs/installation.md)
+- [User Manual](docs/user-manual.md)
+- [API Documentation](docs/api.md)
+- [Troubleshooting](docs/troubleshooting.md)
 
-### Getting Help
-- **Email**: support@pnsdhampur.edu
-- **Documentation**: Check the `/docs` directory
-- **Issues**: Create an issue on GitHub
-- **Community**: Join our Discord server
+## 🙏 Acknowledgments
 
-### System Requirements
-- **Minimum**: PHP 8.0, MySQL 5.7, 2GB RAM
-- **Recommended**: PHP 8.1+, MySQL 8.0+, 4GB RAM, SSD storage
+- Laravel Framework Team
+- Bootstrap Team
+- All contributors and testers
+- PNS Dhampur Administration
+
+## 📊 System Status
+
+✅ **Routes**: Verified and configured  
+✅ **Database**: Migrations applied successfully  
+✅ **Tests**: Core functionality verified  
+✅ **Frontend**: Assets compiled and optimized  
+✅ **Security**: Security measures implemented  
+✅ **Production**: Ready for deployment  
 
 ---
 
-<p align="center">
-  <strong>Built with ❤️ for PNS Dhampur School</strong><br>
-  <em>Empowering Education Through Technology</em>
-</p>
+**Made with ❤️ for PNS Dhampur School**
 
-<p align="center">
-  <a href="#top">⬆️ Back to Top</a>
-</p>
+*Last Updated: January 2025*

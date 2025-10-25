@@ -111,10 +111,30 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
   ];
 
   final List<Map<String, dynamic>> _statistics = [
-    {'title': 'Total Collection', 'value': '₹2,45,000', 'icon': Icons.account_balance_wallet, 'color': Colors.green},
-    {'title': 'Pending Amount', 'value': '₹45,000', 'icon': Icons.pending_actions, 'color': Colors.orange},
-    {'title': 'Students Paid', 'value': '189', 'icon': Icons.check_circle, 'color': Colors.blue},
-    {'title': 'Overdue Payments', 'value': '23', 'icon': Icons.warning, 'color': Colors.red},
+    {
+      'title': 'Total Collection',
+      'value': '₹2,45,000',
+      'icon': Icons.account_balance_wallet,
+      'color': Colors.green
+    },
+    {
+      'title': 'Pending Amount',
+      'value': '₹45,000',
+      'icon': Icons.pending_actions,
+      'color': Colors.orange
+    },
+    {
+      'title': 'Students Paid',
+      'value': '189',
+      'icon': Icons.check_circle,
+      'color': Colors.blue
+    },
+    {
+      'title': 'Overdue Payments',
+      'value': '23',
+      'icon': Icons.warning,
+      'color': Colors.red
+    },
   ];
 
   final List<Map<String, dynamic>> _feeStructure = [
@@ -276,14 +296,21 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedClass,
+                  initialValue: _selectedClass,
                   decoration: const InputDecoration(
                     labelText: 'Class',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
-                  items: ['All Classes', 'Class 10', 'Class 9', 'Class 8', 'Class 7', 'Class 6']
-                      .map((String value) {
+                  items: [
+                    'All Classes',
+                    'Class 10',
+                    'Class 9',
+                    'Class 8',
+                    'Class 7',
+                    'Class 6'
+                  ].map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -299,14 +326,22 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedMonth,
+                  initialValue: _selectedMonth,
                   decoration: const InputDecoration(
                     labelText: 'Month',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
-                  items: ['All Months', 'January', 'February', 'March', 'April', 'May', 'June']
-                      .map((String value) {
+                  items: [
+                    'All Months',
+                    'January',
+                    'February',
+                    'March',
+                    'April',
+                    'May',
+                    'June'
+                  ].map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -322,11 +357,12 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedPaymentStatus,
+                  initialValue: _selectedPaymentStatus,
                   decoration: const InputDecoration(
                     labelText: 'Status',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                   items: ['All Status', 'Paid', 'Partial', 'Pending', 'Overdue']
                       .map((String value) {
@@ -363,22 +399,26 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
                     backgroundColor: _getStatusColor(collection['status']),
                     child: Text(
                       collection['studentName'][0],
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
                   title: Text(
                     collection['studentName'],
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text('${collection['class']} - ${collection['section']} | ${collection['feeType']}'),
+                  subtitle: Text(
+                      '${collection['class']} - ${collection['section']} | ${collection['feeType']}'),
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(collection['status']).withOpacity(0.1),
+                          color: _getStatusColor(collection['status'])
+                              .withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -406,40 +446,51 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
                           Row(
                             children: [
                               Expanded(
-                                child: _buildDetailRow('Roll Number', collection['rollNumber']),
+                                child: _buildDetailRow(
+                                    'Roll Number', collection['rollNumber']),
                               ),
                               Expanded(
-                                child: _buildDetailRow('Month/Year', '${collection['month']} ${collection['year']}'),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildDetailRow('Total Amount', '₹${collection['amount'].toStringAsFixed(0)}'),
-                              ),
-                              Expanded(
-                                child: _buildDetailRow('Paid Amount', '₹${collection['paidAmount'].toStringAsFixed(0)}'),
+                                child: _buildDetailRow('Month/Year',
+                                    '${collection['month']} ${collection['year']}'),
                               ),
                             ],
                           ),
                           Row(
                             children: [
                               Expanded(
-                                child: _buildDetailRow('Pending Amount', '₹${collection['pendingAmount'].toStringAsFixed(0)}'),
+                                child: _buildDetailRow('Total Amount',
+                                    '₹${collection['amount'].toStringAsFixed(0)}'),
                               ),
                               Expanded(
-                                child: _buildDetailRow('Late Fee', '₹${collection['lateFee'].toStringAsFixed(0)}'),
+                                child: _buildDetailRow('Paid Amount',
+                                    '₹${collection['paidAmount'].toStringAsFixed(0)}'),
                               ),
                             ],
                           ),
                           Row(
                             children: [
                               Expanded(
-                                child: _buildDetailRow('Due Date', collection['dueDate']),
+                                child: _buildDetailRow('Pending Amount',
+                                    '₹${collection['pendingAmount'].toStringAsFixed(0)}'),
                               ),
                               Expanded(
-                                child: _buildDetailRow('Payment Date', collection['paymentDate'].isNotEmpty ? collection['paymentDate'] : 'Not Paid'),
+                                child: _buildDetailRow('Late Fee',
+                                    '₹${collection['lateFee'].toStringAsFixed(0)}'),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildDetailRow(
+                                    'Due Date', collection['dueDate']),
+                              ),
+                              Expanded(
+                                child: _buildDetailRow(
+                                    'Payment Date',
+                                    collection['paymentDate'].isNotEmpty
+                                        ? collection['paymentDate']
+                                        : 'Not Paid'),
                               ),
                             ],
                           ),
@@ -447,10 +498,12 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
                             Row(
                               children: [
                                 Expanded(
-                                  child: _buildDetailRow('Payment Method', collection['paymentMethod']),
+                                  child: _buildDetailRow('Payment Method',
+                                      collection['paymentMethod']),
                                 ),
                                 Expanded(
-                                  child: _buildDetailRow('Transaction ID', collection['transactionId']),
+                                  child: _buildDetailRow('Transaction ID',
+                                      collection['transactionId']),
                                 ),
                               ],
                             ),
@@ -462,7 +515,8 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
                               if (collection['status'] != 'Paid')
                                 Expanded(
                                   child: ElevatedButton.icon(
-                                    onPressed: () => _collectPayment(collection),
+                                    onPressed: () =>
+                                        _collectPayment(collection),
                                     icon: const Icon(Icons.payment, size: 16),
                                     label: const Text('Collect'),
                                     style: ElevatedButton.styleFrom(
@@ -471,7 +525,8 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
                                     ),
                                   ),
                                 ),
-                              if (collection['status'] != 'Paid') const SizedBox(width: 8),
+                              if (collection['status'] != 'Paid')
+                                const SizedBox(width: 8),
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: () => _printReceipt(collection),
@@ -487,7 +542,8 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: () => _sendReminder(collection),
-                                  icon: const Icon(Icons.notifications, size: 16),
+                                  icon:
+                                      const Icon(Icons.notifications, size: 16),
                                   label: const Text('Remind'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.orange,
@@ -533,7 +589,8 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
                   children: [
                     Text(
                       structure['class'],
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 12),
                     GridView.count(
@@ -545,9 +602,11 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
                       childAspectRatio: 2.5,
                       children: [
                         _buildFeeItem('Monthly Fee', structure['monthlyFee']),
-                        _buildFeeItem('Admission Fee', structure['admissionFee']),
+                        _buildFeeItem(
+                            'Admission Fee', structure['admissionFee']),
                         _buildFeeItem('Exam Fee', structure['examFee']),
-                        _buildFeeItem('Transport Fee', structure['transportFee']),
+                        _buildFeeItem(
+                            'Transport Fee', structure['transportFee']),
                         _buildFeeItem('Library Fee', structure['libraryFee']),
                         _buildFeeItem('Lab Fee', structure['labFee']),
                       ],
@@ -565,7 +624,8 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
                         children: [
                           const Text(
                             'Total Annual Fee:',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                           Text(
                             '₹${structure['totalAnnual'].toStringAsFixed(0)}',
@@ -685,11 +745,13 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
                               children: [
                                 Text(
                                   transaction['studentName'],
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold),
                                 ),
                                 Text(
                                   '${transaction['method']} • ${transaction['time']}',
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Colors.grey),
                                 ),
                               ],
                             ),
@@ -699,10 +761,12 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
                             children: [
                               Text(
                                 '₹${transaction['amount'].toStringAsFixed(0)}',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: Colors.green.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(8),
@@ -737,12 +801,21 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
             children: [
-              _buildReportCard('Daily Collection', 'Today\'s collection summary', Icons.today, Colors.blue),
-              _buildReportCard('Monthly Report', 'Month-wise collection analysis', Icons.calendar_month, Colors.green),
-              _buildReportCard('Class-wise Report', 'Collection by class breakdown', Icons.school, Colors.orange),
-              _buildReportCard('Defaulter Report', 'Overdue payments list', Icons.warning, Colors.red),
-              _buildReportCard('Payment Methods', 'Payment mode analysis', Icons.payment, Colors.purple),
-              _buildReportCard('Fee Structure', 'Current fee structure report', Icons.account_balance, Colors.teal),
+              _buildReportCard('Daily Collection',
+                  'Today\'s collection summary', Icons.today, Colors.blue),
+              _buildReportCard(
+                  'Monthly Report',
+                  'Month-wise collection analysis',
+                  Icons.calendar_month,
+                  Colors.green),
+              _buildReportCard('Class-wise Report',
+                  'Collection by class breakdown', Icons.school, Colors.orange),
+              _buildReportCard('Defaulter Report', 'Overdue payments list',
+                  Icons.warning, Colors.red),
+              _buildReportCard('Payment Methods', 'Payment mode analysis',
+                  Icons.payment, Colors.purple),
+              _buildReportCard('Fee Structure', 'Current fee structure report',
+                  Icons.account_balance, Colors.teal),
             ],
           ),
         ],
@@ -774,11 +847,16 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  _buildSettingItem('Late Fee Calculation', 'Auto-calculate late fees', true),
-                  _buildSettingItem('Payment Reminders', 'Send automatic reminders', true),
-                  _buildSettingItem('Online Payments', 'Enable online payment gateway', true),
-                  _buildSettingItem('Partial Payments', 'Allow partial fee payments', false),
-                  _buildSettingItem('Discount Management', 'Enable discount system', true),
+                  _buildSettingItem(
+                      'Late Fee Calculation', 'Auto-calculate late fees', true),
+                  _buildSettingItem(
+                      'Payment Reminders', 'Send automatic reminders', true),
+                  _buildSettingItem(
+                      'Online Payments', 'Enable online payment gateway', true),
+                  _buildSettingItem(
+                      'Partial Payments', 'Allow partial fee payments', false),
+                  _buildSettingItem(
+                      'Discount Management', 'Enable discount system', true),
                 ],
               ),
             ),
@@ -798,10 +876,14 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  _buildSettingItem('SMS Notifications', 'Send SMS for payments', true),
-                  _buildSettingItem('Email Receipts', 'Email payment receipts', true),
-                  _buildSettingItem('WhatsApp Updates', 'WhatsApp payment updates', false),
-                  _buildSettingItem('Push Notifications', 'App push notifications', true),
+                  _buildSettingItem(
+                      'SMS Notifications', 'Send SMS for payments', true),
+                  _buildSettingItem(
+                      'Email Receipts', 'Email payment receipts', true),
+                  _buildSettingItem(
+                      'WhatsApp Updates', 'WhatsApp payment updates', false),
+                  _buildSettingItem(
+                      'Push Notifications', 'App push notifications', true),
                 ],
               ),
             ),
@@ -861,7 +943,8 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+                fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
           ),
           Text(
             value,
@@ -897,7 +980,8 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
     );
   }
 
-  Widget _buildReportCard(String title, String subtitle, IconData icon, Color color) {
+  Widget _buildReportCard(
+      String title, String subtitle, IconData icon, Color color) {
     return Card(
       elevation: 2,
       child: InkWell(
@@ -979,19 +1063,22 @@ class _FeesCollectionPageState extends State<FeesCollectionPage>
 
   void _collectPayment(Map<String, dynamic> collection) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Collecting payment for ${collection['studentName']}')),
+      SnackBar(
+          content: Text('Collecting payment for ${collection['studentName']}')),
     );
   }
 
   void _printReceipt(Map<String, dynamic> collection) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Printing receipt for ${collection['studentName']}')),
+      SnackBar(
+          content: Text('Printing receipt for ${collection['studentName']}')),
     );
   }
 
   void _sendReminder(Map<String, dynamic> collection) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Sending reminder to ${collection['studentName']}')),
+      SnackBar(
+          content: Text('Sending reminder to ${collection['studentName']}')),
     );
   }
 

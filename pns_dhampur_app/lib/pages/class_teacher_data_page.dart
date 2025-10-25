@@ -31,7 +31,12 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
       'experience': '15 years',
       'qualification': 'M.Sc. Mathematics, B.Ed.',
       'joinDate': '2010-06-15',
-      'responsibilities': ['Class Management', 'Parent Communication', 'Academic Monitoring', 'Discipline'],
+      'responsibilities': [
+        'Class Management',
+        'Parent Communication',
+        'Academic Monitoring',
+        'Discipline'
+      ],
       'achievements': ['Best Teacher Award 2023', 'Excellence in Mathematics'],
       'photo': 'assets/images/teacher1.jpg',
       'status': 'Active',
@@ -51,8 +56,15 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
       'experience': '12 years',
       'qualification': 'M.Sc. Physics, B.Ed.',
       'joinDate': '2012-07-01',
-      'responsibilities': ['Class Management', 'Lab Supervision', 'Science Fair Coordination'],
-      'achievements': ['Innovation in Teaching Award', 'Science Olympiad Mentor'],
+      'responsibilities': [
+        'Class Management',
+        'Lab Supervision',
+        'Science Fair Coordination'
+      ],
+      'achievements': [
+        'Innovation in Teaching Award',
+        'Science Olympiad Mentor'
+      ],
       'photo': 'assets/images/teacher2.jpg',
       'status': 'Active',
     },
@@ -71,7 +83,11 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
       'experience': '10 years',
       'qualification': 'M.A. English, B.Ed.',
       'joinDate': '2014-04-10',
-      'responsibilities': ['Class Management', 'Literary Activities', 'Debate Club'],
+      'responsibilities': [
+        'Class Management',
+        'Literary Activities',
+        'Debate Club'
+      ],
       'achievements': ['Literary Excellence Award', 'Drama Competition Winner'],
       'photo': 'assets/images/teacher3.jpg',
       'status': 'Active',
@@ -91,8 +107,15 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
       'experience': '8 years',
       'qualification': 'M.A. History, B.Ed.',
       'joinDate': '2016-08-20',
-      'responsibilities': ['Class Management', 'Cultural Activities', 'History Club'],
-      'achievements': ['Cultural Program Coordinator', 'Heritage Walk Organizer'],
+      'responsibilities': [
+        'Class Management',
+        'Cultural Activities',
+        'History Club'
+      ],
+      'achievements': [
+        'Cultural Program Coordinator',
+        'Heritage Walk Organizer'
+      ],
       'photo': 'assets/images/teacher4.jpg',
       'status': 'Active',
     },
@@ -111,7 +134,11 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
       'experience': '6 years',
       'qualification': 'M.A. Hindi, B.Ed.',
       'joinDate': '2018-06-01',
-      'responsibilities': ['Class Management', 'Hindi Literary Society', 'Poetry Competition'],
+      'responsibilities': [
+        'Class Management',
+        'Hindi Literary Society',
+        'Poetry Competition'
+      ],
       'achievements': ['Hindi Literature Award', 'Poetry Recitation Champion'],
       'photo': 'assets/images/teacher5.jpg',
       'status': 'Active',
@@ -227,9 +254,21 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildStatCard('Total Teachers', '${_classStats['totalTeachers']}', Icons.people, const Color(0xFF4CAF50)),
-                    _buildStatCard('Assigned Classes', '${_classStats['assignedClasses']}', Icons.assignment_ind, const Color(0xFF2196F3)),
-                    _buildStatCard('Total Students', '${_classStats['totalStudents']}', Icons.school, const Color(0xFFFF9800)),
+                    _buildStatCard(
+                        'Total Teachers',
+                        '${_classStats['totalTeachers']}',
+                        Icons.people,
+                        const Color(0xFF4CAF50)),
+                    _buildStatCard(
+                        'Assigned Classes',
+                        '${_classStats['assignedClasses']}',
+                        Icons.assignment_ind,
+                        const Color(0xFF2196F3)),
+                    _buildStatCard(
+                        'Total Students',
+                        '${_classStats['totalStudents']}',
+                        Icons.school,
+                        const Color(0xFFFF9800)),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -244,7 +283,7 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
             ),
           ),
           const SizedBox(height: 20),
-          
+
           // Teachers list
           Expanded(
             child: Container(
@@ -342,7 +381,6 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
             ),
           ),
           const SizedBox(height: 20),
-          
           Expanded(
             child: GridView.builder(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -401,18 +439,25 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
             ),
           ),
           const SizedBox(height: 20),
-          
           Expanded(
             child: ListView(
               children: [
-                _buildAccessCard('Student Records', 'View and edit student information', Icons.person, true),
-                _buildAccessCard('Attendance Management', 'Mark and view attendance', Icons.check_circle, true),
-                _buildAccessCard('Grade Management', 'Enter and modify grades', Icons.grade, true),
-                _buildAccessCard('Parent Communication', 'Send messages to parents', Icons.message, true),
-                _buildAccessCard('Homework Assignment', 'Assign and track homework', Icons.assignment, true),
-                _buildAccessCard('Exam Scheduling', 'Schedule class tests and exams', Icons.schedule, false),
-                _buildAccessCard('Fee Management', 'View fee status (read-only)', Icons.payment, false),
-                _buildAccessCard('Administrative Reports', 'Generate class reports', Icons.analytics, true),
+                _buildAccessCard('Student Records',
+                    'View and edit student information', Icons.person, true),
+                _buildAccessCard('Attendance Management',
+                    'Mark and view attendance', Icons.check_circle, true),
+                _buildAccessCard('Grade Management', 'Enter and modify grades',
+                    Icons.grade, true),
+                _buildAccessCard('Parent Communication',
+                    'Send messages to parents', Icons.message, true),
+                _buildAccessCard('Homework Assignment',
+                    'Assign and track homework', Icons.assignment, true),
+                _buildAccessCard('Exam Scheduling',
+                    'Schedule class tests and exams', Icons.schedule, false),
+                _buildAccessCard('Fee Management',
+                    'View fee status (read-only)', Icons.payment, false),
+                _buildAccessCard('Administrative Reports',
+                    'Generate class reports', Icons.analytics, true),
               ],
             ),
           ),
@@ -459,19 +504,42 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
             ),
           ),
           const SizedBox(height: 20),
-          
           Expanded(
             child: GridView.count(
               crossAxisCount: 2,
               crossAxisSpacing: 15,
               mainAxisSpacing: 15,
               children: [
-                _buildReportCard('Class Performance', 'Academic performance analysis', Icons.trending_up, const Color(0xFF4CAF50)),
-                _buildReportCard('Attendance Report', 'Class attendance statistics', Icons.check_circle, const Color(0xFF2196F3)),
-                _buildReportCard('Teacher Workload', 'Teaching load distribution', Icons.work, const Color(0xFFFF9800)),
-                _buildReportCard('Student Progress', 'Individual student tracking', Icons.person, const Color(0xFF9C27B0)),
-                _buildReportCard('Parent Feedback', 'Parent-teacher communication', Icons.feedback, const Color(0xFFF44336)),
-                _buildReportCard('Class Activities', 'Extracurricular participation', Icons.sports, const Color(0xFF607D8B)),
+                _buildReportCard(
+                    'Class Performance',
+                    'Academic performance analysis',
+                    Icons.trending_up,
+                    const Color(0xFF4CAF50)),
+                _buildReportCard(
+                    'Attendance Report',
+                    'Class attendance statistics',
+                    Icons.check_circle,
+                    const Color(0xFF2196F3)),
+                _buildReportCard(
+                    'Teacher Workload',
+                    'Teaching load distribution',
+                    Icons.work,
+                    const Color(0xFFFF9800)),
+                _buildReportCard(
+                    'Student Progress',
+                    'Individual student tracking',
+                    Icons.person,
+                    const Color(0xFF9C27B0)),
+                _buildReportCard(
+                    'Parent Feedback',
+                    'Parent-teacher communication',
+                    Icons.feedback,
+                    const Color(0xFFF44336)),
+                _buildReportCard(
+                    'Class Activities',
+                    'Extracurricular participation',
+                    Icons.sports,
+                    const Color(0xFF607D8B)),
               ],
             ),
           ),
@@ -493,12 +561,13 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
         ),
         const SizedBox(height: 5),
         DropdownButtonFormField<String>(
-          value: _selectedClass,
+          initialValue: _selectedClass,
           decoration: InputDecoration(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
           items: _getClasses().map((String cls) {
             return DropdownMenuItem<String>(
@@ -525,12 +594,13 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
         ),
         const SizedBox(height: 5),
         DropdownButtonFormField<String>(
-          value: _selectedDepartment,
+          initialValue: _selectedDepartment,
           decoration: InputDecoration(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
           items: _getDepartments().map((String dept) {
             return DropdownMenuItem<String>(
@@ -562,7 +632,11 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
                 radius: 25,
                 backgroundColor: const Color(0xFF9E9E9E),
                 child: Text(
-                  teacher['teacherName'].split(' ').map((n) => n[0]).take(2).join(),
+                  teacher['teacherName']
+                      .split(' ')
+                      .map((n) => n[0])
+                      .take(2)
+                      .join(),
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -611,7 +685,7 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
             ],
           ),
           const SizedBox(height: 15),
-          
+
           // Contact info
           Row(
             children: [
@@ -632,7 +706,8 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
               Expanded(
                 child: Row(
                   children: [
-                    const Icon(Icons.people, size: 16, color: Color(0xFF9E9E9E)),
+                    const Icon(Icons.people,
+                        size: 16, color: Color(0xFF9E9E9E)),
                     const SizedBox(width: 5),
                     Text(
                       '${teacher['students']} Students',
@@ -644,12 +719,14 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
             ],
           ),
           const SizedBox(height: 10),
-          
+
           // Responsibilities
           Wrap(
             spacing: 5,
             runSpacing: 5,
-            children: (teacher['responsibilities'] as List<String>).take(3).map((resp) {
+            children: (teacher['responsibilities'] as List<String>)
+                .take(3)
+                .map((resp) {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -667,7 +744,7 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
             }).toList(),
           ),
           const SizedBox(height: 10),
-          
+
           // Action buttons
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -702,12 +779,16 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
           Container(
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
-              color: classData['hasTeacher'] ? const Color(0xFF4CAF50).withOpacity(0.1) : const Color(0xFFF44336).withOpacity(0.1),
+              color: classData['hasTeacher']
+                  ? const Color(0xFF4CAF50).withOpacity(0.1)
+                  : const Color(0xFFF44336).withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               classData['hasTeacher'] ? Icons.check_circle : Icons.warning,
-              color: classData['hasTeacher'] ? const Color(0xFF4CAF50) : const Color(0xFFF44336),
+              color: classData['hasTeacher']
+                  ? const Color(0xFF4CAF50)
+                  : const Color(0xFFF44336),
               size: 30,
             ),
           ),
@@ -723,10 +804,14 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
           ),
           const SizedBox(height: 8),
           Text(
-            classData['hasTeacher'] ? classData['teacher'] : 'No Teacher Assigned',
+            classData['hasTeacher']
+                ? classData['teacher']
+                : 'No Teacher Assigned',
             style: TextStyle(
               fontSize: 12,
-              color: classData['hasTeacher'] ? Colors.grey[600] : const Color(0xFFF44336),
+              color: classData['hasTeacher']
+                  ? Colors.grey[600]
+                  : const Color(0xFFF44336),
             ),
             textAlign: TextAlign.center,
           ),
@@ -743,7 +828,8 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
     );
   }
 
-  Widget _buildAccessCard(String title, String description, IconData icon, bool hasAccess) {
+  Widget _buildAccessCard(
+      String title, String description, IconData icon, bool hasAccess) {
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(15),
@@ -763,12 +849,15 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: hasAccess ? const Color(0xFF4CAF50).withOpacity(0.1) : const Color(0xFFF44336).withOpacity(0.1),
+              color: hasAccess
+                  ? const Color(0xFF4CAF50).withOpacity(0.1)
+                  : const Color(0xFFF44336).withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
-              color: hasAccess ? const Color(0xFF4CAF50) : const Color(0xFFF44336),
+              color:
+                  hasAccess ? const Color(0xFF4CAF50) : const Color(0xFFF44336),
               size: 24,
             ),
           ),
@@ -801,14 +890,15 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
             onChanged: (value) {
               // Handle access toggle
             },
-            activeColor: const Color(0xFF4CAF50),
+            activeThumbColor: const Color(0xFF4CAF50),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildReportCard(String title, String description, IconData icon, Color color) {
+  Widget _buildReportCard(
+      String title, String description, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -857,7 +947,8 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -891,7 +982,8 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
     );
   }
 
-  Widget _buildActionButton(String text, IconData icon, VoidCallback onPressed) {
+  Widget _buildActionButton(
+      String text, IconData icon, VoidCallback onPressed) {
     return ElevatedButton.icon(
       onPressed: onPressed,
       icon: Icon(icon, size: 16),
@@ -906,29 +998,69 @@ class _ClassTeacherDataPageState extends State<ClassTeacherDataPage>
   }
 
   List<String> _getClasses() {
-    return ['All Classes', ...{..._classTeachers.map((t) => t['class'] as String)}];
+    return [
+      'All Classes',
+      ...{..._classTeachers.map((t) => t['class'] as String)}
+    ];
   }
 
   List<String> _getDepartments() {
-    return ['All Departments', ...{..._classTeachers.map((t) => t['department'] as String)}];
+    return [
+      'All Departments',
+      ...{..._classTeachers.map((t) => t['department'] as String)}
+    ];
   }
 
   List<Map<String, dynamic>> _getFilteredTeachers() {
     return _classTeachers.where((teacher) {
-      bool classMatch = _selectedClass == 'All Classes' || teacher['class'].toString().contains(_selectedClass.replaceAll('All Classes', ''));
-      bool deptMatch = _selectedDepartment == 'All Departments' || teacher['department'] == _selectedDepartment;
+      bool classMatch = _selectedClass == 'All Classes' ||
+          teacher['class']
+              .toString()
+              .contains(_selectedClass.replaceAll('All Classes', ''));
+      bool deptMatch = _selectedDepartment == 'All Departments' ||
+          teacher['department'] == _selectedDepartment;
       return classMatch && deptMatch;
     }).toList();
   }
 
   List<Map<String, dynamic>> _getClassList() {
     return [
-      {'name': 'Class 10-A', 'teacher': 'Dr. Rajesh Sharma', 'students': 45, 'hasTeacher': true},
-      {'name': 'Class 9-B', 'teacher': 'Ms. Priya Singh', 'students': 42, 'hasTeacher': true},
-      {'name': 'Class 8-A', 'teacher': 'Mr. Amit Kumar', 'students': 38, 'hasTeacher': true},
-      {'name': 'Class 7-C', 'teacher': 'Mrs. Sunita Verma', 'students': 40, 'hasTeacher': true},
-      {'name': 'Class 6-B', 'teacher': 'Mr. Vikash Gupta', 'students': 35, 'hasTeacher': true},
-      {'name': 'Class 10-B', 'teacher': '', 'students': 43, 'hasTeacher': false},
+      {
+        'name': 'Class 10-A',
+        'teacher': 'Dr. Rajesh Sharma',
+        'students': 45,
+        'hasTeacher': true
+      },
+      {
+        'name': 'Class 9-B',
+        'teacher': 'Ms. Priya Singh',
+        'students': 42,
+        'hasTeacher': true
+      },
+      {
+        'name': 'Class 8-A',
+        'teacher': 'Mr. Amit Kumar',
+        'students': 38,
+        'hasTeacher': true
+      },
+      {
+        'name': 'Class 7-C',
+        'teacher': 'Mrs. Sunita Verma',
+        'students': 40,
+        'hasTeacher': true
+      },
+      {
+        'name': 'Class 6-B',
+        'teacher': 'Mr. Vikash Gupta',
+        'students': 35,
+        'hasTeacher': true
+      },
+      {
+        'name': 'Class 10-B',
+        'teacher': '',
+        'students': 43,
+        'hasTeacher': false
+      },
       {'name': 'Class 9-A', 'teacher': '', 'students': 41, 'hasTeacher': false},
       {'name': 'Class 8-C', 'teacher': '', 'students': 39, 'hasTeacher': false},
     ];

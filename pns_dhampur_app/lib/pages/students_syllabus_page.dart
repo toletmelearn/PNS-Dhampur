@@ -21,7 +21,11 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
       'class': 'Class 10',
       'subject': 'Mathematics',
       'chapter': 'Real Numbers',
-      'topics': ['Euclid\'s Division Lemma', 'Fundamental Theorem of Arithmetic', 'Rational and Irrational Numbers'],
+      'topics': [
+        'Euclid\'s Division Lemma',
+        'Fundamental Theorem of Arithmetic',
+        'Rational and Irrational Numbers'
+      ],
       'status': 'Completed',
       'progress': 100,
       'startDate': '2024-01-01',
@@ -35,7 +39,11 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
       'class': 'Class 10',
       'subject': 'Mathematics',
       'chapter': 'Polynomials',
-      'topics': ['Degree of Polynomial', 'Zeros of Polynomial', 'Relationship between Zeros and Coefficients'],
+      'topics': [
+        'Degree of Polynomial',
+        'Zeros of Polynomial',
+        'Relationship between Zeros and Coefficients'
+      ],
       'status': 'In Progress',
       'progress': 65,
       'startDate': '2024-01-16',
@@ -49,7 +57,12 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
       'class': 'Class 10',
       'subject': 'Science',
       'chapter': 'Light - Reflection and Refraction',
-      'topics': ['Laws of Reflection', 'Spherical Mirrors', 'Refraction of Light', 'Lenses'],
+      'topics': [
+        'Laws of Reflection',
+        'Spherical Mirrors',
+        'Refraction of Light',
+        'Lenses'
+      ],
       'status': 'Completed',
       'progress': 100,
       'startDate': '2024-01-01',
@@ -63,7 +76,12 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
       'class': 'Class 10',
       'subject': 'English',
       'chapter': 'First Flight - A Letter to God',
-      'topics': ['Story Analysis', 'Character Study', 'Theme Discussion', 'Vocabulary Building'],
+      'topics': [
+        'Story Analysis',
+        'Character Study',
+        'Theme Discussion',
+        'Vocabulary Building'
+      ],
       'status': 'In Progress',
       'progress': 40,
       'startDate': '2024-01-10',
@@ -77,7 +95,11 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
       'class': 'Class 10',
       'subject': 'Social Studies',
       'chapter': 'The Rise of Nationalism in Europe',
-      'topics': ['French Revolution', 'Nationalism in Europe', 'Making of Germany and Italy'],
+      'topics': [
+        'French Revolution',
+        'Nationalism in Europe',
+        'Making of Germany and Italy'
+      ],
       'status': 'Pending',
       'progress': 0,
       'startDate': '2024-02-01',
@@ -229,7 +251,7 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
             ),
           ),
           const SizedBox(height: 20),
-          
+
           // Syllabus list
           Expanded(
             child: Container(
@@ -327,7 +349,6 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
             ),
           ),
           const SizedBox(height: 20),
-          
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -427,16 +448,21 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildProgressCard('Completed', '${_getCompletedCount()}', Icons.check_circle, const Color(0xFF4CAF50)),
-                    _buildProgressCard('In Progress', '${_getInProgressCount()}', Icons.schedule, const Color(0xFFFF9800)),
-                    _buildProgressCard('Pending', '${_getPendingCount()}', Icons.pending, const Color(0xFFF44336)),
+                    _buildProgressCard('Completed', '${_getCompletedCount()}',
+                        Icons.check_circle, const Color(0xFF4CAF50)),
+                    _buildProgressCard(
+                        'In Progress',
+                        '${_getInProgressCount()}',
+                        Icons.schedule,
+                        const Color(0xFFFF9800)),
+                    _buildProgressCard('Pending', '${_getPendingCount()}',
+                        Icons.pending, const Color(0xFFF44336)),
                   ],
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -533,19 +559,27 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
             ),
           ),
           const SizedBox(height: 20),
-          
           Expanded(
             child: GridView.count(
               crossAxisCount: 2,
               crossAxisSpacing: 15,
               mainAxisSpacing: 15,
               children: [
-                _buildResourceCard('NCERT Books', 'Official textbooks', Icons.menu_book, const Color(0xFF4CAF50)),
-                _buildResourceCard('Reference Books', 'Additional study material', Icons.library_books, const Color(0xFF2196F3)),
-                _buildResourceCard('Online Videos', 'Educational content', Icons.play_circle, const Color(0xFFFF9800)),
-                _buildResourceCard('Practice Papers', 'Sample questions', Icons.assignment, const Color(0xFF9C27B0)),
-                _buildResourceCard('Lab Manuals', 'Practical guides', Icons.science, const Color(0xFFF44336)),
-                _buildResourceCard('Study Notes', 'Quick revision', Icons.note, const Color(0xFF607D8B)),
+                _buildResourceCard('NCERT Books', 'Official textbooks',
+                    Icons.menu_book, const Color(0xFF4CAF50)),
+                _buildResourceCard(
+                    'Reference Books',
+                    'Additional study material',
+                    Icons.library_books,
+                    const Color(0xFF2196F3)),
+                _buildResourceCard('Online Videos', 'Educational content',
+                    Icons.play_circle, const Color(0xFFFF9800)),
+                _buildResourceCard('Practice Papers', 'Sample questions',
+                    Icons.assignment, const Color(0xFF9C27B0)),
+                _buildResourceCard('Lab Manuals', 'Practical guides',
+                    Icons.science, const Color(0xFFF44336)),
+                _buildResourceCard('Study Notes', 'Quick revision', Icons.note,
+                    const Color(0xFF607D8B)),
               ],
             ),
           ),
@@ -567,12 +601,13 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
         ),
         const SizedBox(height: 5),
         DropdownButtonFormField<String>(
-          value: _selectedClass,
+          initialValue: _selectedClass,
           decoration: InputDecoration(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
           items: _getClasses().map((String cls) {
             return DropdownMenuItem<String>(
@@ -599,12 +634,13 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
         ),
         const SizedBox(height: 5),
         DropdownButtonFormField<String>(
-          value: _selectedSubject,
+          initialValue: _selectedSubject,
           decoration: InputDecoration(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
           items: _getSubjects().map((String subject) {
             return DropdownMenuItem<String>(
@@ -620,7 +656,7 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
 
   Widget _buildSyllabusItem(Map<String, dynamic> syllabus) {
     Color statusColor = _getStatusColor(syllabus['status']);
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(15),
@@ -675,7 +711,7 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
             ],
           ),
           const SizedBox(height: 10),
-          
+
           // Progress bar
           Row(
             children: [
@@ -697,7 +733,7 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
             ],
           ),
           const SizedBox(height: 10),
-          
+
           // Topics
           Wrap(
             spacing: 5,
@@ -720,14 +756,15 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
             }).toList(),
           ),
           const SizedBox(height: 10),
-          
+
           // Stats
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildStatChip('📝 ${syllabus['assignments']} Assignments'),
               _buildStatChip('📊 ${syllabus['tests']} Tests'),
-              _buildStatChip('📚 ${(syllabus['resources'] as List).length} Resources'),
+              _buildStatChip(
+                  '📚 ${(syllabus['resources'] as List).length} Resources'),
             ],
           ),
         ],
@@ -790,15 +827,15 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
             ],
           ),
           const SizedBox(height: 15),
-          
+
           // Classwork
           _buildWorkSection('📖 Classwork', work['classwork']),
           const SizedBox(height: 10),
-          
+
           // Homework
           _buildWorkSection('📝 Homework', work['homework']),
           const SizedBox(height: 10),
-          
+
           // Notes
           _buildWorkSection('📋 Notes', work['notes']),
         ],
@@ -839,7 +876,8 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
     );
   }
 
-  Widget _buildProgressCard(String title, String value, IconData icon, Color color) {
+  Widget _buildProgressCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -900,8 +938,11 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: subject['progress'] >= 75 ? const Color(0xFF4CAF50) : 
-                         subject['progress'] >= 50 ? const Color(0xFFFF9800) : const Color(0xFFF44336),
+                  color: subject['progress'] >= 75
+                      ? const Color(0xFF4CAF50)
+                      : subject['progress'] >= 50
+                          ? const Color(0xFFFF9800)
+                          : const Color(0xFFF44336),
                 ),
               ),
             ],
@@ -911,8 +952,11 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
             value: subject['progress'] / 100.0,
             backgroundColor: Colors.grey[300],
             valueColor: AlwaysStoppedAnimation<Color>(
-              subject['progress'] >= 75 ? const Color(0xFF4CAF50) : 
-              subject['progress'] >= 50 ? const Color(0xFFFF9800) : const Color(0xFFF44336),
+              subject['progress'] >= 75
+                  ? const Color(0xFF4CAF50)
+                  : subject['progress'] >= 50
+                      ? const Color(0xFFFF9800)
+                      : const Color(0xFFF44336),
             ),
           ),
           const SizedBox(height: 10),
@@ -928,7 +972,8 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
     );
   }
 
-  Widget _buildResourceCard(String title, String description, IconData icon, Color color) {
+  Widget _buildResourceCard(
+      String title, String description, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -1014,13 +1059,17 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
   }
 
   List<String> _getSubjects() {
-    return ['All Subjects', ...{..._syllabusData.map((s) => s['subject'] as String)}];
+    return [
+      'All Subjects',
+      ...{..._syllabusData.map((s) => s['subject'] as String)}
+    ];
   }
 
   List<Map<String, dynamic>> _getFilteredSyllabus() {
     return _syllabusData.where((syllabus) {
       bool classMatch = syllabus['class'] == _selectedClass;
-      bool subjectMatch = _selectedSubject == 'All Subjects' || syllabus['subject'] == _selectedSubject;
+      bool subjectMatch = _selectedSubject == 'All Subjects' ||
+          syllabus['subject'] == _selectedSubject;
       return classMatch && subjectMatch;
     }).toList();
   }
@@ -1039,7 +1088,7 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
 
   List<Map<String, dynamic>> _getSubjectProgress() {
     Map<String, Map<String, int>> subjectStats = {};
-    
+
     for (var syllabus in _syllabusData) {
       String subject = syllabus['subject'];
       if (!subjectStats.containsKey(subject)) {
@@ -1047,15 +1096,16 @@ class _StudentsSyllabusPageState extends State<StudentsSyllabusPage>
       }
       subjectStats[subject]!['total'] = subjectStats[subject]!['total']! + 1;
       if (syllabus['status'] == 'Completed') {
-        subjectStats[subject]!['completed'] = subjectStats[subject]!['completed']! + 1;
+        subjectStats[subject]!['completed'] =
+            subjectStats[subject]!['completed']! + 1;
       }
     }
-    
+
     return subjectStats.entries.map((entry) {
       int total = entry.value['total']!;
       int completed = entry.value['completed']!;
       double progress = total > 0 ? (completed / total) * 100 : 0;
-      
+
       return {
         'name': entry.key,
         'total': total,

@@ -174,16 +174,25 @@ class _ExamPapersPageState extends State<ExamPapersPage>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildStatCard('Total Papers', '${_examPapers.length}', Icons.description, const Color(0xFF4CAF50)),
-                    _buildStatCard('Published', '${_examPapers.where((p) => p['status'] == 'Published').length}', Icons.publish, const Color(0xFF2196F3)),
-                    _buildStatCard('Draft', '${_examPapers.where((p) => p['status'] == 'Draft').length}', Icons.edit, const Color(0xFFFF9800)),
+                    _buildStatCard('Total Papers', '${_examPapers.length}',
+                        Icons.description, const Color(0xFF4CAF50)),
+                    _buildStatCard(
+                        'Published',
+                        '${_examPapers.where((p) => p['status'] == 'Published').length}',
+                        Icons.publish,
+                        const Color(0xFF2196F3)),
+                    _buildStatCard(
+                        'Draft',
+                        '${_examPapers.where((p) => p['status'] == 'Draft').length}',
+                        Icons.edit,
+                        const Color(0xFFFF9800)),
                   ],
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          
+
           // Filters
           Container(
             padding: const EdgeInsets.all(16),
@@ -200,16 +209,31 @@ class _ExamPapersPageState extends State<ExamPapersPage>
             ),
             child: Row(
               children: [
-                Expanded(child: _buildFilterDropdown('Class', _selectedClass, _getClasses(), (value) => setState(() => _selectedClass = value!))),
+                Expanded(
+                    child: _buildFilterDropdown(
+                        'Class',
+                        _selectedClass,
+                        _getClasses(),
+                        (value) => setState(() => _selectedClass = value!))),
                 const SizedBox(width: 10),
-                Expanded(child: _buildFilterDropdown('Subject', _selectedSubject, _getSubjects(), (value) => setState(() => _selectedSubject = value!))),
+                Expanded(
+                    child: _buildFilterDropdown(
+                        'Subject',
+                        _selectedSubject,
+                        _getSubjects(),
+                        (value) => setState(() => _selectedSubject = value!))),
                 const SizedBox(width: 10),
-                Expanded(child: _buildFilterDropdown('Type', _selectedExamType, _getExamTypes(), (value) => setState(() => _selectedExamType = value!))),
+                Expanded(
+                    child: _buildFilterDropdown(
+                        'Type',
+                        _selectedExamType,
+                        _getExamTypes(),
+                        (value) => setState(() => _selectedExamType = value!))),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          
+
           // Papers List
           Expanded(
             child: Container(
@@ -305,38 +329,44 @@ class _ExamPapersPageState extends State<ExamPapersPage>
                     style: TextStyle(fontSize: 16, color: Colors.grey),
                   ),
                   const SizedBox(height: 30),
-                  
+
                   // Form fields
                   _buildFormField('Paper Title', 'Enter exam paper title'),
                   const SizedBox(height: 20),
-                  
+
                   Row(
                     children: [
                       Expanded(child: _buildFormField('Class', 'Select class')),
                       const SizedBox(width: 15),
-                      Expanded(child: _buildFormField('Subject', 'Select subject')),
+                      Expanded(
+                          child: _buildFormField('Subject', 'Select subject')),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  
+
                   Row(
                     children: [
-                      Expanded(child: _buildFormField('Exam Type', 'Select type')),
+                      Expanded(
+                          child: _buildFormField('Exam Type', 'Select type')),
                       const SizedBox(width: 15),
-                      Expanded(child: _buildFormField('Duration', 'Enter duration')),
+                      Expanded(
+                          child: _buildFormField('Duration', 'Enter duration')),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  
+
                   Row(
                     children: [
-                      Expanded(child: _buildFormField('Total Marks', 'Enter marks')),
+                      Expanded(
+                          child: _buildFormField('Total Marks', 'Enter marks')),
                       const SizedBox(width: 15),
-                      Expanded(child: _buildFormField('Difficulty', 'Select difficulty')),
+                      Expanded(
+                          child: _buildFormField(
+                              'Difficulty', 'Select difficulty')),
                     ],
                   ),
                   const SizedBox(height: 30),
-                  
+
                   // Action buttons
                   Row(
                     children: [
@@ -420,17 +450,32 @@ class _ExamPapersPageState extends State<ExamPapersPage>
             ),
           ),
           const SizedBox(height: 20),
-          
           Expanded(
             child: GridView.count(
               crossAxisCount: 2,
               crossAxisSpacing: 15,
               mainAxisSpacing: 15,
               children: [
-                _buildTemplateCard('Mathematics Template', 'Standard math paper format', Icons.calculate, const Color(0xFF4CAF50)),
-                _buildTemplateCard('Science Template', 'Lab and theory questions', Icons.science, const Color(0xFF2196F3)),
-                _buildTemplateCard('Language Template', 'Literature and grammar', Icons.language, const Color(0xFFFF9800)),
-                _buildTemplateCard('Social Studies Template', 'History and geography', Icons.public, const Color(0xFF9C27B0)),
+                _buildTemplateCard(
+                    'Mathematics Template',
+                    'Standard math paper format',
+                    Icons.calculate,
+                    const Color(0xFF4CAF50)),
+                _buildTemplateCard(
+                    'Science Template',
+                    'Lab and theory questions',
+                    Icons.science,
+                    const Color(0xFF2196F3)),
+                _buildTemplateCard(
+                    'Language Template',
+                    'Literature and grammar',
+                    Icons.language,
+                    const Color(0xFFFF9800)),
+                _buildTemplateCard(
+                    'Social Studies Template',
+                    'History and geography',
+                    Icons.public,
+                    const Color(0xFF9C27B0)),
               ],
             ),
           ),
@@ -477,17 +522,32 @@ class _ExamPapersPageState extends State<ExamPapersPage>
             ),
           ),
           const SizedBox(height: 20),
-          
           Expanded(
             child: GridView.count(
               crossAxisCount: 2,
               crossAxisSpacing: 15,
               mainAxisSpacing: 15,
               children: [
-                _buildReportCard('Paper Statistics', 'View paper creation stats', Icons.bar_chart, const Color(0xFF4CAF50)),
-                _buildReportCard('Subject Analysis', 'Papers by subject breakdown', Icons.pie_chart, const Color(0xFF2196F3)),
-                _buildReportCard('Difficulty Distribution', 'Easy vs medium vs hard papers', Icons.trending_up, const Color(0xFFFF9800)),
-                _buildReportCard('Usage Reports', 'Most used templates and formats', Icons.assessment, const Color(0xFF9C27B0)),
+                _buildReportCard(
+                    'Paper Statistics',
+                    'View paper creation stats',
+                    Icons.bar_chart,
+                    const Color(0xFF4CAF50)),
+                _buildReportCard(
+                    'Subject Analysis',
+                    'Papers by subject breakdown',
+                    Icons.pie_chart,
+                    const Color(0xFF2196F3)),
+                _buildReportCard(
+                    'Difficulty Distribution',
+                    'Easy vs medium vs hard papers',
+                    Icons.trending_up,
+                    const Color(0xFFFF9800)),
+                _buildReportCard(
+                    'Usage Reports',
+                    'Most used templates and formats',
+                    Icons.assessment,
+                    const Color(0xFF9C27B0)),
               ],
             ),
           ),
@@ -496,7 +556,8 @@ class _ExamPapersPageState extends State<ExamPapersPage>
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -529,7 +590,8 @@ class _ExamPapersPageState extends State<ExamPapersPage>
     );
   }
 
-  Widget _buildFilterDropdown(String label, String value, List<String> items, Function(String?) onChanged) {
+  Widget _buildFilterDropdown(String label, String value, List<String> items,
+      Function(String?) onChanged) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -542,12 +604,13 @@ class _ExamPapersPageState extends State<ExamPapersPage>
         ),
         const SizedBox(height: 5),
         DropdownButtonFormField<String>(
-          value: value,
+          initialValue: value,
           decoration: InputDecoration(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
           items: items.map((String item) {
             return DropdownMenuItem<String>(
@@ -563,7 +626,7 @@ class _ExamPapersPageState extends State<ExamPapersPage>
 
   Widget _buildPaperItem(Map<String, dynamic> paper) {
     Color statusColor = _getStatusColor(paper['status']);
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(15),
@@ -619,15 +682,18 @@ class _ExamPapersPageState extends State<ExamPapersPage>
             children: [
               Icon(Icons.schedule, size: 16, color: Colors.grey[600]),
               const SizedBox(width: 5),
-              Text('${paper['duration']}', style: TextStyle(color: Colors.grey[600])),
+              Text('${paper['duration']}',
+                  style: TextStyle(color: Colors.grey[600])),
               const SizedBox(width: 20),
               Icon(Icons.grade, size: 16, color: Colors.grey[600]),
               const SizedBox(width: 5),
-              Text('${paper['totalMarks']} marks', style: TextStyle(color: Colors.grey[600])),
+              Text('${paper['totalMarks']} marks',
+                  style: TextStyle(color: Colors.grey[600])),
               const SizedBox(width: 20),
               Icon(Icons.help, size: 16, color: Colors.grey[600]),
               const SizedBox(width: 5),
-              Text('${paper['questions']} questions', style: TextStyle(color: Colors.grey[600])),
+              Text('${paper['questions']} questions',
+                  style: TextStyle(color: Colors.grey[600])),
             ],
           ),
           const SizedBox(height: 15),
@@ -711,14 +777,16 @@ class _ExamPapersPageState extends State<ExamPapersPage>
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildTemplateCard(String title, String description, IconData icon, Color color) {
+  Widget _buildTemplateCard(
+      String title, String description, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -767,7 +835,8 @@ class _ExamPapersPageState extends State<ExamPapersPage>
     );
   }
 
-  Widget _buildReportCard(String title, String description, IconData icon, Color color) {
+  Widget _buildReportCard(
+      String title, String description, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -830,22 +899,34 @@ class _ExamPapersPageState extends State<ExamPapersPage>
   }
 
   List<String> _getClasses() {
-    return ['All Classes', ...{..._examPapers.map((p) => p['class'] as String)}];
+    return [
+      'All Classes',
+      ...{..._examPapers.map((p) => p['class'] as String)}
+    ];
   }
 
   List<String> _getSubjects() {
-    return ['All Subjects', ...{..._examPapers.map((p) => p['subject'] as String)}];
+    return [
+      'All Subjects',
+      ...{..._examPapers.map((p) => p['subject'] as String)}
+    ];
   }
 
   List<String> _getExamTypes() {
-    return ['All Types', ...{..._examPapers.map((p) => p['examType'] as String)}];
+    return [
+      'All Types',
+      ...{..._examPapers.map((p) => p['examType'] as String)}
+    ];
   }
 
   List<Map<String, dynamic>> _getFilteredPapers() {
     return _examPapers.where((paper) {
-      bool classMatch = _selectedClass == 'All Classes' || paper['class'] == _selectedClass;
-      bool subjectMatch = _selectedSubject == 'All Subjects' || paper['subject'] == _selectedSubject;
-      bool typeMatch = _selectedExamType == 'All Types' || paper['examType'] == _selectedExamType;
+      bool classMatch =
+          _selectedClass == 'All Classes' || paper['class'] == _selectedClass;
+      bool subjectMatch = _selectedSubject == 'All Subjects' ||
+          paper['subject'] == _selectedSubject;
+      bool typeMatch = _selectedExamType == 'All Types' ||
+          paper['examType'] == _selectedExamType;
       return classMatch && subjectMatch && typeMatch;
     }).toList();
   }

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Role Access Verification</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .yes { background-color: #d4edda; color: #155724; }
+        .no { background-color: #f8d7da; color: #721c24; }
+        .role-description { margin-bottom: 20px; }
+        .role-card { border: 1px solid #ddd; padding: 15px; margin-bottom: 15px; border-radius: 5px; }
+        .role-title { font-weight: bold; font-size: 18px; margin-bottom: 10px; }
+        .section { margin-bottom: 30px; }
+    </style>
+</head>
+<body>
+    <h1>User Role Access Verification</h1>
+    
+    <div class="section">
+        <h2>Role Descriptions</h2><div class="role-descriptions"><div class="role-card">
+        <div class="role-title">Super Admin</div>
+        <div class="role-description">Full system access and configuration, user management across all schools, system-wide reports and analytics</div>
+    </div><div class="role-card">
+        <div class="role-title">Admin</div>
+        <div class="role-description">School management and user creation, financial and academic oversight, reporting and configuration</div>
+    </div><div class="role-card">
+        <div class="role-title">Principal</div>
+        <div class="role-description">Single school management, teacher and student oversight, academic calendar management</div>
+    </div><div class="role-card">
+        <div class="role-title">Teacher</div>
+        <div class="role-description">Class and subject management, attendance and grade entry, syllabus and exam paper management</div>
+    </div><div class="role-card">
+        <div class="role-title">Student</div>
+        <div class="role-description">Personal data access, syllabus and result viewing, fee payment portal</div>
+    </div><div class="role-card">
+        <div class="role-title">Parent</div>
+        <div class="role-description">Child progress monitoring, fee payment and communication, attendance and grade tracking</div>
+    </div></div>
+    </div><div class="section">
+    <h2>Permission Matrix</h2>
+    <table>
+        <tr>
+            <th>Permission</th><th>Super Admin</th><th>Admin</th><th>Principal</th><th>Teacher</th><th>Student</th><th>Parent</th></tr><tr>
+        <td>academic.calendar.manage</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>academic.manage.all</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>academic.oversee</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>analytics.view.all</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>attendance.manage</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>attendance.view.child</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td></tr><tr>
+        <td>attendance.view.self</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td></tr><tr>
+        <td>child.monitor</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td></tr><tr>
+        <td>class.manage</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>communicate.school</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td></tr><tr>
+        <td>exam.manage</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>fee.pay</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="yes">✓</td></tr><tr>
+        <td>finance.manage</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>finance.manage.all</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>grade.manage</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>grade.view.child</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td></tr><tr>
+        <td>personal.view</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td></tr><tr>
+        <td>reports.view</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>reports.view.all</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>reports.view.school</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>result.view</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td></tr><tr>
+        <td>school.configure</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>school.manage</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>school.manage.all</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>school.manage.single</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>student.oversee</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>subject.manage</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>syllabus.manage</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>syllabus.view</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td></tr><tr>
+        <td>system.access</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>system.configure</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>teacher.oversee</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>user.create</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>user.manage.all</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr></table>
+    </div><div class="section">
+    <h2>Route Access Matrix</h2>
+    <table>
+        <tr>
+            <th>Route</th><th>Super Admin</th><th>Admin</th><th>Principal</th><th>Teacher</th><th>Student</th><th>Parent</th></tr><tr>
+        <td>/admin/academic/overview</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/admin/analytics/dashboard</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/admin/finance/overview</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/admin/finance/school</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/admin/reports/school</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/admin/reports/system</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/admin/school/manage</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/admin/school/settings</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/admin/schools/all</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/admin/system/settings</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/admin/users/create</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/admin/users/manage</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/parent/attendance/view</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td></tr><tr>
+        <td>/parent/children/monitor</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td></tr><tr>
+        <td>/parent/communication/school</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td></tr><tr>
+        <td>/parent/fees/pay</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td></tr><tr>
+        <td>/parent/grades/view</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td></tr><tr>
+        <td>/principal/academic/calendar</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/principal/reports/view</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/principal/school/dashboard</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/principal/students/manage</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/principal/teachers/manage</td><td class="yes">✓</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/student/attendance/view</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td></tr><tr>
+        <td>/student/fees/pay</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td></tr><tr>
+        <td>/student/profile</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td></tr><tr>
+        <td>/student/results/view</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td></tr><tr>
+        <td>/student/syllabus/view</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td></tr><tr>
+        <td>/teacher/attendance/mark</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/teacher/classes/manage</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/teacher/exams/manage</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/teacher/grades/manage</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/teacher/subjects/manage</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr><tr>
+        <td>/teacher/syllabus/manage</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr></table>
+    </div><div class="section">
+    <h2>Verification Results</h2>
+    <p>The access permissions have been verified against the requirements:</p>
+    <ul>
+        <li><strong>Super Admin:</strong> Has full system access including configuration, user management, and system-wide reports ✓</li>
+        <li><strong>Admin:</strong> Has school management, user creation, and financial oversight capabilities ✓</li>
+        <li><strong>Principal:</strong> Has single school management and academic oversight without system configuration access ✓</li>
+        <li><strong>Teacher:</strong> Has class, attendance, and grade management without administrative access ✓</li>
+        <li><strong>Student:</strong> Has personal data, syllabus, and fee payment access without administrative capabilities ✓</li>
+        <li><strong>Parent:</strong> Has child monitoring, fee payment, and grade tracking capabilities ✓</li>
+    </ul>
+    
+    <p><strong>Overall Status:</strong> All user roles have proper access permissions as specified in the requirements.</p>
+</div>
+</body>
+</html>

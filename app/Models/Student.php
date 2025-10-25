@@ -21,6 +21,7 @@ class Student extends Model
         'dob',
         'aadhaar',
         'class_id',
+        'section_id',
         'documents',
         'documents_verified_data',
         'verification_status',

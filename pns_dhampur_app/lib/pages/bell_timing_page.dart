@@ -9,7 +9,8 @@ class BellTimingPage extends StatefulWidget {
   State<BellTimingPage> createState() => _BellTimingPageState();
 }
 
-class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStateMixin {
+class _BellTimingPageState extends State<BellTimingPage>
+    with TickerProviderStateMixin {
   late TabController _tabController;
   bool _notificationsEnabled = true;
   String _selectedSeason = 'Summer';
@@ -17,32 +18,152 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
   // Sample bell timing data
   final Map<String, List<Map<String, dynamic>>> _bellTimings = {
     'Summer': [
-      {'time': '07:30 AM', 'activity': 'School Opens', 'icon': Icons.school, 'emoji': '🏫'},
-      {'time': '08:00 AM', 'activity': 'Morning Assembly', 'icon': Icons.groups, 'emoji': '🙏'},
-      {'time': '08:15 AM', 'activity': '1st Period', 'icon': Icons.book, 'emoji': '📚'},
-      {'time': '09:00 AM', 'activity': '2nd Period', 'icon': Icons.book, 'emoji': '📖'},
-      {'time': '09:45 AM', 'activity': '3rd Period', 'icon': Icons.book, 'emoji': '📝'},
-      {'time': '10:30 AM', 'activity': 'Break Time', 'icon': Icons.free_breakfast, 'emoji': '🍎'},
-      {'time': '10:45 AM', 'activity': '4th Period', 'icon': Icons.book, 'emoji': '📊'},
-      {'time': '11:30 AM', 'activity': '5th Period', 'icon': Icons.book, 'emoji': '🔬'},
-      {'time': '12:15 PM', 'activity': 'Lunch Break', 'icon': Icons.lunch_dining, 'emoji': '🍽️'},
-      {'time': '01:00 PM', 'activity': '6th Period', 'icon': Icons.book, 'emoji': '🎨'},
-      {'time': '01:45 PM', 'activity': '7th Period', 'icon': Icons.book, 'emoji': '⚽'},
-      {'time': '02:30 PM', 'activity': 'School Ends', 'icon': Icons.home, 'emoji': '🏠'},
+      {
+        'time': '07:30 AM',
+        'activity': 'School Opens',
+        'icon': Icons.school,
+        'emoji': '🏫'
+      },
+      {
+        'time': '08:00 AM',
+        'activity': 'Morning Assembly',
+        'icon': Icons.groups,
+        'emoji': '🙏'
+      },
+      {
+        'time': '08:15 AM',
+        'activity': '1st Period',
+        'icon': Icons.book,
+        'emoji': '📚'
+      },
+      {
+        'time': '09:00 AM',
+        'activity': '2nd Period',
+        'icon': Icons.book,
+        'emoji': '📖'
+      },
+      {
+        'time': '09:45 AM',
+        'activity': '3rd Period',
+        'icon': Icons.book,
+        'emoji': '📝'
+      },
+      {
+        'time': '10:30 AM',
+        'activity': 'Break Time',
+        'icon': Icons.free_breakfast,
+        'emoji': '🍎'
+      },
+      {
+        'time': '10:45 AM',
+        'activity': '4th Period',
+        'icon': Icons.book,
+        'emoji': '📊'
+      },
+      {
+        'time': '11:30 AM',
+        'activity': '5th Period',
+        'icon': Icons.book,
+        'emoji': '🔬'
+      },
+      {
+        'time': '12:15 PM',
+        'activity': 'Lunch Break',
+        'icon': Icons.lunch_dining,
+        'emoji': '🍽️'
+      },
+      {
+        'time': '01:00 PM',
+        'activity': '6th Period',
+        'icon': Icons.book,
+        'emoji': '🎨'
+      },
+      {
+        'time': '01:45 PM',
+        'activity': '7th Period',
+        'icon': Icons.book,
+        'emoji': '⚽'
+      },
+      {
+        'time': '02:30 PM',
+        'activity': 'School Ends',
+        'icon': Icons.home,
+        'emoji': '🏠'
+      },
     ],
     'Winter': [
-      {'time': '08:00 AM', 'activity': 'School Opens', 'icon': Icons.school, 'emoji': '🏫'},
-      {'time': '08:30 AM', 'activity': 'Morning Assembly', 'icon': Icons.groups, 'emoji': '🙏'},
-      {'time': '08:45 AM', 'activity': '1st Period', 'icon': Icons.book, 'emoji': '📚'},
-      {'time': '09:30 AM', 'activity': '2nd Period', 'icon': Icons.book, 'emoji': '📖'},
-      {'time': '10:15 AM', 'activity': '3rd Period', 'icon': Icons.book, 'emoji': '📝'},
-      {'time': '11:00 AM', 'activity': 'Break Time', 'icon': Icons.free_breakfast, 'emoji': '🍎'},
-      {'time': '11:15 AM', 'activity': '4th Period', 'icon': Icons.book, 'emoji': '📊'},
-      {'time': '12:00 PM', 'activity': '5th Period', 'icon': Icons.book, 'emoji': '🔬'},
-      {'time': '12:45 PM', 'activity': 'Lunch Break', 'icon': Icons.lunch_dining, 'emoji': '🍽️'},
-      {'time': '01:30 PM', 'activity': '6th Period', 'icon': Icons.book, 'emoji': '🎨'},
-      {'time': '02:15 PM', 'activity': '7th Period', 'icon': Icons.book, 'emoji': '⚽'},
-      {'time': '03:00 PM', 'activity': 'School Ends', 'icon': Icons.home, 'emoji': '🏠'},
+      {
+        'time': '08:00 AM',
+        'activity': 'School Opens',
+        'icon': Icons.school,
+        'emoji': '🏫'
+      },
+      {
+        'time': '08:30 AM',
+        'activity': 'Morning Assembly',
+        'icon': Icons.groups,
+        'emoji': '🙏'
+      },
+      {
+        'time': '08:45 AM',
+        'activity': '1st Period',
+        'icon': Icons.book,
+        'emoji': '📚'
+      },
+      {
+        'time': '09:30 AM',
+        'activity': '2nd Period',
+        'icon': Icons.book,
+        'emoji': '📖'
+      },
+      {
+        'time': '10:15 AM',
+        'activity': '3rd Period',
+        'icon': Icons.book,
+        'emoji': '📝'
+      },
+      {
+        'time': '11:00 AM',
+        'activity': 'Break Time',
+        'icon': Icons.free_breakfast,
+        'emoji': '🍎'
+      },
+      {
+        'time': '11:15 AM',
+        'activity': '4th Period',
+        'icon': Icons.book,
+        'emoji': '📊'
+      },
+      {
+        'time': '12:00 PM',
+        'activity': '5th Period',
+        'icon': Icons.book,
+        'emoji': '🔬'
+      },
+      {
+        'time': '12:45 PM',
+        'activity': 'Lunch Break',
+        'icon': Icons.lunch_dining,
+        'emoji': '🍽️'
+      },
+      {
+        'time': '01:30 PM',
+        'activity': '6th Period',
+        'icon': Icons.book,
+        'emoji': '🎨'
+      },
+      {
+        'time': '02:15 PM',
+        'activity': '7th Period',
+        'icon': Icons.book,
+        'emoji': '⚽'
+      },
+      {
+        'time': '03:00 PM',
+        'activity': 'School Ends',
+        'icon': Icons.home,
+        'emoji': '🏠'
+      },
     ],
   };
 
@@ -85,7 +206,9 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
           IconButton(
             onPressed: _toggleNotifications,
             icon: Icon(
-              _notificationsEnabled ? Icons.notifications_active : Icons.notifications_off,
+              _notificationsEnabled
+                  ? Icons.notifications_active
+                  : Icons.notifications_off,
               color: Colors.white,
             ),
           ),
@@ -125,7 +248,7 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: _selectedSeason == 'Summer' 
+                colors: _selectedSeason == 'Summer'
                     ? [const Color(0xFFFF9800), const Color(0xFFFFB74D)]
                     : [const Color(0xFF2196F3), const Color(0xFF64B5F6)],
                 begin: Alignment.topLeft,
@@ -172,7 +295,7 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
                           _selectedSeason = value ? 'Summer' : 'Winter';
                         });
                       },
-                      activeColor: Colors.white,
+                      activeThumbColor: Colors.white,
                       activeTrackColor: Colors.white.withOpacity(0.3),
                       inactiveThumbColor: Colors.white,
                       inactiveTrackColor: Colors.white.withOpacity(0.3),
@@ -199,7 +322,9 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
           ),
           const SizedBox(height: 16),
 
-          ..._bellTimings[_selectedSeason]!.map((timing) => _buildTimingCard(timing)).toList(),
+          ..._bellTimings[_selectedSeason]!
+              .map((timing) => _buildTimingCard(timing))
+              .toList(),
         ],
       ),
     );
@@ -214,7 +339,8 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
           // Notification Settings
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -262,7 +388,8 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
           // Sound Settings
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -278,7 +405,8 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
                   ),
                   const SizedBox(height: 20),
                   ListTile(
-                    leading: const Icon(Icons.volume_up, color: Color(0xFFFF5722)),
+                    leading:
+                        const Icon(Icons.volume_up, color: Color(0xFFFF5722)),
                     title: const Text('Bell Sound'),
                     subtitle: const Text('Classic School Bell'),
                     trailing: const Icon(Icons.arrow_forward_ios),
@@ -286,13 +414,14 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
                   ),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.vibration, color: Color(0xFFFF5722)),
+                    leading:
+                        const Icon(Icons.vibration, color: Color(0xFFFF5722)),
                     title: const Text('Vibration'),
                     subtitle: const Text('Vibrate on bell ring'),
                     trailing: Switch(
                       value: true,
                       onChanged: (value) {},
-                      activeColor: const Color(0xFFFF5722),
+                      activeThumbColor: const Color(0xFFFF5722),
                     ),
                   ),
                 ],
@@ -304,7 +433,8 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
           // Schedule Management
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -409,7 +539,8 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
           // Time Distribution Chart
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -424,13 +555,17 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _buildTimeDistributionItem('Classes', '5.25 hrs', 0.75, const Color(0xFF2196F3)),
+                  _buildTimeDistributionItem(
+                      'Classes', '5.25 hrs', 0.75, const Color(0xFF2196F3)),
                   const SizedBox(height: 12),
-                  _buildTimeDistributionItem('Breaks', '1.25 hrs', 0.18, const Color(0xFF4CAF50)),
+                  _buildTimeDistributionItem(
+                      'Breaks', '1.25 hrs', 0.18, const Color(0xFF4CAF50)),
                   const SizedBox(height: 12),
-                  _buildTimeDistributionItem('Assembly', '0.25 hrs', 0.04, const Color(0xFFFF5722)),
+                  _buildTimeDistributionItem(
+                      'Assembly', '0.25 hrs', 0.04, const Color(0xFFFF5722)),
                   const SizedBox(height: 12),
-                  _buildTimeDistributionItem('Other', '0.25 hrs', 0.03, const Color(0xFF9C27B0)),
+                  _buildTimeDistributionItem(
+                      'Other', '0.25 hrs', 0.03, const Color(0xFF9C27B0)),
                 ],
               ),
             ),
@@ -440,7 +575,8 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
           // Weekly Schedule Overview
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -455,57 +591,72 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
                     ),
                   ),
                   const SizedBox(height: 20),
-                  ...['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(
-                    (day) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF5722).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Center(
-                              child: Text('📅', style: TextStyle(fontSize: 16)),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  day,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  ...[
+                    'Monday',
+                    'Tuesday',
+                    'Wednesday',
+                    'Thursday',
+                    'Friday',
+                    'Saturday'
+                  ]
+                      .map(
+                        (day) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color:
+                                      const Color(0xFFFF5722).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                Text(
-                                  '7 periods • ${_selectedSeason} schedule',
-                                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                child: const Center(
+                                  child: Text('📅',
+                                      style: TextStyle(fontSize: 16)),
                                 ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF4CAF50),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              'Active',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
                               ),
-                            ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      day,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                    Text(
+                                      '7 periods • ${_selectedSeason} schedule',
+                                      style: TextStyle(
+                                          color: Colors.grey[600],
+                                          fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF4CAF50),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'Active',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ).toList(),
+                        ),
+                      )
+                      .toList(),
                 ],
               ),
             ),
@@ -517,8 +668,9 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
 
   Widget _buildCurrentTimeStatus() {
     final now = DateTime.now();
-    final currentTime = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-    
+    final currentTime =
+        '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+
     return Card(
       elevation: 8,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -586,8 +738,9 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
 
   Widget _buildTimingCard(Map<String, dynamic> timing) {
     final now = DateTime.now();
-    final isCurrentPeriod = false; // This would be calculated based on current time
-    
+    final isCurrentPeriod =
+        false; // This would be calculated based on current time
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: isCurrentPeriod ? 12 : 4,
@@ -596,12 +749,15 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: isCurrentPeriod 
+          border: isCurrentPeriod
               ? Border.all(color: const Color(0xFF4CAF50), width: 2)
               : null,
-          gradient: isCurrentPeriod 
+          gradient: isCurrentPeriod
               ? LinearGradient(
-                  colors: [const Color(0xFF4CAF50).withOpacity(0.1), Colors.white],
+                  colors: [
+                    const Color(0xFF4CAF50).withOpacity(0.1),
+                    Colors.white
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 )
@@ -612,7 +768,7 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isCurrentPeriod 
+                color: isCurrentPeriod
                     ? const Color(0xFF4CAF50).withOpacity(0.2)
                     : const Color(0xFFFF5722).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
@@ -632,7 +788,9 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: isCurrentPeriod ? const Color(0xFF4CAF50) : Colors.black87,
+                      color: isCurrentPeriod
+                          ? const Color(0xFF4CAF50)
+                          : Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -692,7 +850,7 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: const Color(0xFFFF5722),
+        activeThumbColor: const Color(0xFFFF5722),
       ),
     );
   }
@@ -751,7 +909,8 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
     );
   }
 
-  Widget _buildTimeDistributionItem(String label, String time, double percentage, Color color) {
+  Widget _buildTimeDistributionItem(
+      String label, String time, double percentage, Color color) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -786,8 +945,8 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          _notificationsEnabled 
-              ? 'Notifications enabled! 🔔' 
+          _notificationsEnabled
+              ? 'Notifications enabled! 🔔'
               : 'Notifications disabled! 🔕',
         ),
         backgroundColor: _notificationsEnabled ? Colors.green : Colors.orange,
@@ -837,7 +996,8 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
   void _editSchedule(String season) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Edit $season schedule functionality will be implemented! ✏️'),
+        content:
+            Text('Edit $season schedule functionality will be implemented! ✏️'),
         backgroundColor: const Color(0xFFFF5722),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -848,7 +1008,8 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
   void _addCustomSchedule() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Add custom schedule functionality will be implemented! ➕'),
+        content:
+            Text('Add custom schedule functionality will be implemented! ➕'),
         backgroundColor: Color(0xFFFF5722),
         behavior: SnackBarBehavior.floating,
       ),
@@ -858,7 +1019,8 @@ class _BellTimingPageState extends State<BellTimingPage> with TickerProviderStat
   void _setReminder(Map<String, dynamic> timing) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Reminder set for ${timing['activity']} at ${timing['time']} ⏰'),
+        content: Text(
+            'Reminder set for ${timing['activity']} at ${timing['time']} ⏰'),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

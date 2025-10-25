@@ -177,16 +177,19 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildStatCard('Present', '${_getTodayPresent()}', Icons.check_circle, const Color(0xFF4CAF50)),
-                    _buildStatCard('Late', '${_getTodayLate()}', Icons.schedule, const Color(0xFFFF9800)),
-                    _buildStatCard('Absent', '${_getTodayAbsent()}', Icons.cancel, const Color(0xFFF44336)),
+                    _buildStatCard('Present', '${_getTodayPresent()}',
+                        Icons.check_circle, const Color(0xFF4CAF50)),
+                    _buildStatCard('Late', '${_getTodayLate()}', Icons.schedule,
+                        const Color(0xFFFF9800)),
+                    _buildStatCard('Absent', '${_getTodayAbsent()}',
+                        Icons.cancel, const Color(0xFFF44336)),
                   ],
                 ),
               ],
             ),
           ),
           const SizedBox(height: 20),
-          
+
           // Live arrivals
           Expanded(
             child: Container(
@@ -226,7 +229,8 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(12),
@@ -307,7 +311,7 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
             ),
           ),
           const SizedBox(height: 20),
-          
+
           // History list
           Expanded(
             child: Container(
@@ -405,19 +409,27 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
             ),
           ),
           const SizedBox(height: 20),
-          
           Expanded(
             child: GridView.count(
               crossAxisCount: 2,
               crossAxisSpacing: 15,
               mainAxisSpacing: 15,
               children: [
-                _buildReportCard('Daily Summary', 'Today\'s attendance overview', Icons.today, const Color(0xFF4CAF50)),
-                _buildReportCard('Weekly Report', 'Last 7 days analysis', Icons.date_range, const Color(0xFF2196F3)),
-                _buildReportCard('Monthly Stats', 'Monthly attendance trends', Icons.calendar_month, const Color(0xFFFF9800)),
-                _buildReportCard('Department Wise', 'Attendance by department', Icons.group, const Color(0xFF9C27B0)),
-                _buildReportCard('Late Arrivals', 'Punctuality analysis', Icons.schedule, const Color(0xFFF44336)),
-                _buildReportCard('Export Data', 'Download attendance reports', Icons.download, const Color(0xFF607D8B)),
+                _buildReportCard(
+                    'Daily Summary',
+                    'Today\'s attendance overview',
+                    Icons.today,
+                    const Color(0xFF4CAF50)),
+                _buildReportCard('Weekly Report', 'Last 7 days analysis',
+                    Icons.date_range, const Color(0xFF2196F3)),
+                _buildReportCard('Monthly Stats', 'Monthly attendance trends',
+                    Icons.calendar_month, const Color(0xFFFF9800)),
+                _buildReportCard('Department Wise', 'Attendance by department',
+                    Icons.group, const Color(0xFF9C27B0)),
+                _buildReportCard('Late Arrivals', 'Punctuality analysis',
+                    Icons.schedule, const Color(0xFFF44336)),
+                _buildReportCard('Export Data', 'Download attendance reports',
+                    Icons.download, const Color(0xFF607D8B)),
               ],
             ),
           ),
@@ -464,21 +476,29 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
             ),
           ),
           const SizedBox(height: 20),
-          
           Expanded(
             child: ListView(
               children: [
-                _buildSettingCard('Device Management', 'Configure biometric devices', Icons.fingerprint, () => _manageDevices()),
+                _buildSettingCard(
+                    'Device Management',
+                    'Configure biometric devices',
+                    Icons.fingerprint,
+                    () => _manageDevices()),
                 const SizedBox(height: 15),
-                _buildSettingCard('Time Settings', 'Set arrival time limits', Icons.access_time, () => _configureTime()),
+                _buildSettingCard('Time Settings', 'Set arrival time limits',
+                    Icons.access_time, () => _configureTime()),
                 const SizedBox(height: 15),
-                _buildSettingCard('Notifications', 'Alert preferences', Icons.notifications, () => _configureNotifications()),
+                _buildSettingCard('Notifications', 'Alert preferences',
+                    Icons.notifications, () => _configureNotifications()),
                 const SizedBox(height: 15),
-                _buildSettingCard('Data Backup', 'Backup attendance data', Icons.backup, () => _backupData()),
+                _buildSettingCard('Data Backup', 'Backup attendance data',
+                    Icons.backup, () => _backupData()),
                 const SizedBox(height: 15),
-                _buildSettingCard('User Permissions', 'Manage access rights', Icons.security, () => _managePermissions()),
+                _buildSettingCard('User Permissions', 'Manage access rights',
+                    Icons.security, () => _managePermissions()),
                 const SizedBox(height: 15),
-                _buildSettingCard('System Status', 'Check device connectivity', Icons.wifi, () => _checkSystemStatus()),
+                _buildSettingCard('System Status', 'Check device connectivity',
+                    Icons.wifi, () => _checkSystemStatus()),
               ],
             ),
           ),
@@ -487,7 +507,8 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -522,7 +543,7 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
 
   Widget _buildArrivalItem(Map<String, dynamic> arrival) {
     Color statusColor = _getStatusColor(arrival['status']);
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(15),
@@ -548,7 +569,7 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
             ),
           ),
           const SizedBox(width: 15),
-          
+
           // Teacher info
           Expanded(
             child: Column(
@@ -587,7 +608,7 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
               ],
             ),
           ),
-          
+
           // Status and time
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -625,7 +646,7 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
 
   Widget _buildHistoryItem(Map<String, dynamic> arrival) {
     Color statusColor = _getStatusColor(arrival['status']);
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
@@ -735,12 +756,13 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
         ),
         const SizedBox(height: 5),
         DropdownButtonFormField<String>(
-          value: _selectedDepartment,
+          initialValue: _selectedDepartment,
           decoration: InputDecoration(
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           ),
           items: _getDepartments().map((String dept) {
             return DropdownMenuItem<String>(
@@ -754,7 +776,8 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
     );
   }
 
-  Widget _buildReportCard(String title, String description, IconData icon, Color color) {
+  Widget _buildReportCard(
+      String title, String description, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
@@ -803,7 +826,8 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
     );
   }
 
-  Widget _buildSettingCard(String title, String description, IconData icon, VoidCallback onTap) {
+  Widget _buildSettingCard(
+      String title, String description, IconData icon, VoidCallback onTap) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -854,12 +878,16 @@ class _TeachersArrivalPageState extends State<TeachersArrivalPage>
   }
 
   List<String> _getDepartments() {
-    return ['All Departments', ...{..._teacherArrivals.map((t) => t['department'] as String)}];
+    return [
+      'All Departments',
+      ...{..._teacherArrivals.map((t) => t['department'] as String)}
+    ];
   }
 
   List<Map<String, dynamic>> _getFilteredArrivals() {
     return _teacherArrivals.where((arrival) {
-      bool departmentMatch = _selectedDepartment == 'All Departments' || arrival['department'] == _selectedDepartment;
+      bool departmentMatch = _selectedDepartment == 'All Departments' ||
+          arrival['department'] == _selectedDepartment;
       bool dateMatch = arrival['date'] == _selectedDate;
       return departmentMatch && dateMatch;
     }).toList();

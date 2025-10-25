@@ -3,13 +3,15 @@ import 'package:flutter/material.dart';
 class StudentAttendancePage extends StatefulWidget {
   final String token;
 
-  const StudentAttendancePage({Key? key, required this.token}) : super(key: key);
+  const StudentAttendancePage({Key? key, required this.token})
+      : super(key: key);
 
   @override
   State<StudentAttendancePage> createState() => _StudentAttendancePageState();
 }
 
-class _StudentAttendancePageState extends State<StudentAttendancePage> with TickerProviderStateMixin {
+class _StudentAttendancePageState extends State<StudentAttendancePage>
+    with TickerProviderStateMixin {
   late TabController _tabController;
   DateTime _selectedDate = DateTime.now();
   String _selectedClass = 'Class 1';
@@ -181,7 +183,7 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
 
   Widget _buildMarkAttendanceTab() {
     final students = _classStudents[_selectedClass] ?? [];
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -210,7 +212,9 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
           ),
           const SizedBox(height: 16),
 
-          ...students.map((student) => _buildStudentAttendanceCard(student)).toList(),
+          ...students
+              .map((student) => _buildStudentAttendanceCard(student))
+              .toList(),
         ],
       ),
     );
@@ -233,7 +237,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
           // Monthly Attendance Chart
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -320,7 +325,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
           // Day-wise Attendance Pattern
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -345,7 +351,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
           // Class Performance Comparison
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -379,7 +386,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
           // Attendance Settings
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -395,7 +403,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                   ),
                   const SizedBox(height: 20),
                   ListTile(
-                    leading: const Icon(Icons.schedule, color: Color(0xFF009688)),
+                    leading:
+                        const Icon(Icons.schedule, color: Color(0xFF009688)),
                     title: const Text('Late Arrival Time'),
                     subtitle: const Text('Mark as late after 9:30 AM'),
                     trailing: const Icon(Icons.arrow_forward_ios),
@@ -403,24 +412,26 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                   ),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.warning, color: Color(0xFF009688)),
+                    leading:
+                        const Icon(Icons.warning, color: Color(0xFF009688)),
                     title: const Text('Low Attendance Alert'),
                     subtitle: const Text('Alert when attendance < 75%'),
                     trailing: Switch(
                       value: true,
                       onChanged: (value) {},
-                      activeColor: const Color(0xFF009688),
+                      activeThumbColor: const Color(0xFF009688),
                     ),
                   ),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.auto_awesome, color: Color(0xFF009688)),
+                    leading: const Icon(Icons.auto_awesome,
+                        color: Color(0xFF009688)),
                     title: const Text('Auto-mark Present'),
                     subtitle: const Text('Auto-mark students as present'),
                     trailing: Switch(
                       value: false,
                       onChanged: (value) {},
-                      activeColor: const Color(0xFF009688),
+                      activeThumbColor: const Color(0xFF009688),
                     ),
                   ),
                 ],
@@ -432,7 +443,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
           // Notification Settings
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -454,7 +466,7 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                     trailing: Switch(
                       value: true,
                       onChanged: (value) {},
-                      activeColor: const Color(0xFF009688),
+                      activeThumbColor: const Color(0xFF009688),
                     ),
                   ),
                   const Divider(),
@@ -465,18 +477,19 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                     trailing: Switch(
                       value: true,
                       onChanged: (value) {},
-                      activeColor: const Color(0xFF009688),
+                      activeThumbColor: const Color(0xFF009688),
                     ),
                   ),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.push_pin, color: Color(0xFF009688)),
+                    leading:
+                        const Icon(Icons.push_pin, color: Color(0xFF009688)),
                     title: const Text('Push Notifications'),
                     subtitle: const Text('Real-time attendance alerts'),
                     trailing: Switch(
                       value: false,
                       onChanged: (value) {},
-                      activeColor: const Color(0xFF009688),
+                      activeThumbColor: const Color(0xFF009688),
                     ),
                   ),
                 ],
@@ -488,7 +501,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
           // Data Management
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -504,7 +518,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                   ),
                   const SizedBox(height: 20),
                   ListTile(
-                    leading: const Icon(Icons.file_download, color: Color(0xFF009688)),
+                    leading: const Icon(Icons.file_download,
+                        color: Color(0xFF009688)),
                     title: const Text('Export Attendance'),
                     subtitle: const Text('Download attendance as Excel'),
                     trailing: const Icon(Icons.arrow_forward_ios),
@@ -520,7 +535,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                   ),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.restore, color: Color(0xFF009688)),
+                    leading:
+                        const Icon(Icons.restore, color: Color(0xFF009688)),
                     title: const Text('Import Data'),
                     subtitle: const Text('Import attendance from file'),
                     trailing: const Icon(Icons.arrow_forward_ios),
@@ -618,7 +634,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                       DropdownButton<String>(
                         value: _selectedClass,
                         dropdownColor: const Color(0xFF009688),
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 16),
                         underline: Container(),
                         items: _classStudents.keys.map((String value) {
                           return DropdownMenuItem<String>(
@@ -651,7 +668,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                       DropdownButton<String>(
                         value: _selectedSection,
                         dropdownColor: const Color(0xFF009688),
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 16),
                         underline: Container(),
                         items: ['A', 'B', 'C'].map((String value) {
                           return DropdownMenuItem<String>(
@@ -678,8 +696,10 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
   }
 
   Widget _buildAttendanceSummary(List<Map<String, dynamic>> students) {
-    final presentCount = students.where((s) => s['attendance'] == 'present').length;
-    final absentCount = students.where((s) => s['attendance'] == 'absent').length;
+    final presentCount =
+        students.where((s) => s['attendance'] == 'present').length;
+    final absentCount =
+        students.where((s) => s['attendance'] == 'absent').length;
     final lateCount = students.where((s) => s['attendance'] == 'late').length;
     final totalStudents = students.length;
 
@@ -744,7 +764,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                   child: ElevatedButton.icon(
                     onPressed: _markAllPresent,
                     icon: const Icon(Icons.check_circle, color: Colors.white),
-                    label: const Text('All Present', style: TextStyle(color: Colors.white)),
+                    label: const Text('All Present',
+                        style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4CAF50),
                       shape: RoundedRectangleBorder(
@@ -758,7 +779,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                   child: ElevatedButton.icon(
                     onPressed: _markAllAbsent,
                     icon: const Icon(Icons.cancel, color: Colors.white),
-                    label: const Text('All Absent', style: TextStyle(color: Colors.white)),
+                    label: const Text('All Absent',
+                        style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFF5722),
                       shape: RoundedRectangleBorder(
@@ -772,7 +794,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                   child: ElevatedButton.icon(
                     onPressed: _resetAttendance,
                     icon: const Icon(Icons.refresh, color: Colors.white),
-                    label: const Text('Reset', style: TextStyle(color: Colors.white)),
+                    label: const Text('Reset',
+                        style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF607D8B),
                       shape: RoundedRectangleBorder(
@@ -859,7 +882,9 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                   Text(
                     '${student['attendancePercentage']}% attendance',
                     style: TextStyle(
-                      color: student['attendancePercentage'] >= 75 ? Colors.green : Colors.red,
+                      color: student['attendancePercentage'] >= 75
+                          ? Colors.green
+                          : Colors.red,
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
@@ -910,7 +935,7 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
     String emoji,
   ) {
     final isSelected = student['attendance'] == status;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -944,7 +969,7 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
     required String emoji,
   }) {
     final percentage = total > 0 ? (int.parse(value) / total * 100).round() : 0;
-    
+
     return Card(
       elevation: 8,
       shadowColor: color.withOpacity(0.3),
@@ -1067,13 +1092,17 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: 'This Month',
+                    initialValue: 'This Month',
                     decoration: const InputDecoration(
                       labelText: 'Time Period',
                       border: OutlineInputBorder(),
                     ),
-                    items: ['This Week', 'This Month', 'This Quarter', 'This Year']
-                        .map((String value) {
+                    items: [
+                      'This Week',
+                      'This Month',
+                      'This Quarter',
+                      'This Year'
+                    ].map((String value) {
                       return DropdownMenuItem<String>(
                         value: value,
                         child: Text(value),
@@ -1085,7 +1114,7 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: 'All Classes',
+                    initialValue: 'All Classes',
                     decoration: const InputDecoration(
                       labelText: 'Class Filter',
                       border: OutlineInputBorder(),
@@ -1134,38 +1163,41 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
               ),
             ),
             const SizedBox(height: 20),
-            ...classData.map((data) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        data['class'] as String,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+            ...classData
+                .map((data) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                data['class'] as String,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                '${data['attendance']}% (${data['students']} students)',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          LinearProgressIndicator(
+                            value: (data['attendance'] as double) / 100,
+                            backgroundColor: Colors.grey[200],
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              (data['attendance'] as double) >= 85
+                                  ? const Color(0xFF4CAF50)
+                                  : const Color(0xFFFF9800),
+                            ),
+                            minHeight: 8,
+                          ),
+                        ],
                       ),
-                      Text(
-                        '${data['attendance']}% (${data['students']} students)',
-                        style: TextStyle(color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: (data['attendance'] as double) / 100,
-                    backgroundColor: Colors.grey[200],
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      (data['attendance'] as double) >= 85 
-                          ? const Color(0xFF4CAF50) 
-                          : const Color(0xFFFF9800),
-                    ),
-                    minHeight: 8,
-                  ),
-                ],
-              ),
-            )).toList(),
+                    ))
+                .toList(),
           ],
         ),
       ),
@@ -1206,7 +1238,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
               LinearProgressIndicator(
                 value: percentage / 100,
                 backgroundColor: Colors.grey[200],
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF009688)),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(Color(0xFF009688)),
                 minHeight: 8,
               ),
             ],
@@ -1240,18 +1273,21 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
               ),
             ),
             const SizedBox(height: 16),
-            ...lowAttendanceStudents.map((student) => ListTile(
-              leading: const CircleAvatar(
-                backgroundColor: Color(0xFFFF5722),
-                child: Icon(Icons.warning, color: Colors.white),
-              ),
-              title: Text(student['name'] as String),
-              subtitle: Text('${student['class']} - ${student['attendance']}%'),
-              trailing: IconButton(
-                onPressed: () => _contactParent(student),
-                icon: const Icon(Icons.phone, color: Color(0xFF009688)),
-              ),
-            )).toList(),
+            ...lowAttendanceStudents
+                .map((student) => ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFFF5722),
+                        child: Icon(Icons.warning, color: Colors.white),
+                      ),
+                      title: Text(student['name'] as String),
+                      subtitle: Text(
+                          '${student['class']} - ${student['attendance']}%'),
+                      trailing: IconButton(
+                        onPressed: () => _contactParent(student),
+                        icon: const Icon(Icons.phone, color: Color(0xFF009688)),
+                      ),
+                    ))
+                .toList(),
           ],
         ),
       ),
@@ -1293,7 +1329,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
               LinearProgressIndicator(
                 value: percentage / 100,
                 backgroundColor: Colors.grey[200],
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF009688)),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(Color(0xFF009688)),
                 minHeight: 8,
               ),
             ],
@@ -1452,7 +1489,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('💾 Save Attendance'),
-        content: Text('Save attendance for $_selectedClass $_selectedSection on ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}?'),
+        content: Text(
+            'Save attendance for $_selectedClass $_selectedSection on ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1469,7 +1507,8 @@ class _StudentAttendancePageState extends State<StudentAttendancePage> with Tick
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF009688)),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF009688)),
             child: const Text('Save', style: TextStyle(color: Colors.white)),
           ),
         ],

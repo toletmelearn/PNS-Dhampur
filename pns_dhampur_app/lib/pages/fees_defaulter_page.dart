@@ -94,7 +94,12 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
       'totalDue': 15000.0,
       'monthsOverdue': 4,
       'lastPaymentDate': '2023-09-25',
-      'overdueMonths': ['October 2023', 'November 2023', 'December 2023', 'January 2024'],
+      'overdueMonths': [
+        'October 2023',
+        'November 2023',
+        'December 2023',
+        'January 2024'
+      ],
       'lateFee': 800.0,
       'remindersSent': 8,
       'lastReminderDate': '2024-01-22',
@@ -107,10 +112,30 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
   ];
 
   final List<Map<String, dynamic>> _statistics = [
-    {'title': 'Total Defaulters', 'value': '47', 'icon': Icons.warning, 'color': Colors.red},
-    {'title': 'Amount Overdue', 'value': '₹2,85,000', 'icon': Icons.money_off, 'color': Colors.orange},
-    {'title': 'Critical Cases', 'value': '12', 'icon': Icons.priority_high, 'color': Colors.red[800]},
-    {'title': 'Recovery Rate', 'value': '68%', 'icon': Icons.trending_up, 'color': Colors.green},
+    {
+      'title': 'Total Defaulters',
+      'value': '47',
+      'icon': Icons.warning,
+      'color': Colors.red
+    },
+    {
+      'title': 'Amount Overdue',
+      'value': '₹2,85,000',
+      'icon': Icons.money_off,
+      'color': Colors.orange
+    },
+    {
+      'title': 'Critical Cases',
+      'value': '12',
+      'icon': Icons.priority_high,
+      'color': Colors.red[800]
+    },
+    {
+      'title': 'Recovery Rate',
+      'value': '68%',
+      'icon': Icons.trending_up,
+      'color': Colors.green
+    },
   ];
 
   final List<Map<String, dynamic>> _recentActions = [
@@ -284,14 +309,21 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedClass,
+                  initialValue: _selectedClass,
                   decoration: const InputDecoration(
                     labelText: 'Class',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
-                  items: ['All Classes', 'Class 10', 'Class 9', 'Class 8', 'Class 7', 'Class 6']
-                      .map((String value) {
+                  items: [
+                    'All Classes',
+                    'Class 10',
+                    'Class 9',
+                    'Class 8',
+                    'Class 7',
+                    'Class 6'
+                  ].map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -307,14 +339,20 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedOverduePeriod,
+                  initialValue: _selectedOverduePeriod,
                   decoration: const InputDecoration(
                     labelText: 'Overdue Period',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
-                  items: ['All Periods', '1 Month', '2 Months', '3+ Months', '6+ Months']
-                      .map((String value) {
+                  items: [
+                    'All Periods',
+                    '1 Month',
+                    '2 Months',
+                    '3+ Months',
+                    '6+ Months'
+                  ].map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -330,14 +368,19 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedAmount,
+                  initialValue: _selectedAmount,
                   decoration: const InputDecoration(
                     labelText: 'Amount Range',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
-                  items: ['All Amounts', '< ₹5,000', '₹5,000 - ₹10,000', '> ₹10,000']
-                      .map((String value) {
+                  items: [
+                    'All Amounts',
+                    '< ₹5,000',
+                    '₹5,000 - ₹10,000',
+                    '> ₹10,000'
+                  ].map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -371,22 +414,26 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
                     backgroundColor: _getStatusColor(defaulter['status']),
                     child: Text(
                       defaulter['studentName'][0],
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
                   title: Text(
                     defaulter['studentName'],
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text('${defaulter['class']} - ${defaulter['section']} | ${defaulter['monthsOverdue']} months overdue'),
+                  subtitle: Text(
+                      '${defaulter['class']} - ${defaulter['section']} | ${defaulter['monthsOverdue']} months overdue'),
                   trailing: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(defaulter['status']).withOpacity(0.1),
+                          color: _getStatusColor(defaulter['status'])
+                              .withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -401,7 +448,8 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
                       const SizedBox(height: 4),
                       Text(
                         '₹${defaulter['totalDue'].toStringAsFixed(0)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, color: Colors.red),
                       ),
                     ],
                   ),
@@ -414,45 +462,54 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
                           Row(
                             children: [
                               Expanded(
-                                child: _buildDetailRow('Roll Number', defaulter['rollNumber']),
+                                child: _buildDetailRow(
+                                    'Roll Number', defaulter['rollNumber']),
                               ),
                               Expanded(
-                                child: _buildDetailRow('Father\'s Name', defaulter['fatherName']),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildDetailRow('Contact', defaulter['contactNumber']),
-                              ),
-                              Expanded(
-                                child: _buildDetailRow('Email', defaulter['email']),
+                                child: _buildDetailRow(
+                                    'Father\'s Name', defaulter['fatherName']),
                               ),
                             ],
                           ),
                           Row(
                             children: [
                               Expanded(
-                                child: _buildDetailRow('Total Due', '₹${defaulter['totalDue'].toStringAsFixed(0)}'),
+                                child: _buildDetailRow(
+                                    'Contact', defaulter['contactNumber']),
                               ),
                               Expanded(
-                                child: _buildDetailRow('Late Fee', '₹${defaulter['lateFee'].toStringAsFixed(0)}'),
+                                child: _buildDetailRow(
+                                    'Email', defaulter['email']),
                               ),
                             ],
                           ),
                           Row(
                             children: [
                               Expanded(
-                                child: _buildDetailRow('Last Payment', defaulter['lastPaymentDate']),
+                                child: _buildDetailRow('Total Due',
+                                    '₹${defaulter['totalDue'].toStringAsFixed(0)}'),
                               ),
                               Expanded(
-                                child: _buildDetailRow('Reminders Sent', defaulter['remindersSent'].toString()),
+                                child: _buildDetailRow('Late Fee',
+                                    '₹${defaulter['lateFee'].toStringAsFixed(0)}'),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildDetailRow('Last Payment',
+                                    defaulter['lastPaymentDate']),
+                              ),
+                              Expanded(
+                                child: _buildDetailRow('Reminders Sent',
+                                    defaulter['remindersSent'].toString()),
                               ),
                             ],
                           ),
                           _buildDetailRow('Address', defaulter['address']),
-                          _buildDetailRow('Overdue Months', defaulter['overdueMonths'].join(', ')),
+                          _buildDetailRow('Overdue Months',
+                              defaulter['overdueMonths'].join(', ')),
                           if (defaulter['remarks'].isNotEmpty)
                             _buildDetailRow('Remarks', defaulter['remarks']),
                           const SizedBox(height: 12),
@@ -461,7 +518,8 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: () => _sendReminder(defaulter),
-                                  icon: const Icon(Icons.notifications, size: 16),
+                                  icon:
+                                      const Icon(Icons.notifications, size: 16),
                                   label: const Text('Remind'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.orange,
@@ -484,7 +542,8 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
                               const SizedBox(width: 8),
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  onPressed: () => _createPaymentPlan(defaulter),
+                                  onPressed: () =>
+                                      _createPaymentPlan(defaulter),
                                   icon: const Icon(Icons.schedule, size: 16),
                                   label: const Text('Plan'),
                                   style: ElevatedButton.styleFrom(
@@ -571,7 +630,8 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(strategy['icon'], color: strategy['color'], size: 32),
+                        Icon(strategy['icon'],
+                            color: strategy['color'], size: 32),
                         const SizedBox(height: 12),
                         Text(
                           strategy['title'],
@@ -581,12 +641,14 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
                         const SizedBox(height: 4),
                         Text(
                           strategy['description'],
-                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          style:
+                              const TextStyle(fontSize: 12, color: Colors.grey),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: strategy['color'].withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
@@ -649,25 +711,30 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
                               children: [
                                 Text(
                                   action['studentName'],
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold),
                                 ),
                                 Text(
                                   '${action['action']} • ${action['method']} • ${action['time']}',
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Colors.grey),
                                 ),
                               ],
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: _getStatusColorForAction(action['status']).withOpacity(0.1),
+                              color: _getStatusColorForAction(action['status'])
+                                  .withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               action['status'],
                               style: TextStyle(
-                                color: _getStatusColorForAction(action['status']),
+                                color:
+                                    _getStatusColorForAction(action['status']),
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -706,12 +773,21 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
             children: [
-              _buildReportCard('Daily Defaulters', 'Today\'s overdue list', Icons.today, Colors.red),
-              _buildReportCard('Monthly Analysis', 'Month-wise defaulter trends', Icons.calendar_month, Colors.orange),
-              _buildReportCard('Class-wise Report', 'Defaulters by class', Icons.school, Colors.blue),
-              _buildReportCard('Recovery Report', 'Payment recovery analysis', Icons.trending_up, Colors.green),
-              _buildReportCard('Legal Cases', 'Legal action status', Icons.gavel, Colors.purple),
-              _buildReportCard('Payment Plans', 'Active payment plans', Icons.schedule, Colors.teal),
+              _buildReportCard('Daily Defaulters', 'Today\'s overdue list',
+                  Icons.today, Colors.red),
+              _buildReportCard(
+                  'Monthly Analysis',
+                  'Month-wise defaulter trends',
+                  Icons.calendar_month,
+                  Colors.orange),
+              _buildReportCard('Class-wise Report', 'Defaulters by class',
+                  Icons.school, Colors.blue),
+              _buildReportCard('Recovery Report', 'Payment recovery analysis',
+                  Icons.trending_up, Colors.green),
+              _buildReportCard('Legal Cases', 'Legal action status',
+                  Icons.gavel, Colors.purple),
+              _buildReportCard('Payment Plans', 'Active payment plans',
+                  Icons.schedule, Colors.teal),
             ],
           ),
 
@@ -732,10 +808,12 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
                   Row(
                     children: [
                       Expanded(
-                        child: _buildStatItem('This Month', '12 New Defaulters', Icons.trending_up, Colors.red),
+                        child: _buildStatItem('This Month', '12 New Defaulters',
+                            Icons.trending_up, Colors.red),
                       ),
                       Expanded(
-                        child: _buildStatItem('Recovered', '₹45,000 This Week', Icons.check_circle, Colors.green),
+                        child: _buildStatItem('Recovered', '₹45,000 This Week',
+                            Icons.check_circle, Colors.green),
                       ),
                     ],
                   ),
@@ -743,10 +821,15 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
                   Row(
                     children: [
                       Expanded(
-                        child: _buildStatItem('Critical Cases', '8 Require Action', Icons.priority_high, Colors.orange),
+                        child: _buildStatItem(
+                            'Critical Cases',
+                            '8 Require Action',
+                            Icons.priority_high,
+                            Colors.orange),
                       ),
                       Expanded(
-                        child: _buildStatItem('Success Rate', '72% Recovery', Icons.star, Colors.blue),
+                        child: _buildStatItem('Success Rate', '72% Recovery',
+                            Icons.star, Colors.blue),
                       ),
                     ],
                   ),
@@ -783,11 +866,16 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  _buildSettingItem('Auto Reminders', 'Send automatic reminders', true),
-                  _buildSettingItem('SMS Notifications', 'SMS reminder alerts', true),
-                  _buildSettingItem('Email Reminders', 'Email notification system', false),
-                  _buildSettingItem('WhatsApp Alerts', 'WhatsApp reminder messages', true),
-                  _buildSettingItem('Call Reminders', 'Automated call reminders', false),
+                  _buildSettingItem(
+                      'Auto Reminders', 'Send automatic reminders', true),
+                  _buildSettingItem(
+                      'SMS Notifications', 'SMS reminder alerts', true),
+                  _buildSettingItem(
+                      'Email Reminders', 'Email notification system', false),
+                  _buildSettingItem(
+                      'WhatsApp Alerts', 'WhatsApp reminder messages', true),
+                  _buildSettingItem(
+                      'Call Reminders', 'Automated call reminders', false),
                 ],
               ),
             ),
@@ -807,10 +895,14 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  _buildSettingItem('Late Fee Calculation', 'Auto-calculate late fees', true),
-                  _buildSettingItem('Payment Plans', 'Enable flexible payment plans', true),
-                  _buildSettingItem('Grace Period', 'Allow grace period for payments', false),
-                  _buildSettingItem('Legal Action Alerts', 'Notify before legal action', true),
+                  _buildSettingItem(
+                      'Late Fee Calculation', 'Auto-calculate late fees', true),
+                  _buildSettingItem(
+                      'Payment Plans', 'Enable flexible payment plans', true),
+                  _buildSettingItem(
+                      'Grace Period', 'Allow grace period for payments', false),
+                  _buildSettingItem('Legal Action Alerts',
+                      'Notify before legal action', true),
                 ],
               ),
             ),
@@ -877,7 +969,8 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
         children: [
           Text(
             label,
-            style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+                fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
           ),
           Text(
             value,
@@ -888,7 +981,8 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
     );
   }
 
-  Widget _buildReportCard(String title, String subtitle, IconData icon, Color color) {
+  Widget _buildReportCard(
+      String title, String subtitle, IconData icon, Color color) {
     return Card(
       elevation: 2,
       child: InkWell(
@@ -919,7 +1013,8 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
     );
   }
 
-  Widget _buildStatItem(String title, String value, IconData icon, Color color) {
+  Widget _buildStatItem(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1022,37 +1117,46 @@ class _FeesDefaulterPageState extends State<FeesDefaulterPage>
 
   void _sendBulkReminders() {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sending bulk reminders to all defaulters...')),
+      const SnackBar(
+          content: Text('Sending bulk reminders to all defaulters...')),
     );
   }
 
   void _sendReminder(Map<String, dynamic> defaulter) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Sending reminder to ${defaulter['studentName']}')),
+      SnackBar(
+          content: Text('Sending reminder to ${defaulter['studentName']}')),
     );
   }
 
   void _callParent(Map<String, dynamic> defaulter) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Calling ${defaulter['fatherName']} at ${defaulter['contactNumber']}')),
+      SnackBar(
+          content: Text(
+              'Calling ${defaulter['fatherName']} at ${defaulter['contactNumber']}')),
     );
   }
 
   void _createPaymentPlan(Map<String, dynamic> defaulter) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Creating payment plan for ${defaulter['studentName']}')),
+      SnackBar(
+          content:
+              Text('Creating payment plan for ${defaulter['studentName']}')),
     );
   }
 
   void _recordPayment(Map<String, dynamic> defaulter) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Recording payment for ${defaulter['studentName']}')),
+      SnackBar(
+          content: Text('Recording payment for ${defaulter['studentName']}')),
     );
   }
 
   void _legalAction(Map<String, dynamic> defaulter) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Initiating legal action for ${defaulter['studentName']}')),
+      SnackBar(
+          content:
+              Text('Initiating legal action for ${defaulter['studentName']}')),
     );
   }
 

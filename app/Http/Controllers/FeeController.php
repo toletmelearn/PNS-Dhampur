@@ -17,9 +17,17 @@ use App\Helpers\SecurityHelper;
 
 class FeeController extends Controller
 {
-    public function __construct()
+    protected $feeService;
+    protected $paymentGatewayService;
+    
+    public function __construct(
+        \App\Services\FeeService $feeService,
+        \App\Services\PaymentGatewayService $paymentGatewayService
+    )
     {
         $this->middleware('auth');
+        $this->feeService = $feeService;
+        $this->paymentGatewayService = $paymentGatewayService;
     }
 
     public function index(Request $request)
@@ -89,6 +97,115 @@ class FeeController extends Controller
         
         return view('finance.fees.create', compact('students', 'classes'));
     }
+    
+    /**
+     * Process fee payment
+     */
+    public function processPayment(Request $request)
+    {
+        $request->validate([
+            'student_id' => 'required|exists:students,id',
+            'fee_id' => 'required|exists:fees,id',
+            'amount' => 'required|numeric|min:1',
+            'payment_method' => 'required|in:cash,cheque,online,bank_transfer'
+        ]);
+        
+        $result = $this->feeService->processPayment($request->all());
+        
+        if (!$result['success']) {
+            return back()->with('error', $result['message']);
+        }
+        
+        return redirect()->route('fees.receipt', $result['data']['receipt_id'])
+            ->with('success', 'Payment processed successfully');
+    }
+    
+    /**
+     * Process online payment
+     */
+    public function processOnlinePayment(Request $request)
+    {
+        $request->validate([
+            'student_id' => 'required|exists:students,id',
+            'fee_id' => 'required|exists:fees,id',
+            'amount' => 'required|numeric|min:1',
+            'student_name' => 'required|string',
+            'email' => 'nullable|email',
+            'phone' => 'nullable|string'
+        ]);
+        
+        $result = $this->feeService->processOnlinePayment($request->all());
+        
+        if (!$result['success']) {
+            return response()->json($result, 400);
+        }
+        
+        return response()->json($result);
+    }
+    
+    /**
+     * Handle payment gateway callback
+     */
+    public function handlePaymentCallback(Request $request)
+    {
+        $result = $this->feeService->completeOnlinePayment($request->all());
+        
+        if (!$result['success']) {
+            return redirect()->route('fees.payment.failed')
+                ->with('error', $result['message']);
+        }
+        
+        return redirect()->route('fees.receipt', $result['data']['receipt_id'])
+            ->with('success', 'Payment completed successfully');
+    }
+    
+    /**
+     * Generate fee receipt
+     */
+    public function generateReceipt($paymentId)
+    {
+        $result = $this->feeService->generateReceipt($paymentId);
+        
+        if (!$result['success']) {
+            return back()->with('error', $result['message']);
+        }
+        
+        return view('finance.fees.receipt', [
+            'payment' => $result['data']['payment']
+        ]);
+    }
+    
+    /**
+     * Generate fee reports
+     */
+    public function generateReport(Request $request)
+    {
+        $filters = $request->only([
+            'class_id', 'status', 'fee_type', 'date_from', 'date_to'
+        ]);
+        
+        $result = $this->feeService->generateReport($filters);
+        
+        if (!$result['success']) {
+            return back()->with('error', $result['message']);
+        }
+        
+        if ($request->has('export_pdf')) {
+            $pdf = PDF::loadView('finance.fees.report_pdf', [
+                'fees' => $result['data']['fees'],
+                'summary' => $result['data']['summary'],
+                'filters' => $filters
+            ]);
+            
+            return $pdf->download('fee_report_' . date('Y-m-d') . '.pdf');
+        }
+        
+        return view('finance.fees.report', [
+            'fees' => $result['data']['fees'],
+            'summary' => $result['data']['summary'],
+            'filters' => $filters
+        ]);
+    }
 
     public function store(StoreFeeRequest $request)
     {
@@ -97,7 +214,7 @@ class FeeController extends Controller
         try {
             DB::beginTransaction();
 
-            // Calculate final amount
+            // Calculate final amount with late fee and discount
             $finalAmount = $validatedData['amount'] + ($validatedData['late_fee'] ?? 0) - ($validatedData['discount'] ?? 0);
 
             $fee = Fee::create([

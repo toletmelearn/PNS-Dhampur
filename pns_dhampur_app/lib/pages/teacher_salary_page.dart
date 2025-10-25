@@ -9,7 +9,8 @@ class TeacherSalaryPage extends StatefulWidget {
   State<TeacherSalaryPage> createState() => _TeacherSalaryPageState();
 }
 
-class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProviderStateMixin {
+class _TeacherSalaryPageState extends State<TeacherSalaryPage>
+    with TickerProviderStateMixin {
   late TabController _tabController;
   String _selectedMonth = 'January 2024';
   String _selectedTeacher = 'All Teachers';
@@ -166,7 +167,7 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
           // Month Selector and Summary
           _buildMonthSelector(),
           const SizedBox(height: 24),
-          
+
           // Summary Cards
           _buildSalarySummary(),
           const SizedBox(height: 24),
@@ -186,7 +187,9 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
           ),
           const SizedBox(height: 16),
 
-          ..._teacherSalaries.map((teacher) => _buildTeacherSalaryCard(teacher)).toList(),
+          ..._teacherSalaries
+              .map((teacher) => _buildTeacherSalaryCard(teacher))
+              .toList(),
         ],
       ),
     );
@@ -213,7 +216,9 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
           ),
           const SizedBox(height: 16),
 
-          ..._teacherSalaries.map((teacher) => _buildLeaveBalanceCard(teacher)).toList(),
+          ..._teacherSalaries
+              .map((teacher) => _buildLeaveBalanceCard(teacher))
+              .toList(),
         ],
       ),
     );
@@ -277,7 +282,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
           // Monthly Salary Chart
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -302,7 +308,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
           // Leave Usage Chart
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -336,7 +343,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
           // Salary Settings
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -360,7 +368,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
                   ),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.calculate, color: Color(0xFF607D8B)),
+                    leading:
+                        const Icon(Icons.calculate, color: Color(0xFF607D8B)),
                     title: const Text('Tax Settings'),
                     subtitle: const Text('Configure tax deductions'),
                     trailing: const Icon(Icons.arrow_forward_ios),
@@ -368,7 +377,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
                   ),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.schedule, color: Color(0xFF607D8B)),
+                    leading:
+                        const Icon(Icons.schedule, color: Color(0xFF607D8B)),
                     title: const Text('Payroll Schedule'),
                     subtitle: const Text('Set salary processing dates'),
                     trailing: const Icon(Icons.arrow_forward_ios),
@@ -383,7 +393,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
           // Leave Settings
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -407,13 +418,14 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
                   ),
                   const Divider(),
                   ListTile(
-                    leading: const Icon(Icons.notification_important, color: Color(0xFF607D8B)),
+                    leading: const Icon(Icons.notification_important,
+                        color: Color(0xFF607D8B)),
                     title: const Text('Leave Notifications'),
                     subtitle: const Text('Alert when leave balance is low'),
                     trailing: Switch(
                       value: true,
                       onChanged: (value) {},
-                      activeColor: const Color(0xFF607D8B),
+                      activeThumbColor: const Color(0xFF607D8B),
                     ),
                   ),
                 ],
@@ -425,7 +437,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
           // Export Settings
           Card(
             elevation: 8,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -441,7 +454,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
                   ),
                   const SizedBox(height: 20),
                   ListTile(
-                    leading: const Icon(Icons.file_download, color: Color(0xFF607D8B)),
+                    leading: const Icon(Icons.file_download,
+                        color: Color(0xFF607D8B)),
                     title: const Text('Export Payroll Data'),
                     subtitle: const Text('Download salary reports as Excel'),
                     trailing: const Icon(Icons.arrow_forward_ios),
@@ -583,8 +597,10 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
                 value: _selectedTeacher,
                 isExpanded: true,
                 underline: Container(),
-                items: ['All Teachers', ..._teacherSalaries.map((t) => t['name'] as String)]
-                    .map((String value) {
+                items: [
+                  'All Teachers',
+                  ..._teacherSalaries.map((t) => t['name'] as String)
+                ].map((String value) {
                   return DropdownMenuItem<String>(
                     value: value,
                     child: Text(value),
@@ -605,7 +621,7 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
 
   Widget _buildTeacherSalaryCard(Map<String, dynamic> teacher) {
     final bool isPaid = teacher['status'] == 'Paid';
-    
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 8,
@@ -652,7 +668,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: isPaid ? Colors.green : Colors.orange,
                     borderRadius: BorderRadius.circular(20),
@@ -679,13 +696,18 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
               ),
               child: Column(
                 children: [
-                  _buildSalaryRow('Basic Salary', '₹${teacher['basicSalary']}', Colors.blue),
+                  _buildSalaryRow('Basic Salary', '₹${teacher['basicSalary']}',
+                      Colors.blue),
                   const SizedBox(height: 8),
-                  _buildSalaryRow('Allowances', '₹${teacher['allowances']}', Colors.green),
+                  _buildSalaryRow(
+                      'Allowances', '₹${teacher['allowances']}', Colors.green),
                   const SizedBox(height: 8),
-                  _buildSalaryRow('Deductions', '₹${teacher['deductions']}', Colors.red),
+                  _buildSalaryRow(
+                      'Deductions', '₹${teacher['deductions']}', Colors.red),
                   const Divider(thickness: 2),
-                  _buildSalaryRow('Net Salary', '₹${teacher['netSalary']}', const Color(0xFF607D8B), isTotal: true),
+                  _buildSalaryRow('Net Salary', '₹${teacher['netSalary']}',
+                      const Color(0xFF607D8B),
+                      isTotal: true),
                 ],
               ),
             ),
@@ -695,19 +717,23 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
             Row(
               children: [
                 Expanded(
-                  child: _buildLeaveInfo('CL Used', '${teacher['clTaken']}/12', Colors.orange),
+                  child: _buildLeaveInfo(
+                      'CL Used', '${teacher['clTaken']}/12', Colors.orange),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildLeaveInfo('ML Used', '${teacher['mlTaken']}/12', Colors.purple),
+                  child: _buildLeaveInfo(
+                      'ML Used', '${teacher['mlTaken']}/12', Colors.purple),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildLeaveInfo('CL Balance', '${teacher['clBalance']}', Colors.green),
+                  child: _buildLeaveInfo(
+                      'CL Balance', '${teacher['clBalance']}', Colors.green),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: _buildLeaveInfo('ML Balance', '${teacher['mlBalance']}', Colors.blue),
+                  child: _buildLeaveInfo(
+                      'ML Balance', '${teacher['mlBalance']}', Colors.blue),
                 ),
               ],
             ),
@@ -836,17 +862,22 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
                 Expanded(
                   child: Column(
                     children: [
-                      const Text('CL Balance', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const Text('CL Balance',
+                          style: TextStyle(fontSize: 12, color: Colors.grey)),
                       const SizedBox(height: 4),
                       Text(
                         '${teacher['clBalance']}/12',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.orange),
+                        style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange),
                       ),
                       const SizedBox(height: 8),
                       LinearProgressIndicator(
                         value: teacher['clBalance'] / 12,
                         backgroundColor: Colors.grey[200],
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.orange),
+                        valueColor:
+                            const AlwaysStoppedAnimation<Color>(Colors.orange),
                       ),
                     ],
                   ),
@@ -855,17 +886,22 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
                 Expanded(
                   child: Column(
                     children: [
-                      const Text('ML Balance', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const Text('ML Balance',
+                          style: TextStyle(fontSize: 12, color: Colors.grey)),
                       const SizedBox(height: 4),
                       Text(
                         '${teacher['mlBalance']}/12',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.purple),
+                        style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.purple),
                       ),
                       const SizedBox(height: 8),
                       LinearProgressIndicator(
                         value: teacher['mlBalance'] / 12,
                         backgroundColor: Colors.grey[200],
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.purple),
+                        valueColor:
+                            const AlwaysStoppedAnimation<Color>(Colors.purple),
                       ),
                     ],
                   ),
@@ -986,7 +1022,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
     );
   }
 
-  Widget _buildSalaryRow(String label, String amount, Color color, {bool isTotal = false}) {
+  Widget _buildSalaryRow(String label, String amount, Color color,
+      {bool isTotal = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -1066,7 +1103,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
               LinearProgressIndicator(
                 value: percentage,
                 backgroundColor: Colors.grey[200],
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF607D8B)),
+                valueColor:
+                    const AlwaysStoppedAnimation<Color>(Color(0xFF607D8B)),
                 minHeight: 8,
               ),
             ],
@@ -1097,12 +1135,15 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('CL', style: TextStyle(fontSize: 12, color: Colors.orange)),
+                        const Text('CL',
+                            style:
+                                TextStyle(fontSize: 12, color: Colors.orange)),
                         const SizedBox(height: 4),
                         LinearProgressIndicator(
                           value: clPercentage,
                           backgroundColor: Colors.grey[200],
-                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.orange),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                              Colors.orange),
                           minHeight: 6,
                         ),
                       ],
@@ -1113,12 +1154,15 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('ML', style: TextStyle(fontSize: 12, color: Colors.purple)),
+                        const Text('ML',
+                            style:
+                                TextStyle(fontSize: 12, color: Colors.purple)),
                         const SizedBox(height: 4),
                         LinearProgressIndicator(
                           value: mlPercentage,
                           backgroundColor: Colors.grey[200],
-                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.purple),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                              Colors.purple),
                           minHeight: 6,
                         ),
                       ],
@@ -1141,18 +1185,21 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
         title: const Text('📅 Select Month'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            'January 2024', 'February 2024', 'March 2024', 'April 2024'
-          ].map((month) => ListTile(
-            title: Text(month),
-            trailing: _selectedMonth == month ? const Icon(Icons.check, color: Colors.green) : null,
-            onTap: () {
-              setState(() {
-                _selectedMonth = month;
-              });
-              Navigator.pop(context);
-            },
-          )).toList(),
+          children:
+              ['January 2024', 'February 2024', 'March 2024', 'April 2024']
+                  .map((month) => ListTile(
+                        title: Text(month),
+                        trailing: _selectedMonth == month
+                            ? const Icon(Icons.check, color: Colors.green)
+                            : null,
+                        onTap: () {
+                          setState(() {
+                            _selectedMonth = month;
+                          });
+                          Navigator.pop(context);
+                        },
+                      ))
+                  .toList(),
         ),
       ),
     );
@@ -1164,7 +1211,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('💰 Process Salary'),
-        content: const Text('Process salary for all teachers for the selected month?'),
+        content: const Text(
+            'Process salary for all teachers for the selected month?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1181,7 +1229,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF607D8B)),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF607D8B)),
             child: const Text('Process', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -1214,9 +1263,11 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
               _buildDetailRow('Allowances', '₹${teacher['allowances']}'),
               _buildDetailRow('Deductions', '₹${teacher['deductions']}'),
               const Divider(),
-              _buildDetailRow('Net Salary', '₹${teacher['netSalary']}', isTotal: true),
+              _buildDetailRow('Net Salary', '₹${teacher['netSalary']}',
+                  isTotal: true),
               const SizedBox(height: 16),
-              const Text('Leave Information:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Leave Information:',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               _buildDetailRow('CL Taken', '${teacher['clTaken']} days'),
               _buildDetailRow('ML Taken', '${teacher['mlTaken']} days'),
@@ -1265,7 +1316,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('💳 Pay Salary - ${teacher['name']}'),
-        content: Text('Process salary payment of ₹${teacher['netSalary']} for ${teacher['name']}?'),
+        content: Text(
+            'Process salary payment of ₹${teacher['netSalary']} for ${teacher['name']}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1276,7 +1328,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
               Navigator.pop(context);
               setState(() {
                 teacher['status'] = 'Paid';
-                teacher['paymentDate'] = DateTime.now().toString().split(' ')[0];
+                teacher['paymentDate'] =
+                    DateTime.now().toString().split(' ')[0];
               });
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -1297,7 +1350,8 @@ class _TeacherSalaryPageState extends State<TeacherSalaryPage> with TickerProvid
   void _editSalaryStructure() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Edit salary structure functionality will be implemented! ✏️'),
+        content:
+            Text('Edit salary structure functionality will be implemented! ✏️'),
         backgroundColor: Color(0xFF607D8B),
         behavior: SnackBarBehavior.floating,
       ),

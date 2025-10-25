@@ -1,0 +1,11 @@
+student_id,status,date,remarks
+1,present,2023-10-15,
+2,absent,2023-10-15,Sick leave
+3,present,2023-10-15,
+4,present,2023-10-15,
+5,late,2023-10-15,Arrived 15 minutes late
+6,present,2023-10-15,
+7,present,2023-10-15,
+8,absent,2023-10-15,Family emergency
+9,present,2023-10-15,
+10,present,2023-10-15,

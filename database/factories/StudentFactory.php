@@ -34,7 +34,7 @@ class StudentFactory extends Factory
             'dob' => fake()->dateTimeBetween('-18 years', '-5 years')->format('Y-m-d'),
             'aadhaar' => fake()->numerify('############'),
             'class_id' => ClassModel::factory(),
-            'verification_status' => fake()->randomElement(['pending', 'verified', 'rejected']),
+            'verification_status' => fake()->randomElement(['pending', 'verified', 'mismatch']),
             'status' => fake()->randomElement(['active', 'inactive', 'transferred']),
             'documents' => null,
             'documents_verified_data' => null,

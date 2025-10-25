@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PNS-Dhampur Integration Test Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        h2 { color: #3498db; margin-top: 30px; }
+        .summary { display: flex; justify-content: space-between; margin: 20px 0; }
+        .summary-item { flex: 1; padding: 15px; border-radius: 5px; margin: 0 10px; text-align: center; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .pending { background-color: #fff3cd; color: #856404; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; }
+        tr:hover { background-color: #f5f5f5; }
+        .details { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 10px; }
+        .status-badge { display: inline-block; padding: 5px 10px; border-radius: 3px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PNS-Dhampur Integration Test Report</h1>
+        <p>Generated on: 2023-10-25 12:30:45</p>
+        
+        <div class="summary">
+            <div class="summary-item success">
+                <h3>SUCCESS</h3>
+                <p>3</p>
+            </div>
+            <div class="summary-item error">
+                <h3>ERROR</h3>
+                <p>2</p>
+            </div>
+            <div class="summary-item pending">
+                <h3>PENDING</h3>
+                <p>0</p>
+            </div>
+        </div>
+        
+        <h2>Test Results</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Test Case</th>
+                    <th>Status</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Teacher Attendance Affects Salary</td>
+                    <td><span class="status-badge success">SUCCESS</span></td>
+                    <td>
+                        <div class="details">
+                            <p>Teacher attendance correctly affects salary calculation</p>
+                            <ul>
+                                <li>Attendance factor: 0.8 (16/20 days)</li>
+                                <li>Base salary: ₹50,000</li>
+                                <li>Calculated salary: ₹40,000</li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Student Attendance Triggers Parent Notification</td>
+                    <td><span class="status-badge success">SUCCESS</span></td>
+                    <td>
+                        <div class="details">
+                            <p>Absence notifications correctly sent to parents</p>
+                            <ul>
+                                <li>Notification type: Attendance Alert</li>
+                                <li>Delivery method: In-app and Email</li>
+                                <li>Contains student name and date</li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Fee Payment Updates Student Record</td>
+                    <td><span class="status-badge success">SUCCESS</span></td>
+                    <td>
+                        <div class="details">
+                            <p>Fee payments correctly update student financial records</p>
+                            <ul>
+                                <li>Payment amount: ₹5,000</li>
+                                <li>Updated fees paid: ₹5,000</li>
+                                <li>Updated fees due: ₹5,000</li>
+                                <li>Payment status changed to: partial</li>
+                            </ul>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Exam Results Integrate With Student Profile</td>
+                    <td><span class="status-badge error">ERROR</span></td>
+                    <td>
+                        <div class="details">
+                            <p>Error: Database schema mismatch</p>
+                            <p>Column 'date' not found in 'exams' table. The system uses 'exam_date' instead.</p>
+                            <p>Integration between exam results and student profiles needs adjustment.</p>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td>Consolidated Reports</td>
+                    <td><span class="status-badge error">ERROR</span></td>
+                    <td>
+                        <div class="details">
+                            <p>Error: Missing required table</p>
+                            <p>Table 'student_attendance' doesn't exist in the database.</p>
+                            <p>Consolidated reporting functionality requires database schema updates.</p>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h2>Recommendations</h2>
+        <ol>
+            <li><strong>Database Schema Updates:</strong> Ensure all required tables exist and column names are consistent</li>
+            <li><strong>Attendance Tracking:</strong> Create missing student_attendance table with proper schema</li>
+            <li><strong>Data Flow Validation:</strong> Implement additional validation to ensure data consistency across modules</li>
+            <li><strong>Error Handling:</strong> Add robust error handling for cross-module operations</li>
+            <li><strong>Automated Testing:</strong> Expand integration test coverage for all critical data flows</li>
+        </ol>
+        
+        <h2>Summary</h2>
+        <p>The integration testing revealed that 3 out of 5 cross-module data flows are functioning correctly:</p>
+        <ul>
+            <li>✅ Teacher attendance correctly affects salary calculations</li>
+            <li>✅ Student attendance properly triggers parent notifications</li>
+            <li>✅ Fee payments accurately update student financial records</li>
+            <li>❌ Exam results integration with student profiles has schema issues</li>
+            <li>❌ Consolidated reporting has missing database tables</li>
+        </ul>
+        <p>The system requires database schema updates to fully support all cross-module data flows.</p>
+    </div>
+</body>
+</html>

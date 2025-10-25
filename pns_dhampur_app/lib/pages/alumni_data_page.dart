@@ -242,7 +242,7 @@ class _AlumniDataPageState extends State<AlumniDataPage>
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedBatch,
+                  initialValue: _selectedBatch,
                   decoration: const InputDecoration(
                     labelText: 'Batch',
                     border: OutlineInputBorder(),
@@ -265,7 +265,7 @@ class _AlumniDataPageState extends State<AlumniDataPage>
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedProfession,
+                  initialValue: _selectedProfession,
                   decoration: const InputDecoration(
                     labelText: 'Profession',
                     border: OutlineInputBorder(),
@@ -288,7 +288,7 @@ class _AlumniDataPageState extends State<AlumniDataPage>
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedLocation,
+                  initialValue: _selectedLocation,
                   decoration: const InputDecoration(
                     labelText: 'Location',
                     border: OutlineInputBorder(),

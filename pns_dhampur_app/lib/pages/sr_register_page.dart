@@ -82,10 +82,30 @@ class _SRRegisterPageState extends State<SRRegisterPage>
   ];
 
   final List<Map<String, dynamic>> _statistics = [
-    {'title': 'Total Records', 'value': '1,245', 'icon': Icons.folder, 'color': Colors.blue},
-    {'title': 'Active Students', 'value': '1,180', 'icon': Icons.person, 'color': Colors.green},
-    {'title': 'Transferred', 'value': '45', 'icon': Icons.transfer_within_a_station, 'color': Colors.orange},
-    {'title': 'Graduated', 'value': '20', 'icon': Icons.school, 'color': Colors.purple},
+    {
+      'title': 'Total Records',
+      'value': '1,245',
+      'icon': Icons.folder,
+      'color': Colors.blue
+    },
+    {
+      'title': 'Active Students',
+      'value': '1,180',
+      'icon': Icons.person,
+      'color': Colors.green
+    },
+    {
+      'title': 'Transferred',
+      'value': '45',
+      'icon': Icons.transfer_within_a_station,
+      'color': Colors.orange
+    },
+    {
+      'title': 'Graduated',
+      'value': '20',
+      'icon': Icons.school,
+      'color': Colors.purple
+    },
   ];
 
   final List<Map<String, dynamic>> _recentActivities = [
@@ -212,14 +232,21 @@ class _SRRegisterPageState extends State<SRRegisterPage>
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedClass,
+                  initialValue: _selectedClass,
                   decoration: const InputDecoration(
                     labelText: 'Class',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
-                  items: ['All Classes', 'Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10']
-                      .map((String value) {
+                  items: [
+                    'All Classes',
+                    'Class 6',
+                    'Class 7',
+                    'Class 8',
+                    'Class 9',
+                    'Class 10'
+                  ].map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -235,14 +262,14 @@ class _SRRegisterPageState extends State<SRRegisterPage>
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedSection,
+                  initialValue: _selectedSection,
                   decoration: const InputDecoration(
                     labelText: 'Section',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
-                  items: ['All Sections', 'A', 'B', 'C']
-                      .map((String value) {
+                  items: ['All Sections', 'A', 'B', 'C'].map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -258,11 +285,12 @@ class _SRRegisterPageState extends State<SRRegisterPage>
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _selectedStatus,
+                  initialValue: _selectedStatus,
                   decoration: const InputDecoration(
                     labelText: 'Status',
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
                   items: ['All Status', 'Active', 'Transferred', 'Graduated']
                       .map((String value) {
@@ -299,16 +327,19 @@ class _SRRegisterPageState extends State<SRRegisterPage>
                     backgroundColor: _getStatusColor(record['status']),
                     child: Text(
                       record['studentName'][0],
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
                   title: Text(
                     record['studentName'],
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: Text('${record['class']} - ${record['section']} | Roll: ${record['rollNumber']}'),
+                  subtitle: Text(
+                      '${record['class']} - ${record['section']} | Roll: ${record['rollNumber']}'),
                   trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: _getStatusColor(record['status']).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -329,14 +360,18 @@ class _SRRegisterPageState extends State<SRRegisterPage>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildDetailRow('SR ID', record['id']),
-                          _buildDetailRow('Father\'s Name', record['fatherName']),
-                          _buildDetailRow('Mother\'s Name', record['motherName']),
-                          _buildDetailRow('Date of Birth', record['dateOfBirth']),
+                          _buildDetailRow(
+                              'Father\'s Name', record['fatherName']),
+                          _buildDetailRow(
+                              'Mother\'s Name', record['motherName']),
+                          _buildDetailRow(
+                              'Date of Birth', record['dateOfBirth']),
                           _buildDetailRow('Address', record['address']),
                           _buildDetailRow('Phone', record['phone']),
                           _buildDetailRow('Blood Group', record['bloodGroup']),
                           _buildDetailRow('Category', record['category']),
-                          _buildDetailRow('Admission Date', record['admissionDate']),
+                          _buildDetailRow(
+                              'Admission Date', record['admissionDate']),
                           _buildDetailRow('TC Number', record['tcNumber']),
                           const SizedBox(height: 12),
                           Row(
@@ -402,7 +437,7 @@ class _SRRegisterPageState extends State<SRRegisterPage>
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          
+
           // Personal Information Section
           Card(
             child: Padding(
@@ -462,8 +497,16 @@ class _SRRegisterPageState extends State<SRRegisterPage>
                             labelText: 'Blood Group',
                             border: OutlineInputBorder(),
                           ),
-                          items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
-                              .map((String value) {
+                          items: [
+                            'A+',
+                            'A-',
+                            'B+',
+                            'B-',
+                            'AB+',
+                            'AB-',
+                            'O+',
+                            'O-'
+                          ].map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
                               child: Text(value),
@@ -501,8 +544,13 @@ class _SRRegisterPageState extends State<SRRegisterPage>
                             labelText: 'Class *',
                             border: OutlineInputBorder(),
                           ),
-                          items: ['Class 6', 'Class 7', 'Class 8', 'Class 9', 'Class 10']
-                              .map((String value) {
+                          items: [
+                            'Class 6',
+                            'Class 7',
+                            'Class 8',
+                            'Class 9',
+                            'Class 10'
+                          ].map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
                               child: Text(value),
@@ -518,8 +566,7 @@ class _SRRegisterPageState extends State<SRRegisterPage>
                             labelText: 'Section *',
                             border: OutlineInputBorder(),
                           ),
-                          items: ['A', 'B', 'C']
-                              .map((String value) {
+                          items: ['A', 'B', 'C'].map((String value) {
                             return DropdownMenuItem<String>(
                               value: value,
                               child: Text(value),
@@ -666,13 +713,16 @@ class _SRRegisterPageState extends State<SRRegisterPage>
                     return ListTile(
                       leading: CircleAvatar(
                         backgroundColor: activity['color'],
-                        child: Icon(activity['icon'], color: Colors.white, size: 20),
+                        child: Icon(activity['icon'],
+                            color: Colors.white, size: 20),
                       ),
                       title: Text(activity['action']),
-                      subtitle: Text('${activity['student']} - ${activity['class']}'),
+                      subtitle:
+                          Text('${activity['student']} - ${activity['class']}'),
                       trailing: Text(
                         activity['time'],
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                        style:
+                            const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                     );
                   }).toList(),
@@ -751,7 +801,8 @@ class _SRRegisterPageState extends State<SRRegisterPage>
                         const SizedBox(height: 8),
                         const Text(
                           '245',
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.bold),
                         ),
                         const Text('Archived Records'),
                       ],
@@ -770,7 +821,8 @@ class _SRRegisterPageState extends State<SRRegisterPage>
                         const SizedBox(height: 8),
                         const Text(
                           '12',
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.bold),
                         ),
                         const Text('Deleted Records'),
                       ],
@@ -798,7 +850,8 @@ class _SRRegisterPageState extends State<SRRegisterPage>
                   ListTile(
                     leading: const Icon(Icons.archive, color: Colors.blue),
                     title: const Text('Archive Old Records'),
-                    subtitle: const Text('Move records older than 5 years to archive'),
+                    subtitle: const Text(
+                        'Move records older than 5 years to archive'),
                     trailing: ElevatedButton(
                       onPressed: () => _archiveOldRecords(),
                       child: const Text('Archive'),
@@ -808,7 +861,8 @@ class _SRRegisterPageState extends State<SRRegisterPage>
                   ListTile(
                     leading: const Icon(Icons.restore, color: Colors.green),
                     title: const Text('Restore Records'),
-                    subtitle: const Text('Restore archived records back to active'),
+                    subtitle:
+                        const Text('Restore archived records back to active'),
                     trailing: ElevatedButton(
                       onPressed: () => _restoreRecords(),
                       child: const Text('Restore'),
@@ -818,7 +872,8 @@ class _SRRegisterPageState extends State<SRRegisterPage>
                   ListTile(
                     leading: const Icon(Icons.backup, color: Colors.orange),
                     title: const Text('Backup Data'),
-                    subtitle: const Text('Create backup of all SR register data'),
+                    subtitle:
+                        const Text('Create backup of all SR register data'),
                     trailing: ElevatedButton(
                       onPressed: () => _backupData(),
                       child: const Text('Backup'),
@@ -843,7 +898,8 @@ class _SRRegisterPageState extends State<SRRegisterPage>
             width: 120,
             child: Text(
               '$label:',
-              style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.grey),
+              style: const TextStyle(
+                  fontWeight: FontWeight.w500, color: Colors.grey),
             ),
           ),
           Expanded(
@@ -857,7 +913,8 @@ class _SRRegisterPageState extends State<SRRegisterPage>
     );
   }
 
-  Widget _buildReportCard(String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildReportCard(String title, String subtitle, IconData icon,
+      Color color, VoidCallback onTap) {
     return Card(
       elevation: 2,
       child: InkWell(
