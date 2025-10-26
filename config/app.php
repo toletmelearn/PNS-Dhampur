@@ -198,6 +198,7 @@ return [
         /*
          * Custom Service Providers...
          */
+        App\Providers\DoctrineDBALServiceProvider::class,
         App\Providers\ModuleServiceProvider::class,
         App\Providers\SecurityServiceProvider::class,
         App\Providers\AuditServiceProvider::class,
