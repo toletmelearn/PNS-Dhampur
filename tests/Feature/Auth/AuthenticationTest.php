@@ -4,7 +4,7 @@ namespace Tests\Feature\Auth;
 
 use Tests\TestCase;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
@@ -14,7 +14,7 @@ use Laravel\Sanctum\Sanctum;
 
 class AuthenticationTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     /** @test */
     public function user_can_login_with_valid_credentials()

@@ -7,12 +7,12 @@ use App\Models\User;
 use App\Models\Student;
 use App\Models\ClassModel;
 use App\Models\Attendance;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Support\Facades\DB;
 
 class SimpleBulkAttendanceTest extends TestCase
 {
-    use RefreshDatabase;
+    // RefreshDatabase removed - using DatabaseTransactions in base TestCase
 
     protected $user;
     protected $students;

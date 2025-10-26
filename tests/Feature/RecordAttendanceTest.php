@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 

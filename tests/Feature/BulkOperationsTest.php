@@ -12,7 +12,7 @@ use App\Models\Fee;
 use App\Models\Syllabus;
 use App\Services\BulkVerificationService;
 use App\Services\AuditTrailService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Storage;
 
 class BulkOperationsTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $admin;
     protected $teacher;

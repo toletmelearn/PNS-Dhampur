@@ -8,7 +8,7 @@ use App\Models\Student;
 use App\Models\StudentVerification;
 use App\Models\ClassModel;
 use App\Models\Section;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -19,7 +19,7 @@ use Laravel\Sanctum\Sanctum;
 
 class StudentVerificationTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $admin;
     protected $teacher;

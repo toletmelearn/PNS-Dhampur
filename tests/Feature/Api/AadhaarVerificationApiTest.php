@@ -8,7 +8,7 @@ use App\Models\Student;
 use App\Models\StudentVerification;
 use App\Models\ClassModel;
 use App\Models\Section;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -17,7 +17,7 @@ use Laravel\Sanctum\Sanctum;
 
 class AadhaarVerificationApiTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $admin;
     protected $teacher;

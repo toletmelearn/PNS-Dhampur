@@ -7,13 +7,13 @@ use App\Models\User;
 use App\Models\Student;
 use App\Models\ClassModel;
 use App\Models\Section;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Laravel\Sanctum\Sanctum;
 
 class StudentApiTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $admin;
     protected $teacher;

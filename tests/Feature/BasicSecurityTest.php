@@ -3,11 +3,11 @@
 namespace Tests\Feature;
 
 use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 
 class BasicSecurityTest extends TestCase
 {
-    use RefreshDatabase;
+    // RefreshDatabase removed - using DatabaseTransactions in base TestCase
 
     /** @test */
     public function test_session_configuration_is_secure()

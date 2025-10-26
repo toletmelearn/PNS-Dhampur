@@ -7,14 +7,14 @@ use App\Services\StudentService;
 use App\Models\Student;
 use App\Models\User;
 use App\Models\Classes;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Database\Eloquent\Collection;
 use Mockery;
 
 class StudentServiceTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $studentService;
     protected $mockUser;

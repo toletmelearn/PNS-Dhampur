@@ -6,13 +6,13 @@ use Tests\TestCase;
 use App\Models\User;
 use App\Models\BiometricDevice;
 use App\Models\BiometricAttendance;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
 class BiometricControllerTest extends TestCase
 {
-    use RefreshDatabase;
+    // RefreshDatabase removed - using DatabaseTransactions in base TestCase
 
     protected $user;
     protected $teacher;

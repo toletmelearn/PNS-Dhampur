@@ -3,10 +3,13 @@
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\DB;
 
 abstract class TestCase extends BaseTestCase
 {
     use CreatesApplication;
+    use DatabaseTransactions;
     
     /**
      * Set up the test environment.
@@ -17,9 +20,11 @@ abstract class TestCase extends BaseTestCase
     {
         parent::setUp();
         
-        // Disable foreign key checks for SQLite in testing
+        // Disable foreign key checks for testing
         if (config('database.default') === 'sqlite') {
-            \DB::statement('PRAGMA foreign_keys = OFF');
+            DB::statement('PRAGMA foreign_keys = OFF');
+        } else if (config('database.default') === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=0');
         }
     }
     
@@ -32,7 +37,9 @@ abstract class TestCase extends BaseTestCase
     {
         // Re-enable foreign key checks
         if (config('database.default') === 'sqlite') {
-            \DB::statement('PRAGMA foreign_keys = ON');
+            DB::statement('PRAGMA foreign_keys = ON');
+        } else if (config('database.default') === 'mysql') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1');
         }
         
         parent::tearDown();

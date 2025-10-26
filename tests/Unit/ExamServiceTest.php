@@ -9,13 +9,13 @@ use App\Models\ExamResult;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\Classes;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Carbon\Carbon;
 
 class ExamServiceTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $examService;
     protected $student;

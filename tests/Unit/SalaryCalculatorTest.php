@@ -8,12 +8,12 @@ use App\Services\SalaryCalculationService;
 use App\Models\User;
 use App\Models\Salary;
 use App\Models\SalaryStructure;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 
 class SalaryCalculatorTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $salaryCalculator;
     protected $salaryCalculationService;

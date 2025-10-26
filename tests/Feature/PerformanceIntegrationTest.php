@@ -10,7 +10,7 @@ use App\Models\Exam;
 use App\Models\Result;
 use App\Models\Fee;
 use App\Models\Role;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +18,7 @@ use Carbon\Carbon;
 
 class PerformanceIntegrationTest extends TestCase
 {
-    use RefreshDatabase;
+    // RefreshDatabase removed - using DatabaseTransactions in base TestCase
 
     protected $admin;
     protected $performanceThresholds = [

@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use App\Services\OptimizedReportService;
@@ -16,7 +16,7 @@ use Carbon\Carbon;
 
 class OptimizedReportServiceTest extends TestCase
 {
-    use RefreshDatabase;
+    // RefreshDatabase removed - using DatabaseTransactions in base TestCase
 
     protected $reportService;
     protected $testClass;

@@ -13,14 +13,14 @@ use App\Models\Subject;
 use App\Models\Attendance;
 use App\Models\Result;
 use App\Models\Salary;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
 
 class SoftDeleteSecurityTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $admin;
     protected $teacher;

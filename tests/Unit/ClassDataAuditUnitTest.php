@@ -9,13 +9,13 @@ use App\Models\ClassDataApproval;
 use App\Http\Requests\ClassDataAuditRequest;
 use App\Http\Requests\ApprovalActionRequest;
 use App\Http\Requests\RollbackRequest;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 
 class ClassDataAuditUnitTest extends TestCase
 {
-    use RefreshDatabase;
+    // RefreshDatabase removed - using DatabaseTransactions in base TestCase
 
     /** @test */
     public function test_class_data_audit_model_relationships()

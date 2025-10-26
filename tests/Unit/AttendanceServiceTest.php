@@ -7,13 +7,13 @@ use App\Services\AttendanceService;
 use App\Models\Student;
 use App\Models\Attendance;
 use App\Models\Classes;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Carbon\Carbon;
 
 class AttendanceServiceTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $attendanceService;
     protected $student;

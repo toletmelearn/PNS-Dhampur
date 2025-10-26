@@ -8,7 +8,7 @@ use App\Models\Student;
 use App\Models\StudentDocument;
 use App\Models\ClassModel;
 use App\Models\Section;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -16,7 +16,7 @@ use Laravel\Sanctum\Sanctum;
 
 class DocumentVerificationApiTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $admin;
     protected $teacher;

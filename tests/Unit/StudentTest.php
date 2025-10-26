@@ -6,12 +6,12 @@ use Tests\TestCase;
 use App\Models\Student;
 use App\Models\User;
 use App\Models\ClassModel;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 
 class StudentTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     /**
      * Test student creation using factory.

@@ -10,7 +10,7 @@ use App\Models\Fee;
 use App\Models\Role;
 use App\Models\Attendance;
 use App\Models\Result;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
@@ -20,7 +20,7 @@ use Carbon\Carbon;
 
 class SystemIntegrationTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $admin;
     protected $teacher;

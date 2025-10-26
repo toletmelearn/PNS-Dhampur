@@ -4,12 +4,12 @@ namespace Tests\Unit;
 
 use Tests\TestCase;
 use App\Services\ValidationService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 
 class ValidationServiceTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $validationService;
 

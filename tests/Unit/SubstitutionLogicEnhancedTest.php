@@ -2,7 +2,7 @@
 
 namespace Tests\Unit;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Tests\TestCase;
 use App\Models\Teacher;
 use App\Models\Subject;
@@ -14,7 +14,7 @@ use Carbon\Carbon;
 
 class SubstitutionLogicEnhancedTest extends TestCase
 {
-    use RefreshDatabase;
+    // RefreshDatabase removed - using DatabaseTransactions in base TestCase
 
     /** @test */
     public function it_auto_assigns_best_matching_substitute()

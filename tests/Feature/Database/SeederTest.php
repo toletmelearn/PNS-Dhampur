@@ -3,7 +3,7 @@
 namespace Tests\Feature\Database;
 
 use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Support\Facades\Artisan;
 use App\Models\User;
 use App\Models\Student;
@@ -12,7 +12,7 @@ use App\Models\Section;
 
 class SeederTest extends TestCase
 {
-    use RefreshDatabase;
+    // RefreshDatabase removed - using DatabaseTransactions in base TestCase
 
     /** @test */
     public function database_seeder_runs_successfully()

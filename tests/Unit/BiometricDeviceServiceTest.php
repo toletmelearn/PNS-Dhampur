@@ -8,7 +8,7 @@ use App\Models\User;
 use App\Models\Teacher;
 use App\Models\BiometricDevice;
 use App\Models\BiometricAttendance;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Log;
 
 class BiometricDeviceServiceTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $biometricService;
     protected $teacher;

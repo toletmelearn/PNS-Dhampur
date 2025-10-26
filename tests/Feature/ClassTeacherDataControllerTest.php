@@ -9,13 +9,13 @@ use App\Models\ClassDataAudit;
 use App\Models\ClassDataVersion;
 use App\Models\ClassDataApproval;
 use App\Models\ChangeLog;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Laravel\Sanctum\Sanctum;
 
 class ClassTeacherDataControllerTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $teacher;
     protected $admin;

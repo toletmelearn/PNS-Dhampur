@@ -8,7 +8,7 @@ use App\Models\Student;
 use App\Models\Exam;
 use App\Models\Fee;
 use App\Models\Role;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+// RefreshDatabase removed - using DatabaseTransactions in base TestCase
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Hash;
 
 class UserWorkflowTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use  WithFaker;
 
     protected $admin;
     protected $teacher;
