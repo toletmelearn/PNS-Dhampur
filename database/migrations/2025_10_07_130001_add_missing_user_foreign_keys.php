@@ -3,13 +3,42 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
-return new class extends Migration
+class AddMissingUserForeignKeys extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
+    public function up()
+    {
+        // Skip tables with ENUM columns or convert them first
+        $tablesWithEnum = ['users', 'students', 'teachers']; // Add your tables with ENUM
+        
+        foreach ($tablesWithEnum as $tableName) {
+            if (Schema::hasTable($tableName)) {
+                $this->convertEnumColumnsToString($tableName);
+            }
+        }
+        
+        // Now add foreign keys
+        $this->addForeignKeys();
+    }
+    
+    protected function convertEnumColumnsToString($tableName)
+    {
+        // Convert ENUM columns to string
+        $columns = [
+            // Example: 'status' => 'active'
+        ];
+        
+        foreach ($columns as $column => $default) {
+            if (Schema::hasColumn($tableName, $column)) {
+                Schema::table($tableName, function (Blueprint $table) use ($column, $default) {
+                    $table->string($column, 50)->default($default)->change();
+                });
+            }
+        }
+    }
+    
+    protected function addForeignKeys()
     {
         // Helper function to check if foreign key already exists
         if (!function_exists('foreignKeyExists')) {
@@ -77,27 +106,20 @@ return new class extends Migration
         }
     }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
         // Drop foreign keys in reverse order
-        if (Schema::hasTable('performance_metrics') && Schema::hasColumn('performance_metrics', 'user_id')) {
-            Schema::table('performance_metrics', function (Blueprint $table) {
+        if (Schema::hasTable('students') && Schema::hasColumn('students', 'user_id')) {
+            Schema::table('students', function (Blueprint $table) {
                 $table->dropForeign(['user_id']);
             });
         }
-
-        if (Schema::hasTable('error_logs') && Schema::hasColumn('error_logs', 'user_id')) {
-            Schema::table('error_logs', function (Blueprint $table) {
+        
+        if (Schema::hasTable('teachers') && Schema::hasColumn('teachers', 'user_id')) {
+            Schema::table('teachers', function (Blueprint $table) {
                 $table->dropForeign(['user_id']);
             });
         }
-
-        if (Schema::hasTable('verification_audit_logs') && Schema::hasColumn('verification_audit_logs', 'user_id')) {
-            Schema::table('verification_audit_logs', function (Blueprint $table) {
-                $table->dropForeign(['user_id']);
             });
         }
 
