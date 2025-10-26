@@ -1,230 +1,53 @@
-name: Deploy PNS-Dhampur School Management System
+name: Deploy PNS-Dhampur School Management System 
+ 
+on: 
+  push: 
+    branches: [ main ] 
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  test:
+jobs: 
+  test: 
     runs-on: ubuntu-latest
     
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: password
-          MYSQL_DATABASE: pns_dhampur
-          MYSQL_USER: pns_user
-          MYSQL_PASSWORD: pns_password
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h localhost -u root -ppassword"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-          --name=mysql-test
+    services: 
+      mysql: 
+        image: mysql:8.0 
+        env: 
+          MYSQL_ROOT_PASSWORD: password 
+          MYSQL_DATABASE: pns_dhampur 
+        ports: 
+          - 3306:3306 
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3 
 
-    env:
-      DB_CONNECTION: mysql
-      DB_HOST: 127.0.0.1
-      DB_PORT: 3306
-      DB_DATABASE: pns_dhampur
-      DB_USERNAME: root
-      DB_PASSWORD: password
-      APP_ENV: ${{ github.event_name == 'pull_request' && 'testing' || 'production' }}
-      APP_DEBUG: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
-      LOG_LEVEL: ${{ github.event_name == 'pull_request' && 'debug' || 'error' }}
+    steps: 
+    - uses: actions/checkout@v3 
 
-    steps:
-    - uses: actions/checkout@v3
+    - name: Setup PHP 
+      uses: shivammathur/setup-php@v2 
+      with: 
+        php-version: '8.1' 
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql 
 
-    - name: Setup PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.1'
-        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, zip
-        coverage: xdebug
+    - name: Copy .env 
+      run: | 
+        cp .env.example .env 
+        php -r "file_put_contents('.env', str_replace('DB_DATABASE=laravel', 'DB_DATABASE=pns_dhampur', file_get_contents('.env')));" 
+        php -r "file_put_contents('.env', str_replace('DB_USERNAME=root', 'DB_USERNAME=root', file_get_contents('.env')));" 
+        php -r "file_put_contents('.env', str_replace('DB_PASSWORD=', 'DB_PASSWORD=password', file_get_contents('.env')));" 
 
-    - name: Copy .env
-      run: |
-        cp .env.example .env
-        php -r "file_put_contents('.env', str_replace('DB_DATABASE=laravel', 'DB_DATABASE=pns_dhampur', file_get_contents('.env')));"
-        php -r "file_put_contents('.env', str_replace('DB_USERNAME=root', 'DB_USERNAME=root', file_get_contents('.env')));"
-        php -r "file_put_contents('.env', str_replace('DB_PASSWORD=', 'DB_PASSWORD=password', file_get_contents('.env')));"
-        php -r "file_put_contents('.env', str_replace('APP_DEBUG=false', 'APP_DEBUG=true', file_get_contents('.env')));"
-        php -r "file_put_contents('.env', str_replace('LOG_LEVEL=debug', 'LOG_LEVEL=debug', file_get_contents('.env')));"
+    - name: Install Composer Dependencies 
+      run: | 
+        composer require doctrine/dbal --dev --no-interaction 
+        composer install --no-progress --no-interaction --optimize-autoloader 
 
-    - name: Install Composer Dependencies
-      run: |
-        composer require doctrine/dbal --dev
-        composer install --no-progress --no-interaction --optimize-autoloader
-      
-    - name: Cache Composer dependencies
-      uses: actions/cache@v3
-      with:
-        path: vendor
-        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-        restore-keys: ${{ runner.os }}-composer-
+    - name: Generate Application Key 
+      run: php artisan key:generate 
 
-    - name: Generate key
-      run: php artisan key:generate
+    - name: Create Database 
+      run: | 
+        mysql -h 127.0.0.1 -u root -ppassword -e "CREATE DATABASE IF NOT EXISTS pns_dhampur;" 
 
-    - name: Verify MySQL Connection
-      run: |
-        mysql --host=127.0.0.1 --port=3306 -uroot -ppassword -e "SHOW DATABASES;"
-        mysql --host=127.0.0.1 --port=3306 -uroot -ppassword -e "SET GLOBAL innodb_strict_mode=OFF;"
-    
-    - name: Pre-check Migration Files for Syntax Errors
-      run: |
-        echo "Checking migration files for syntax errors before running migrations..."
-        for migration in $(ls -1 database/migrations/*.php | sort); do
-          echo "Checking syntax: $migration"
-          php -l $migration
-          if [ $? -ne 0 ]; then
-            echo "❌ Syntax error found in migration file: $migration"
-            exit 1
-          fi
-        done
-        echo "✅ All migration files passed syntax check"
+    - name: Run Migrations 
+      run: php artisan migrate --force --verbose 
 
-    - name: Run Migrations in Proper Order
-      id: run_migrations
-      run: |
-        echo "Running migrations in specific order..."
-        
-        # First ensure users table exists (should be first migration)
-        php artisan migrate --path=database/migrations/2014_10_12_000000_create_users_table.php --force
-        
-        # Run school-related migrations (if they exist)
-        for migration in $(ls -1 database/migrations/*create_schools_table.php 2>/dev/null); do
-          echo "Running school migration: $migration"
-          php artisan migrate --path=$migration --force
-        done
-        
-        # Run papers-related migrations
-        for migration in $(ls -1 database/migrations/*create_exam_papers_table.php 2>/dev/null); do
-          echo "Running papers migration: $migration"
-          php artisan migrate --path=$migration --force
-        done
-        
-        # Run the new fixed paper_versions migration instead of the problematic one
-        echo "Running fixed paper_versions migration..."
-        php artisan migrate --path=database/migrations/2023_06_01_000002_create_alternative_paper_versions_table.php --force
-        
-        # Skip the problematic migration by creating a .disabled file
-        echo "Skipping problematic migration by creating .disabled file..."
-        touch database/migrations/2025_10_21_160510_create_paper_versions_table.php.disabled
-        
-        # Run remaining migrations
-        echo "Running remaining migrations..."
-        php artisan migrate --seed --verbose --force
-      continue-on-error: true
-      
-    - name: Check Migration Status and Run Individual Migrations
-      if: steps.run_migrations.outcome != 'success'
-      run: |
-        echo "⚠️ Bulk migration failed. Running migrations individually to identify problematic files..."
-        
-        # Get list of migration files in order
-        migration_files=$(ls -1 database/migrations/*.php | grep -v ".disabled" | sort)
-        
-        # Run each migration individually
-        for migration in $migration_files; do
-          migration_name=$(basename "$migration" .php)
-          echo "Running migration: $migration_name"
-          
-          # Run the migration with detailed output
-          php artisan migrate --path="database/migrations/$migration_name.php" --force
-          
-          # Check if migration failed
-          if [ $? -ne 0 ]; then
-            echo "❌ Migration failed: $migration_name"
-            echo "::error::Migration failed: $migration_name - Check foreign key constraints and table dependencies"
-            
-            # Display the migration file content for debugging
-            echo "Migration file content:"
-            cat "$migration"
-            
-            # Continue to next migration instead of failing the whole workflow
-            continue
-          else
-            echo "✅ Migration succeeded: $migration_name"
-          fi
-        done
-        echo "⚠️ Migration failed, checking status..."
-        php artisan migrate:status
-        
-    - name: Diagnose and Fix Migration Issues
-      if: steps.run_migrations.outcome != 'success'
-      run: |
-        echo "🔍 Diagnosing migration issues..."
-        
-        # Check database schema
-        echo "Checking database schema..."
-        mysql --host=127.0.0.1 --port=3306 -uroot -ppassword -e "SHOW TABLES FROM pns_dhampur;"
-        
-        # Try running migrations one by one in proper order
-        echo "Attempting to run migrations one by one..."
-        FAILED_MIGRATIONS=0
-        
-        for migration in $(ls -1 database/migrations/*.php | sort); do
-          echo "Running migration: $migration"
-          php artisan migrate --path=$migration --force --verbose
-          if [ $? -ne 0 ]; then
-            echo "❌ Failed on migration: $migration"
-            FAILED_MIGRATIONS=$((FAILED_MIGRATIONS+1))
-            # Continue trying other migrations
-          else
-            echo "✅ Migration successful: $migration"
-          fi
-        done
-        
-        if [ $FAILED_MIGRATIONS -gt 0 ]; then
-          echo "⚠️ $FAILED_MIGRATIONS migration(s) failed. Check logs for details."
-          exit 1
-        else
-          echo "✅ All migrations completed successfully when run individually."
-        fi
-        
-    - name: Run Tests with Coverage
-      if: ${{ always() }}
-      run: |
-        echo "Running tests with coverage..."
-        php artisan test --coverage
-        
-    - name: Environment-Specific Checks
-      run: |
-        echo "Running environment-specific checks..."
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          echo "Pull Request detected - running additional validation checks"
-          php artisan route:list --verbose
-          php artisan config:clear
-          php artisan view:clear
-          php artisan optimize:clear
-        else
-          echo "Production deployment detected - running production readiness checks"
-          php artisan route:cache
-          php artisan config:cache
-          php artisan view:cache
-          php artisan optimize
-          php artisan storage:link
-        fi
-        
-    - name: Security Checks
-      run: |
-        echo "Running security checks..."
-        # Check for exposed environment variables
-        if grep -q "APP_KEY=" .env; then
-          echo "⚠️ Warning: APP_KEY found in .env file"
-        fi
-        
-        # Check for proper file permissions
-        find storage -type d -exec chmod 755 {} \;
-        find storage -type f -exec chmod 644 {} \;
-        chmod 755 bootstrap/cache
-
-    - name: Execute Tests with Coverage
-      run: vendor/bin/phpunit --coverage-text
+    - name: Run Tests 
+      run: ./vendor/bin/phpunit
