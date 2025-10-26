@@ -109,17 +109,21 @@ class AddMissingUserForeignKeys extends Migration
     public function down()
     {
         // Drop foreign keys in reverse order
-        if (Schema::hasTable('students') && Schema::hasColumn('students', 'user_id')) {
-            Schema::table('students', function (Blueprint $table) {
+        if (Schema::hasTable('performance_metrics') && Schema::hasColumn('performance_metrics', 'user_id')) {
+            Schema::table('performance_metrics', function (Blueprint $table) {
                 $table->dropForeign(['user_id']);
             });
         }
         
-        if (Schema::hasTable('teachers') && Schema::hasColumn('teachers', 'user_id')) {
-            Schema::table('teachers', function (Blueprint $table) {
+        if (Schema::hasTable('error_logs') && Schema::hasColumn('error_logs', 'user_id')) {
+            Schema::table('error_logs', function (Blueprint $table) {
                 $table->dropForeign(['user_id']);
             });
         }
+        
+        if (Schema::hasTable('verification_audit_logs') && Schema::hasColumn('verification_audit_logs', 'user_id')) {
+            Schema::table('verification_audit_logs', function (Blueprint $table) {
+                $table->dropForeign(['user_id']);
             });
         }
 
