@@ -15,7 +15,10 @@ return new class extends Migration
             // SQLite does not support MODIFY syntax; skip in testing environment
             return;
         }
-        DB::statement('ALTER TABLE `admit_cards` MODIFY `qr_code` TEXT NULL');
+        // Check if qr_code column exists before modifying
+        if (Schema::hasColumn('admit_cards', 'qr_code')) {
+            DB::statement('ALTER TABLE `admit_cards` MODIFY `qr_code` TEXT NULL');
+        }
     }
 
     public function down(): void
@@ -27,6 +30,9 @@ return new class extends Migration
             // SQLite does not support MODIFY syntax; skip in testing environment
             return;
         }
-        DB::statement('ALTER TABLE `admit_cards` MODIFY `qr_code` VARCHAR(191) NULL');
+        // Check if qr_code column exists before modifying
+        if (Schema::hasColumn('admit_cards', 'qr_code')) {
+            DB::statement('ALTER TABLE `admit_cards` MODIFY `qr_code` VARCHAR(191) NULL');
+        }
     }
 };

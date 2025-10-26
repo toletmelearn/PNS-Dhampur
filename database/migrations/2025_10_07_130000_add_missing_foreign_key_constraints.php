@@ -36,7 +36,8 @@ return new class extends Migration
             });
         }
         
-        if (!$this->foreignKeyExists('results', 'results_uploaded_by_foreign')) {
+        // Check if the uploaded_by column exists before adding foreign key
+        if (Schema::hasColumn('results', 'uploaded_by') && !$this->foreignKeyExists('results', 'results_uploaded_by_foreign')) {
             Schema::table('results', function (Blueprint $table) {
                 $table->foreign('uploaded_by')->references('id')->on('users')->onDelete('set null');
             });
@@ -188,7 +189,7 @@ return new class extends Migration
                 });
             }
             
-            if ($this->foreignKeyExists('results', 'results_uploaded_by_foreign')) {
+            if (Schema::hasColumn('results', 'uploaded_by') && $this->foreignKeyExists('results', 'results_uploaded_by_foreign')) {
                 Schema::table('results', function (Blueprint $table) {
                     $table->dropForeign(['uploaded_by']);
                 });

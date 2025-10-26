@@ -8,41 +8,67 @@ return new class extends Migration
 {
     public function up(): void
     {
-                if (!Schema::hasTable('daily_syllabus')) {
+        if (!Schema::hasTable('daily_syllabus')) {
             Schema::create('daily_syllabus', function (Blueprint $table) {
                 $table->id();
-                $table->string('class_id');
-                $table->string('section_id');
-                $table->string('subject_id');
+                $table->unsignedBigInteger('class_id');
+                $table->unsignedBigInteger('section_id');
+                $table->unsignedBigInteger('subject_id');
                 $table->date('date');
                 $table->string('topic');
                 $table->text('description')->nullable();
                 $table->text('resources')->nullable();
                 $table->text('homework')->nullable();
                 $table->unsignedBigInteger('teacher_id');
-                $table->enum('status', 'planned', 'completed', 'rescheduled');
+                $table->enum('status', ['planned', 'completed', 'rescheduled']);
                 $table->timestamps();
-
-                $table->foreign('class_id')->references('id')->on('classes')
-                    ->onDelete('cascade')->onUpdate('cascade');
-                $table->foreign('section_id')->references('id')->on('sections')
-                    ->onDelete('cascade')->onUpdate('cascade');
-                $table->foreign('subject_id')->references('id')->on('subjects')
-                    ->onDelete('cascade')->onUpdate('cascade');
-                $table->foreign('teacher_id')->references('id')->on('teachers')
-                    ->onDelete('cascade')->onUpdate('cascade');
             });
+            
+            // Add foreign keys separately with error handling
+            try {
+                Schema::table('daily_syllabus', function (Blueprint $table) {
+                    if (Schema::hasTable('classes')) {
+                        $table->foreign('class_id')->references('id')->on('classes')
+                            ->onDelete('cascade')->onUpdate('cascade');
+                    }
+                });
+            } catch (\Exception $e) {
+                \Log::warning('Could not add foreign key for classes in daily_syllabus: ' . $e->getMessage());
+            }
+            
+            try {
+                Schema::table('daily_syllabus', function (Blueprint $table) {
+                    if (Schema::hasTable('sections')) {
+                        $table->foreign('section_id')->references('id')->on('sections')
+                            ->onDelete('cascade')->onUpdate('cascade');
+                    }
+                });
+            } catch (\Exception $e) {
+                \Log::warning('Could not add foreign key for sections in daily_syllabus: ' . $e->getMessage());
+            }
+            
+            try {
+                Schema::table('daily_syllabus', function (Blueprint $table) {
+                    if (Schema::hasTable('subjects')) {
+                        $table->foreign('subject_id')->references('id')->on('subjects')
+                            ->onDelete('cascade')->onUpdate('cascade');
+                    }
+                });
+            } catch (\Exception $e) {
+                \Log::warning('Could not add foreign key for subjects in daily_syllabus: ' . $e->getMessage());
+            }
+            
+            try {
+                Schema::table('daily_syllabus', function (Blueprint $table) {
+                    if (Schema::hasTable('teachers')) {
+                        $table->foreign('teacher_id')->references('id')->on('teachers')
+                            ->onDelete('cascade')->onUpdate('cascade');
+                    }
+                });
+            } catch (\Exception $e) {
+                \Log::warning('Could not add foreign key for teachers in daily_syllabus: ' . $e->getMessage());
+            }
         }
-            $table->unsignedBigInteger('class_id');
-            $table->unsignedBigInteger('section_id');
-            $table->unsignedBigInteger('subject_id');
-            $table->date('date');
-            $table->text('topics_covered');
-            $table->text('homework')->nullable();
-            $table->text('resources')->nullable();
-            $table->unsignedBigInteger('teacher_id');
-            $table->timestamps();
-        });
     }
 
     public function down(): void

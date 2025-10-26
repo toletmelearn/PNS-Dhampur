@@ -37,14 +37,14 @@ return new class extends Migration
             $table->timestamps();
             
             // Indexes for performance
-            $table->index(['exam_paper_version_id', 'approval_level']);
-            $table->index(['approver_id', 'status']);
+            $table->index(['version_id', 'approval_level']);
+            $table->index(['reviewed_by', 'status']);
             $table->index(['status', 'submitted_at']);
             $table->index('deadline');
             $table->index('priority');
             
             // Unique constraint to prevent duplicate approvals
-            $table->unique(['exam_paper_version_id', 'approver_id', 'approval_level'], 'unique_approval');
+            $table->unique(['version_id', 'reviewed_by', 'approval_level'], 'unique_approval');
         });
     }
 

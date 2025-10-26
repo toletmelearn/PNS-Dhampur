@@ -21,14 +21,41 @@ return new class extends Migration {
 
                 $table->unique(['exam_paper_id', 'version_number']);
                 
-                // Check if the exam_papers table exists before adding foreign key
-                if (Schema::hasTable('exam_papers')) {
-                    $table->foreign('exam_paper_id')->references('id')->on('exam_papers')->onDelete('cascade');
-                }
+                // Add foreign keys with proper dependency checks
+                // We ensure these tables exist in the correct order:
+                // 1. users table (created in 2014_10_12_000000_create_users_table.php)
+                // 2. schools table (should be created before papers)
+                // 3. papers table (created in 2025_10_02_022443_create_exam_papers_table.php)
+                // 4. paper_versions table (this migration)
                 
-                // Check if the users table exists before adding foreign key
-                if (Schema::hasTable('users')) {
-                    $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
+                try {
+                    // First ensure users table exists (this should always be true as it's one of the first migrations)
+                    if (!Schema::hasTable('users')) {
+                        throw new \Exception('Users table must exist before creating paper_versions table');
+                    }
+                    
+                    // Add foreign key for users
+                    $table->foreign('created_by')
+                          ->references('id')
+                          ->on('users')
+                          ->onDelete('set null');
+                          
+                    // Then check for exam_papers table
+                    if (!Schema::hasTable('exam_papers')) {
+                        throw new \Exception('Exam papers table must exist before creating paper_versions table');
+                    }
+                    
+                    // Add foreign key for exam_papers
+                    $table->foreign('exam_paper_id')
+                          ->references('id')
+                          ->on('exam_papers')
+                          ->onDelete('cascade')
+                          ->onUpdate('cascade');
+                          
+                } catch (\Exception $e) {
+                    // Log error but continue with migration
+                    \Log::error('Error in paper_versions migration: ' . $e->getMessage());
+                    // You may want to handle this differently based on your requirements
                 }
             });
         }

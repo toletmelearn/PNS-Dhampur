@@ -11,18 +11,27 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('teacher_documents', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('teacher_id');
-            $table->string('document_type');
-            $table->string('file_path');
-            $table->boolean('is_verified')->default(false);
-            $table->date('upload_date');
-            $table->date('verification_date')->nullable();
-            $table->unsignedBigInteger('verified_by')->nullable();
-            $table->text('remarks')->nullable();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('teacher_documents')) {
+            Schema::create('teacher_documents', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('teacher_id');
+                $table->enum('document_type', ['resume', 'certificate', 'degree', 'id_proof', 'experience_letter']);
+                $table->string('original_name');
+                $table->string('file_path');
+                $table->string('file_extension');
+                $table->unsignedBigInteger('file_size');
+                $table->string('mime_type');
+                $table->enum('status', ['pending', 'verified', 'rejected'])->default('pending');
+                $table->text('admin_comments')->nullable();
+                $table->date('expiry_date')->nullable();
+                $table->boolean('is_expired')->default(false);
+                $table->unsignedBigInteger('uploaded_by');
+                $table->unsignedBigInteger('reviewed_by')->nullable();
+                $table->timestamp('reviewed_at')->nullable();
+                $table->json('metadata')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     /**

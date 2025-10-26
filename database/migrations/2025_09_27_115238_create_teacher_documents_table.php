@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('teacher_documents', function (Blueprint $table) {
+        if (!Schema::hasTable('teacher_documents')) {
+            Schema::create('teacher_documents', function (Blueprint $table) {
             $table->id();
             $table->foreignId('teacher_id')->constrained('teachers')->onDelete('cascade');
             $table->enum('document_type', [
@@ -42,6 +43,7 @@ return new class extends Migration
             $table->index(['expiry_date', 'is_expired']);
             $table->index('reviewed_at');
         });
+        }
     }
 
     /**

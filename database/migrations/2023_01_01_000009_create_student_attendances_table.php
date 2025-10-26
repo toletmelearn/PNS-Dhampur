@@ -21,16 +21,52 @@ return new class extends Migration
                 $table->text('remarks')->nullable();
                 $table->unsignedBigInteger('marked_by');
                 $table->timestamps();
-
-                $table->foreign('student_id')->references('id')->on('students')
-                    ->onDelete('cascade')->onUpdate('cascade');
-                $table->foreign('class_id')->references('id')->on('classes')
-                    ->onDelete('cascade')->onUpdate('cascade');
-                $table->foreign('section_id')->references('id')->on('sections')
-                    ->onDelete('cascade')->onUpdate('cascade');
-                $table->foreign('marked_by')->references('id')->on('users')
-                    ->onDelete('cascade')->onUpdate('cascade');
             });
+            
+            // Add foreign keys in separate try-catch blocks to prevent migration failures
+            try {
+                Schema::table('student_attendances', function (Blueprint $table) {
+                    if (Schema::hasTable('students')) {
+                        $table->foreign('student_id')->references('id')->on('students')
+                            ->onDelete('cascade')->onUpdate('cascade');
+                    }
+                });
+            } catch (\Exception $e) {
+                \Log::warning('Could not add foreign key for students in student_attendances: ' . $e->getMessage());
+            }
+            
+            try {
+                Schema::table('student_attendances', function (Blueprint $table) {
+                    if (Schema::hasTable('classes')) {
+                        $table->foreign('class_id')->references('id')->on('classes')
+                            ->onDelete('cascade')->onUpdate('cascade');
+                    }
+                });
+            } catch (\Exception $e) {
+                \Log::warning('Could not add foreign key for classes in student_attendances: ' . $e->getMessage());
+            }
+            
+            try {
+                Schema::table('student_attendances', function (Blueprint $table) {
+                    if (Schema::hasTable('sections')) {
+                        $table->foreign('section_id')->references('id')->on('sections')
+                            ->onDelete('cascade')->onUpdate('cascade');
+                    }
+                });
+            } catch (\Exception $e) {
+                \Log::warning('Could not add foreign key for sections in student_attendances: ' . $e->getMessage());
+            }
+            
+            try {
+                Schema::table('student_attendances', function (Blueprint $table) {
+                    if (Schema::hasTable('users')) {
+                        $table->foreign('marked_by')->references('id')->on('users')
+                            ->onDelete('cascade')->onUpdate('cascade');
+                    }
+                });
+            } catch (\Exception $e) {
+                \Log::warning('Could not add foreign key for users in student_attendances: ' . $e->getMessage());
+            }
         }
     }
 

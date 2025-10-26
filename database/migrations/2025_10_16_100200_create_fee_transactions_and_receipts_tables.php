@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('fee_transactions', function (Blueprint $table) {
+        if (!Schema::hasTable('fee_transactions')) {
+            Schema::create('fee_transactions', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('student_fee_id');
             $table->decimal('amount', 10, 2);
@@ -23,8 +24,10 @@ return new class extends Migration {
             $table->foreign('student_fee_id')->references('id')->on('student_fees')->onDelete('cascade');
             $table->index(['student_fee_id', 'status']);
         });
+        }
 
-        Schema::create('fee_receipts', function (Blueprint $table) {
+        if (!Schema::hasTable('fee_receipts')) {
+            Schema::create('fee_receipts', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('student_fee_id');
             $table->unsignedBigInteger('fee_transaction_id')->nullable();
@@ -36,6 +39,7 @@ return new class extends Migration {
             $table->foreign('student_fee_id')->references('id')->on('student_fees')->onDelete('cascade');
             $table->foreign('fee_transaction_id')->references('id')->on('fee_transactions')->onDelete('set null');
         });
+        }
     }
 
     public function down(): void

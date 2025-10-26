@@ -11,7 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('bell_schedules', function (Blueprint $table) {
+        if (!Schema::hasTable('bell_schedules')) {
+            Schema::create('bell_schedules', function (Blueprint $table) {
             $table->id();
             $table->date('date');
             $table->enum('season', ['winter', 'summer']);
@@ -26,6 +27,7 @@ return new class extends Migration
                 ->on('special_schedules')
                 ->onDelete('set null');
         });
+        }
     }
 
     /**

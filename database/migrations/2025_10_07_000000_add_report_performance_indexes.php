@@ -102,14 +102,17 @@ return new class extends Migration
                     $table->index('student_id', 'results_student_id_index');
                 }
                 
-                // Index for subject column
-                if (!$this->indexExists('results', 'results_subject_index')) {
+                // Check if subject column exists before adding index
+                if (Schema::hasColumn('results', 'subject') && !$this->indexExists('results', 'results_subject_index')) {
                     $table->index('subject', 'results_subject_index');
                 }
                 
-                // Composite index for student_id and subject
-                if (!$this->indexExists('results', 'results_student_id_subject_index')) {
+                // Check if subject column exists before adding composite index
+                if (Schema::hasColumn('results', 'subject') && !$this->indexExists('results', 'results_student_id_subject_index')) {
                     $table->index(['student_id', 'subject'], 'results_student_id_subject_index');
+                } else if (!$this->indexExists('results', 'results_student_id_subject_id_index') && Schema::hasColumn('results', 'subject_id')) {
+                    // Alternative index if subject_id exists instead of subject
+                    $table->index(['student_id', 'subject_id'], 'results_student_id_subject_id_index');
                 }
                 
                 // Index for created_at (for date range queries)
