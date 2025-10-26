@@ -26,24 +26,31 @@ class ConvertEnumColumnsToString extends Migration
 
     protected function convertEnumsToString()
     {
-        // List of tables and their ENUM columns to convert
-        $enumColumns = [
-            // Example: ['table' => 'users', 'columns' => ['status' => 'active']]
-        ];
-
-        foreach ($enumColumns as $tableConfig) {
-            $tableName = $tableConfig['table'];
-            
-            if (Schema::hasTable($tableName)) {
-                foreach ($tableConfig['columns'] as $column => $defaultValue) {
-                    if (Schema::hasColumn($tableName, $column)) {
-                        // Convert ENUM to string
-                        Schema::table($tableName, function (Blueprint $table) use ($column, $defaultValue) {
-                            $table->string($column, 50)->default($defaultValue)->change();
-                        });
-                    }
-                }
+        // Convert ENUM columns to VARCHAR to avoid Doctrine DBAL issues
+        // Users table
+        if (Schema::hasTable('users')) {
+            if (Schema::hasColumn('users', 'role')) {
+                DB::statement('ALTER TABLE `users` MODIFY `role` VARCHAR(20) NOT NULL');
             }
+            if (Schema::hasColumn('users', 'status')) {
+                DB::statement('ALTER TABLE `users` MODIFY `status` VARCHAR(20) NOT NULL');
+            }
+        }
+        
+        // Students table
+        if (Schema::hasTable('students') && Schema::hasColumn('students', 'gender')) {
+            DB::statement('ALTER TABLE `students` MODIFY `gender` VARCHAR(10) NULL');
+        }
+        
+        // Skip teachers table gender column as it doesn't exist
+        
+        // Other tables with ENUM columns
+        if (Schema::hasTable('attendances') && Schema::hasColumn('attendances', 'status')) {
+            DB::statement('ALTER TABLE `attendances` MODIFY `status` VARCHAR(20) NOT NULL DEFAULT "present"');
+        }
+        
+        if (Schema::hasTable('exams') && Schema::hasColumn('exams', 'status')) {
+            DB::statement('ALTER TABLE `exams` MODIFY `status` VARCHAR(20) NOT NULL DEFAULT "pending"');
         }
      }
 }
