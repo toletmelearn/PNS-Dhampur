@@ -57,8 +57,10 @@ jobs:
         php -r "file_put_contents('.env', str_replace('APP_DEBUG=false', 'APP_DEBUG=true', file_get_contents('.env')));"
         php -r "file_put_contents('.env', str_replace('LOG_LEVEL=debug', 'LOG_LEVEL=debug', file_get_contents('.env')));"
 
-    - name: Install Dependencies
-      run: composer install --prefer-dist --no-interaction --no-progress
+    - name: Install Composer Dependencies
+      run: |
+        composer require doctrine/dbal --dev
+        composer install --no-progress --no-interaction --optimize-autoloader
       
     - name: Cache Composer dependencies
       uses: actions/cache@v3
