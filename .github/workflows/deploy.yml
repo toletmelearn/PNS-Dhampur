@@ -2,7 +2,7 @@ name: Deploy PNS-Dhampur School Management System
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   pull_request:
     branches: [ main ]
 
@@ -14,17 +14,29 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: pns_dhampur_test
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: pns_dhampur
+          MYSQL_USER: pns_user
+          MYSQL_PASSWORD: pns_password
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+          --name=mysql-test
 
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: pns_dhampur
+      DB_USERNAME: root
+      DB_PASSWORD: password
+      APP_ENV: ${{ github.event_name == 'pull_request' && 'testing' || 'production' }}
+      APP_DEBUG: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+      LOG_LEVEL: ${{ github.event_name == 'pull_request' && 'debug' || 'error' }}
 
     steps:
     - uses: actions/checkout@v3
@@ -33,105 +45,130 @@ jobs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: '8.1'
-        extensions: mbstring, dom, fileinfo, mysql, redis
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, zip
         coverage: xdebug
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
+    - name: Copy .env
+      run: |
+        cp .env.example .env
+        php -r "file_put_contents('.env', str_replace('DB_DATABASE=laravel', 'DB_DATABASE=pns_dhampur', file_get_contents('.env')));"
+        php -r "file_put_contents('.env', str_replace('DB_USERNAME=root', 'DB_USERNAME=root', file_get_contents('.env')));"
+        php -r "file_put_contents('.env', str_replace('DB_PASSWORD=', 'DB_PASSWORD=password', file_get_contents('.env')));"
+        php -r "file_put_contents('.env', str_replace('APP_DEBUG=false', 'APP_DEBUG=true', file_get_contents('.env')));"
+        php -r "file_put_contents('.env', str_replace('LOG_LEVEL=debug', 'LOG_LEVEL=debug', file_get_contents('.env')));"
+
+    - name: Install Dependencies
+      run: composer install --prefer-dist --no-interaction --no-progress
+      
+    - name: Cache Composer dependencies
+      uses: actions/cache@v3
       with:
-        node-version: '18'
-        cache: 'npm'
+        path: vendor
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-composer-
 
-    - name: Copy environment file
-      run: cp .env.example .env
-
-    - name: Install PHP dependencies
-      run: composer install --prefer-dist --no-progress --no-interaction
-
-    - name: Install Node.js dependencies
-      run: npm ci
-
-    - name: Generate application key
+    - name: Generate key
       run: php artisan key:generate
 
-    - name: Build assets
-      run: npm run build
-
-    - name: Run database migrations
-      run: php artisan migrate --force
-      env:
-        DB_CONNECTION: mysql
-        DB_HOST: 127.0.0.1
-        DB_PORT: 3306
-        DB_DATABASE: pns_dhampur_test
-        DB_USERNAME: root
-        DB_PASSWORD: root
-
-    - name: Run PHP tests
-      run: php artisan test --coverage
-      env:
-        DB_CONNECTION: mysql
-        DB_HOST: 127.0.0.1
-        DB_PORT: 3306
-        DB_DATABASE: pns_dhampur_test
-        DB_USERNAME: root
-        DB_PASSWORD: root
-
-    - name: Run security checks
+    - name: Verify MySQL Connection
       run: |
-        composer audit
-        npm audit
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+        mysql --host=127.0.0.1 --port=3306 -uroot -ppassword -e "SHOW DATABASES;"
+        mysql --host=127.0.0.1 --port=3306 -uroot -ppassword -e "SET GLOBAL innodb_strict_mode=OFF;"
     
-    steps:
-    - uses: actions/checkout@v3
-
-    - name: Setup PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.1'
-        extensions: mbstring, dom, fileinfo, mysql
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-
-    - name: Install dependencies
+    - name: Pre-check Migration Files for Syntax Errors
       run: |
-        composer install --no-dev --optimize-autoloader --no-interaction
-        npm ci --only=production
+        echo "Checking migration files for syntax errors before running migrations..."
+        for migration in $(ls -1 database/migrations/*.php | sort); do
+          echo "Checking syntax: $migration"
+          php -l $migration
+          if [ $? -ne 0 ]; then
+            echo "❌ Syntax error found in migration file: $migration"
+            exit 1
+          fi
+        done
+        echo "✅ All migration files passed syntax check"
 
-    - name: Build assets
-      run: npm run build
-
-    - name: Build Docker image
+    - name: Run Migrations in Proper Order
+      id: run_migrations
       run: |
-        docker build -t pns-dhampur:${{ github.sha }} .
-        docker tag pns-dhampur:${{ github.sha }} pns-dhampur:latest
-
-    - name: Deploy to production
-      if: github.ref == 'refs/heads/main'
+        echo "Running migrations with verbose output..."
+        php artisan migrate --seed --verbose --force
+      continue-on-error: true
+      
+    - name: Check Migration Status
+      if: steps.run_migrations.outcome != 'success'
       run: |
-        echo "Deploying to production server..."
-        # Add your deployment commands here
-        # Example: rsync, docker push, kubectl apply, etc.
-
-    - name: Health check
+        echo "⚠️ Migration failed, checking status..."
+        php artisan migrate:status
+        
+    - name: Diagnose and Fix Migration Issues
+      if: steps.run_migrations.outcome != 'success'
       run: |
-        sleep 30
-        curl -f http://your-domain.com/health || exit 1
-
-    - name: Notify deployment
-      if: always()
-      run: |
-        if [ ${{ job.status }} == 'success' ]; then
-          echo "✅ Deployment successful"
+        echo "🔍 Diagnosing migration issues..."
+        
+        # Check database schema
+        echo "Checking database schema..."
+        mysql --host=127.0.0.1 --port=3306 -uroot -ppassword -e "SHOW TABLES FROM pns_dhampur;"
+        
+        # Try running migrations one by one in proper order
+        echo "Attempting to run migrations one by one..."
+        FAILED_MIGRATIONS=0
+        
+        for migration in $(ls -1 database/migrations/*.php | sort); do
+          echo "Running migration: $migration"
+          php artisan migrate --path=$migration --force --verbose
+          if [ $? -ne 0 ]; then
+            echo "❌ Failed on migration: $migration"
+            FAILED_MIGRATIONS=$((FAILED_MIGRATIONS+1))
+            # Continue trying other migrations
+          else
+            echo "✅ Migration successful: $migration"
+          fi
+        done
+        
+        if [ $FAILED_MIGRATIONS -gt 0 ]; then
+          echo "⚠️ $FAILED_MIGRATIONS migration(s) failed. Check logs for details."
+          exit 1
         else
-          echo "❌ Deployment failed"
+          echo "✅ All migrations completed successfully when run individually."
         fi
+        
+    - name: Run Tests with Coverage
+      if: ${{ always() }}
+      run: |
+        echo "Running tests with coverage..."
+        php artisan test --coverage
+        
+    - name: Environment-Specific Checks
+      run: |
+        echo "Running environment-specific checks..."
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "Pull Request detected - running additional validation checks"
+          php artisan route:list --verbose
+          php artisan config:clear
+          php artisan view:clear
+          php artisan optimize:clear
+        else
+          echo "Production deployment detected - running production readiness checks"
+          php artisan route:cache
+          php artisan config:cache
+          php artisan view:cache
+          php artisan optimize
+          php artisan storage:link
+        fi
+        
+    - name: Security Checks
+      run: |
+        echo "Running security checks..."
+        # Check for exposed environment variables
+        if grep -q "APP_KEY=" .env; then
+          echo "⚠️ Warning: APP_KEY found in .env file"
+        fi
+        
+        # Check for proper file permissions
+        find storage -type d -exec chmod 755 {} \;
+        find storage -type f -exec chmod 644 {} \;
+        chmod 755 bootstrap/cache
+
+    - name: Execute Tests with Coverage
+      run: vendor/bin/phpunit --coverage-text

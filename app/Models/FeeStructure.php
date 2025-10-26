@@ -26,4 +26,9 @@ class FeeStructure extends Model
     {
         return $this->hasMany(FeeStructureItem::class);
     }
+
+    public function studentFees()
+    {
+        return $this->hasMany(StudentFee::class);
+    }
 }

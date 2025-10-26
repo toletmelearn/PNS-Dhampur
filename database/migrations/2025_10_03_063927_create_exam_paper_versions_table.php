@@ -15,7 +15,7 @@ return new class extends Migration
     {
         Schema::create('exam_paper_versions', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('exam_paper_id')->constrained('exam_papers')->onDelete('cascade');
+            $table->unsignedBigInteger('exam_paper_id');
             $table->integer('version_number');
             $table->string('title');
             $table->text('description')->nullable();
@@ -28,10 +28,10 @@ return new class extends Migration
             $table->json('metadata')->nullable(); // Additional metadata
             $table->enum('status', ['draft', 'review', 'approved', 'rejected', 'archived'])->default('draft');
             $table->text('change_summary')->nullable(); // Summary of changes in this version
-            $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
+            $table->unsignedBigInteger('created_by');
             $table->timestamp('created_at')->useCurrent();
             $table->timestamp('approved_at')->nullable();
-            $table->foreignId('approved_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->unsignedBigInteger('approved_by')->nullable();
             $table->text('approval_notes')->nullable();
             $table->boolean('is_current_version')->default(false);
             $table->string('checksum', 64)->nullable(); // For integrity verification

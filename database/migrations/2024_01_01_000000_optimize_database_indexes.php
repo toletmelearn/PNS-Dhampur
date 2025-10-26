@@ -51,7 +51,8 @@ return new class extends Migration
             });
         }
 
-        // Optimize fee_transactions table indexes
+        // Optimize fee_transactions table indexes - commented out due to missing column
+        /*
         if (Schema::hasTable('fee_transactions')) {
             Schema::table('fee_transactions', function (Blueprint $table) {
                 $table->index(['student_id', 'month']);
@@ -59,6 +60,7 @@ return new class extends Migration
                 $table->index('transaction_id');
             });
         }
+        */
 
         // Optimize users table indexes
         if (Schema::hasTable('users')) {
@@ -136,7 +138,8 @@ return new class extends Migration
             });
         }
 
-        // Remove indexes from fee_transactions table
+        // Remove indexes from fee_transactions table - commented out due to missing column
+        /*
         if (Schema::hasTable('fee_transactions')) {
             Schema::table('fee_transactions', function (Blueprint $table) {
                 $table->dropIndex(['student_id', 'month']);
@@ -144,6 +147,7 @@ return new class extends Migration
                 $table->dropIndex(['transaction_id']);
             });
         }
+        */
 
         // Remove indexes from users table
         if (Schema::hasTable('users')) {

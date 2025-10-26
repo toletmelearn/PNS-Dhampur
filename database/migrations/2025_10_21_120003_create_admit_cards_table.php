@@ -23,11 +23,15 @@ return new class extends Migration
             $table->foreignId('template_id')->nullable()->constrained('admit_templates')->onDelete('set null');
             $table->foreignId('seat_allocation_id')->nullable()->constrained('exam_seat_allocations')->onDelete('set null');
             $table->string('admit_card_no')->unique();
+            $table->string('roll_number');
+            $table->date('issue_date');
             $table->string('barcode')->nullable();
             $table->string('qr_code')->nullable();
             $table->string('pdf_path')->nullable();
             $table->text('html_snapshot')->nullable();
             $table->boolean('is_published')->default(false);
+            $table->boolean('is_active')->default(true);
+            $table->text('remarks')->nullable();
             $table->timestamp('generated_at')->nullable();
             $table->timestamps();
 

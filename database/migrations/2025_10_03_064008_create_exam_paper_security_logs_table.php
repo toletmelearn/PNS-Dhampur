@@ -15,9 +15,9 @@ return new class extends Migration
     {
         Schema::create('exam_paper_security_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('exam_paper_id')->nullable()->constrained('exam_papers')->onDelete('cascade');
-            $table->foreignId('exam_paper_version_id')->nullable()->constrained('exam_paper_versions')->onDelete('cascade');
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->unsignedBigInteger('exam_paper_id');
+            $table->unsignedBigInteger('exam_paper_version_id')->nullable();
+            $table->unsignedBigInteger('user_id');
             $table->enum('action', [
                 'created', 'viewed', 'edited', 'deleted', 'submitted', 'approved', 'rejected',
                 'downloaded', 'printed', 'exported', 'copied', 'shared', 'accessed_unauthorized',

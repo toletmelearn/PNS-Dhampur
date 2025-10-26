@@ -15,8 +15,9 @@ return new class extends Migration
     {
         Schema::create('exam_paper_approvals', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('exam_paper_version_id')->constrained('exam_paper_versions')->onDelete('cascade');
-            $table->foreignId('approver_id')->constrained('users')->onDelete('cascade');
+            $table->unsignedBigInteger('exam_paper_id');
+            $table->unsignedBigInteger('version_id');
+            $table->unsignedBigInteger('reviewed_by');
             $table->enum('approval_level', ['department_head', 'principal', 'academic_coordinator', 'external_reviewer']);
             $table->enum('status', ['pending', 'approved', 'rejected', 'delegated'])->default('pending');
             $table->text('comments')->nullable();

@@ -60,12 +60,12 @@ class Student extends Model
 
     public function fees()
     {
-        return $this->hasMany(Fee::class);
+        return $this->hasMany(StudentFee::class);
     }
 
     public function attendance()
     {
-        return $this->hasMany(Attendance::class);
+        return $this->hasMany(StudentAttendance::class);
     }
 
     public function results()

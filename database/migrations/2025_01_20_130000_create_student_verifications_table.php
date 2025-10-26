@@ -11,8 +11,23 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('student_verifications', function (Blueprint $table) {
-            $table->id();
+                if (!Schema::hasTable('student_verifications')) {
+            Schema::create('student_verifications', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('student_id');
+                $table->string('document_type');
+                $table->enum('verification_status', 'pending', 'verified', 'rejected');
+                $table->unsignedBigInteger('verified_by')->nullable();
+                $table->date('verification_date')->nullable();
+                $table->text('remarks')->nullable();
+                $table->timestamps();
+
+                $table->foreign('student_id')->references('id')->on('students')
+                    ->onDelete('cascade')->onUpdate('cascade');
+                $table->foreign('verified_by')->references('id')->on('users')
+                    ->onDelete('cascade')->onUpdate('cascade');
+            });
+        }
             $table->foreignId('student_id')->constrained('students')->onDelete('cascade');
             $table->string('document_type'); // 'birth_certificate', 'aadhar_card', 'transfer_certificate', etc.
             $table->string('original_file_path'); // Path to original uploaded document
