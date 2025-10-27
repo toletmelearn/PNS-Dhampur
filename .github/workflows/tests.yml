@@ -1,0 +1,87 @@
+name: Run Tests
+
+# GitHub ad comment: 27 October 2025
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  laravel-tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: pns_dhampur_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.1'
+        extensions: mbstring, dom, fileinfo, mysql, pdo_mysql
+        coverage: xdebug
+    
+    - name: Copy .env
+      run: cp .env.example .env
+    
+    - name: Install Composer dependencies
+      run: composer install --no-interaction --prefer-dist --optimize-autoloader
+    
+    - name: Generate key
+      run: php artisan key:generate
+    
+    - name: Directory permissions
+      run: chmod -R 777 storage bootstrap/cache
+      
+    - name: Update .env for testing
+      run: |
+        echo "DB_CONNECTION=mysql" >> .env
+        echo "DB_HOST=127.0.0.1" >> .env
+        echo "DB_PORT=3306" >> .env
+        echo "DB_DATABASE=pns_dhampur_test" >> .env
+        echo "DB_USERNAME=root" >> .env
+        echo "DB_PASSWORD=password" >> .env
+    
+    - name: Clear config cache
+      run: php artisan config:clear
+    
+    - name: Run migrations with fresh database
+      run: php artisan migrate:fresh --seed --force
+      env:
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: pns_dhampur_test
+        DB_USERNAME: root
+        DB_PASSWORD: password
+    
+    - name: Run tests with coverage
+      run: vendor/bin/phpunit --coverage-text
+      env:
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: pns_dhampur_test
+        DB_USERNAME: root
+        DB_PASSWORD: password
+        
+    - name: Run parallel tests
+      run: php artisan test --parallel
+      env:
+        DB_CONNECTION: mysql
+        DB_HOST: 127.0.0.1
+        DB_PORT: 3306
+        DB_DATABASE: pns_dhampur_test
+        DB_USERNAME: root
+        DB_PASSWORD: password
